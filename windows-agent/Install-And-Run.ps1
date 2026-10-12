@@ -1,13 +1,13 @@
-# ADRTech PrintQR - Windows Desktop Setup & Runner (PowerShell 1-Liner)
+# printx - Windows Desktop Setup & Runner (PowerShell 1-Liner)
 param (
     [string]$ServerUrl = "https://your-shop.printqr.in"
 )
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "    ADRTech PrintQR - Windows Desktop Agent Setup" -ForegroundColor Yellow
+Write-Host "    printx - Windows Desktop Agent Setup" -ForegroundColor Yellow
 Write-Host "==========================================================" -ForegroundColor Cyan
 
-$AppDir = Join-Path $env:USERPROFILE "ADRTech-PrintAgent"
+$AppDir = Join-Path $env:USERPROFILE "printx-PrintAgent"
 if (!(Test-Path $AppDir)) {
     New-Item -ItemType Directory -Force -Path $AppDir | Out-Null
 }
@@ -37,5 +37,5 @@ Write-Host "[*] Checking Python dependencies (requests, PySide6, pywin32)..." -F
 & python -m pip install --quiet --upgrade pip
 & pip install --quiet requests PySide6 pywin32
 
-Write-Host "[*] Launching ADRTech Windows Spooler Desktop Agent..." -ForegroundColor Cyan
+Write-Host "[*] Launching printx Windows Spooler Desktop Agent..." -ForegroundColor Cyan
 & python agent.py

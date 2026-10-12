@@ -300,11 +300,11 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
     setShowAgentSetupModal(true);
     try {
       let url = '/api/agent/download-windows-exe';
-      let filename = 'ADRTech-Windows-Desktop-Package.zip';
+      let filename = 'printx-Windows-Desktop-Package.zip';
 
       if (type === 'bat') {
         url = '/api/agent/download-bat';
-        filename = 'ADRTech-PrintAgent.bat';
+        filename = 'printx-PrintAgent.bat';
       } else if (type === 'script') {
         url = '/api/agent/download-script';
         filename = 'agent.py';
@@ -1029,7 +1029,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                     className="inline-flex items-center gap-2.5 px-5 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-sm transition cursor-pointer"
                   >
                     <Play className="w-4 h-4" />
-                    1-Click Windows App (ADRTech-PrintAgent.bat)
+                    1-Click Windows App (printx-PrintAgent.bat)
                   </button>
 
                   <button
@@ -1589,7 +1589,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                 </h4>
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
                   <p className="text-xs text-slate-600">
-                    Paste this utility key when prompted in the ADRTech Desktop app:
+                    Paste this utility key when prompted in the printx Desktop app:
                   </p>
                   <div className="flex items-center gap-2">
                     <input

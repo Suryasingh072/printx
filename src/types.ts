@@ -96,6 +96,17 @@ export interface WindowsAgent {
   createdAt: string;
 }
 
+export interface OrderFileItem {
+  id: string;
+  name: string;
+  type: string;
+  sizeBytes: number;
+  filePath: string;
+  pageCount: number;
+  previewUrl?: string;
+  edited?: boolean;
+}
+
 export interface Order {
   id: string;
   orderNumber: string;
@@ -122,6 +133,7 @@ export interface Order {
   paymentCollectedAt?: string;
   paymentCollectorName?: string;
   paymentMethod?: PaymentMethod;
+  files?: OrderFileItem[];
   approvedAt?: string;
   printedAt?: string;
   archivedAt?: string;

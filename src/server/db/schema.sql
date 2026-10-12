@@ -1,5 +1,5 @@
 -- ============================================================================
--- ADRTech PrintQR - Production Database Schema (PostgreSQL / Supabase Compatible)
+-- printx - Production Database Schema (PostgreSQL / Supabase Compatible)
 -- Recreates complete relational model with constraints, indexes, and triggers
 -- ============================================================================
 

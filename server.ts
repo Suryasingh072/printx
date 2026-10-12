@@ -113,7 +113,7 @@ app.post('/api/auth/send-registration-otp', async (req, res) => {
   const sendResult = await whatsAppService.sendVerificationOtp(
     cleanPhone,
     otp,
-    shopName || 'ADRTech PrintQR'
+    shopName || 'printx'
   );
 
   res.json({
@@ -268,7 +268,7 @@ app.post('/api/auth/request-otp', requireAuth, async (req, res) => {
   const sendResult = await whatsAppService.sendVerificationOtp(
     user.whatsappNumber,
     otp,
-    shop?.name || 'ADRTech PrintQR'
+    shop?.name || 'printx'
   );
 
   res.json({
@@ -703,6 +703,7 @@ app.post('/api/orders', (req, res) => {
     totalAmount: priceCalc.totalAmount,
     status: initialStatus,
     paymentStatus: 'unpaid',
+    files: Array.isArray(req.body.files) ? req.body.files : undefined,
   });
 
   db.logActivity({
@@ -1256,15 +1257,19 @@ app.post('/api/shop/agent/utility-key', requireAuth, (req, res) => {
 });
 
 // Download Windows app package (Valid Windows .zip package)
+// Download Windows app package (Valid Windows .zip package)
 app.get('/api/agent/download-windows-exe', (req, res) => {
-  const zipPath = path.resolve(process.cwd(), './windows-agent/ADRTech-Windows-Desktop-Package.zip');
+  const zipPath = path.resolve(process.cwd(), './windows-agent/printx-Windows-Desktop-Package.zip');
+  const fallbackZip = path.resolve(process.cwd(), './windows-agent/ADRTech-Windows-Desktop-Package.zip');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Content-Type', 'application/zip');
-  res.setHeader('Content-Disposition', 'attachment; filename="ADRTech-Windows-Desktop-Package.zip"');
+  res.setHeader('Content-Disposition', 'attachment; filename="printx-Windows-Desktop-Package.zip"');
 
   if (fs.existsSync(zipPath)) {
     res.sendFile(zipPath);
+  } else if (fs.existsSync(fallbackZip)) {
+    res.sendFile(fallbackZip);
   } else {
     const scriptPath = path.resolve(process.cwd(), './windows-agent/agent.py');
     res.sendFile(scriptPath);
@@ -1273,14 +1278,14 @@ app.get('/api/agent/download-windows-exe', (req, res) => {
 
 // Download Windows Batch Runner directly (.bat)
 app.get('/api/agent/download-bat', (req, res) => {
-  const batPath = path.resolve(process.cwd(), './windows-agent/ADRTech-PrintAgent.bat');
+  const batPath = path.resolve(process.cwd(), './windows-agent/printx-PrintAgent.bat');
+  const fallbackPath = path.resolve(process.cwd(), './windows-agent/start_agent.bat');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/x-bat');
-  res.setHeader('Content-Disposition', 'attachment; filename="ADRTech-PrintAgent.bat"');
+  res.setHeader('Content-Disposition', 'attachment; filename="printx-PrintAgent.bat"');
   if (fs.existsSync(batPath)) {
     res.sendFile(batPath);
   } else {
-    const fallbackPath = path.resolve(process.cwd(), './windows-agent/start_agent.bat');
     res.sendFile(fallbackPath);
   }
 });
@@ -1290,11 +1295,11 @@ app.get('/api/agent/download-script', (req, res) => {
   const scriptPath = path.resolve(process.cwd(), './windows-agent/agent.py');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'text/x-python');
-  res.setHeader('Content-Disposition', 'attachment; filename="adrtech_print_agent.py"');
+  res.setHeader('Content-Disposition', 'attachment; filename="printx_agent.py"');
   if (fs.existsSync(scriptPath)) {
     res.sendFile(scriptPath);
   } else {
-    res.send('# ADRTech Print Agent');
+    res.send('# printx Print Agent');
   }
 });
 
@@ -1307,7 +1312,7 @@ app.get('/api/agent/download-ps1', (req, res) => {
   if (fs.existsSync(psPath)) {
     res.sendFile(psPath);
   } else {
-    res.send('Write-Host "ADRTech Print Agent"');
+    res.send('Write-Host "printx Print Agent"');
   }
 });
 

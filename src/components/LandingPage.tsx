@@ -20,6 +20,10 @@ import {
   Play,
   Lock,
   User,
+  Scissors,
+  Camera,
+  Zap,
+  Check,
 } from 'lucide-react';
 import { api } from '../lib/api.js';
 
@@ -169,15 +173,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+            <div className="w-11 h-11 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-md shadow-blue-500/25">
               <Printer className="w-6 h-6" />
             </div>
             <div>
-              <span className="text-xl font-extrabold tracking-tight text-slate-900">
-                ADRTech <span className="text-blue-600">PrintQR</span>
+              <span className="text-2xl font-black tracking-tight text-slate-900">
+                print<span className="text-blue-600">x</span>
               </span>
-              <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">
-                Self-Service Print Station System
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                Smart QR Self-Service Xerox & Print
               </p>
             </div>
           </div>
@@ -298,6 +302,107 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================
+          3.5 FEATURE SPOTLIGHT: MULTI-FILE, PHONE EDITING, PASSPORT
+         ======================================================== */}
+      <section className="py-16 bg-gradient-to-b from-white via-blue-50/20 to-white border-t border-slate-200/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-12">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-blue-100 text-blue-700 uppercase tracking-wider">
+              <Zap className="w-3.5 h-3.5" /> High Customer Delight • Zero App Download
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mt-3">
+              Kyu Customers Aur Shop Owners printx Ko Pasand Karte Hain
+            </h2>
+            <p className="text-slate-600 text-sm mt-2">
+              WhatsApp par files lene ka jhanjhat khatam. Fast, transparent aur professional self-service experience.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* 1. Multi-file Print */}
+            <div className="bg-white rounded-3xl p-7 border-2 border-blue-100/80 hover:border-blue-400 shadow-md hover:shadow-xl transition-all flex flex-col justify-between group">
+              <div>
+                <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-5 group-hover:scale-105 transition-transform">
+                  <FileText className="w-7 h-7" />
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full">Feature 01</span>
+                  <h3 className="text-xl font-black text-slate-900">📄 Multi-File Print</h3>
+                </div>
+                <p className="text-sm font-bold text-slate-700 mb-2">
+                  Customer ek saath 5–10 files bheje (PDF + photo mix)
+                </p>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Single upload queue me multiple documents, ID photos aur college assignments ek saath select karein. Ek hi bar payment calculation aur sahi order me seamless print spooling.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600">
+                <span>Batch Upload & Single Pay</span>
+                <Check className="w-4 h-4 text-emerald-500 stroke-[3]" />
+              </div>
+            </div>
+
+            {/* 2. Phone Se Hi Editing */}
+            <div className="bg-white rounded-3xl p-7 border-2 border-indigo-100/80 hover:border-indigo-400 shadow-md hover:shadow-xl transition-all flex flex-col justify-between group">
+              <div>
+                <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mb-5 group-hover:scale-105 transition-transform">
+                  <Scissors className="w-7 h-7" />
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full">Feature 02</span>
+                  <h3 className="text-xl font-black text-slate-900">✂️ Phone Se Hi Editing</h3>
+                </div>
+                <p className="text-sm font-bold text-slate-700 mb-2">
+                  Customer khud crop, rotate aur brightness theek karta hai
+                </p>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Photoshop ya extra computer ki jarurat nahi. Document dark hai ya tedha hai? Customer upload se pehle live preview ke saath crop, rotate aur brightness adjust kar leta hai.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-600">
+                <span>Live In-Browser Editor</span>
+                <Check className="w-4 h-4 text-emerald-500 stroke-[3]" />
+              </div>
+            </div>
+
+            {/* 3. 4x6 Passport Photos */}
+            <div className="bg-white rounded-3xl p-7 border-2 border-emerald-100/80 hover:border-emerald-400 shadow-md hover:shadow-xl transition-all flex flex-col justify-between group">
+              <div>
+                <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 mb-5 group-hover:scale-105 transition-transform">
+                  <Camera className="w-7 h-7" />
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full">Feature 03</span>
+                  <h3 className="text-xl font-black text-slate-900">📷 4×6 Passport Photos</h3>
+                </div>
+                <p className="text-sm font-bold text-slate-700 mb-2">
+                  Photo bhejo, 4 ya 6 ki sheet khud ban ke nikle
+                </p>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Studio style passport photos direct phone se ready! Standard 35mm×45mm size, automatic sheet layout aur scissors cutting lines ke saath direct photo printer se nikalta hai.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-600">
+                <span>Auto Sheet & Cutting Lines</span>
+                <Check className="w-4 h-4 text-emerald-500 stroke-[3]" />
+              </div>
+            </div>
+          </div>
+
+          {/* Quick CTA to try Customer Portal */}
+          <div className="mt-12 text-center">
+            <button
+              onClick={() => onOpenCustomerPortal('apex-print')}
+              className="inline-flex items-center gap-2 px-6 py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-sm font-bold shadow-lg transition cursor-pointer"
+            >
+              <span>Test Live Customer Demo (Apex Print)</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </section>
@@ -584,10 +689,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-800">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white">
+              <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center font-bold text-white">
                 <Printer className="w-5 h-5" />
               </div>
-              <span className="text-lg font-bold">ADRTech PrintQR</span>
+              <span className="text-xl font-black">print<span className="text-blue-500">x</span></span>
             </div>
 
             <div className="flex flex-wrap gap-6 text-xs text-slate-400">
@@ -602,8 +707,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
           </div>
 
           <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-            <p>© {new Date().getFullYear()} ADRTech QR Print Service. All rights reserved.</p>
-            <p>Built with enterprise security • Private Document Storage • Spooler Integration</p>
+            <p>© {new Date().getFullYear()} printx Smart Printing Platform. All rights reserved.</p>
+            <p>Direct QR Counter Printing • Zero WhatsApp Hassle • Auto-Spooler</p>
           </div>
         </div>
       </footer>

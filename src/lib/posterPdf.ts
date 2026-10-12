@@ -31,7 +31,7 @@ export async function generateShopPosterPdf(shop: Shop): Promise<void> {
   doc.text('SELF-SERVICE PRINT STATION', 105, 18, { align: 'center' });
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
-  doc.text('Powered by PrintQR - Skip The Counter Rush', 105, 27, { align: 'center' });
+  doc.text('Powered by printx - Smart Self-Service Printing & Xerox', 105, 27, { align: 'center' });
 
   // Shop Name & Details
   doc.setTextColor(15, 23, 42); // #0f172a
@@ -114,8 +114,8 @@ export async function generateShopPosterPdf(shop: Shop): Promise<void> {
   // Bottom branding
   doc.setFontSize(8);
   doc.setTextColor(148, 163, 184);
-  doc.text(`PrintQR Print Station System - Printed on ${new Date().toLocaleDateString()}`, 105, 288, { align: 'center' });
+  doc.text(`printx Smart QR Print System - Printed on ${new Date().toLocaleDateString()}`, 105, 288, { align: 'center' });
 
   // Trigger browser download
-  doc.save(`${shop.slug}-PrintQR-Poster.pdf`);
+  doc.save(`${shop.slug}-printx-Poster.pdf`);
 }

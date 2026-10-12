@@ -132,6 +132,14 @@ export interface Order {
   paymentCollectedAt?: string;
   paymentCollectorName?: string;
   paymentMethod?: PaymentMethod;
+  files?: Array<{
+    id: string;
+    name: string;
+    type: string;
+    sizeBytes: number;
+    filePath: string;
+    pageCount: number;
+  }>;
   approvedAt?: string;
   approvedBy?: string;
   printedAt?: string;

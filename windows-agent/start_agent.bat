@@ -1,10 +1,10 @@
 @echo off
 setlocal enabledelayedexpansion
-title ADRTech PrintQR - Windows Desktop Spooler Agent
+title printx - Windows Desktop Spooler Agent
 color 0b
 
 echo ======================================================================
-echo    ADRTech PrintQR - Windows Desktop Printing Agent v2.0
+echo    printx - Windows Desktop Printing Agent v2.4
 echo    Automated Real-Time Windows Spooler for Local Print Shops
 echo ======================================================================
 echo.
@@ -23,23 +23,22 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo [*] Python detected successfully.
-echo [*] Checking dependencies (requests, PySide6, pywin32)...
 echo.
 
-python -c "import requests, PySide6" >nul 2>nul
+:: 2. Install required dependencies
+echo [*] Checking required Python dependencies...
+python -m pip install --upgrade pip --quiet
+pip install -r "%~dp0requirements.txt" --quiet
 if %ERRORLEVEL% neq 0 (
-    echo [*] Installing required components (one-time setup)...
-    python -m pip install --upgrade pip
-    pip install requests PySide6 pywin32
-    if %ERRORLEVEL% neq 0 (
-        echo [!] PySide6 installation encountered an issue, trying minimal fallback...
-        pip install requests pywin32
-    )
+    echo [!] Installing core dependencies directly...
+    pip install requests PySide6 pywin32 --quiet
 )
 
+echo [*] Dependencies verified.
 echo.
+
 echo ======================================================================
-echo [*] Starting ADRTech Desktop Agent in Shop Counter Mode...
+echo [*] Starting printx Desktop Agent in Shop Counter Mode...
 echo ======================================================================
 echo.
 

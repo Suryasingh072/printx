@@ -172,7 +172,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-base tracking-tight">ADRTech PrintQR Master Admin</span>
+                <span className="font-black text-base tracking-tight">print<span className="text-blue-400">x</span> Master Admin</span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
                   Super Admin
                 </span>

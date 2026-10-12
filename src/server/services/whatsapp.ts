@@ -49,7 +49,7 @@ export class WhatsAppService {
             to: formattedPhone,
             type: 'text',
             text: {
-              body: `Your PrintQR verification code for ${shopName} is ${otp}. Valid for 5 minutes. Do not share this code.`,
+              body: `Your printx verification code for ${shopName} is ${otp}. Valid for 5 minutes. Do not share this code.`,
             },
           }),
         });
@@ -95,7 +95,7 @@ export class WhatsAppService {
         const formData = new URLSearchParams();
         formData.append('From', fromNumber);
         formData.append('To', `whatsapp:${formattedPhone}`);
-        formData.append('Body', `Your PrintQR verification code for ${shopName} is ${otp}. Valid for 5 minutes.`);
+        formData.append('Body', `Your printx verification code for ${shopName} is ${otp}. Valid for 5 minutes.`);
 
         const response = await fetch(url, {
           method: 'POST',

@@ -80,13 +80,13 @@ export class Database {
           admin.email = 'printx286351@gmail.com';
           admin.passwordHash = this.hashPassword('Ekma#1234');
           admin.role = 'admin';
-          admin.fullName = 'ADRTech System Administrator';
+          admin.fullName = 'printx System Administrator';
         } else if (parsed.users) {
           parsed.users.push({
             id: 'usr-admin-001',
             email: 'printx286351@gmail.com',
             passwordHash: this.hashPassword('Ekma#1234'),
-            fullName: 'ADRTech System Administrator',
+            fullName: 'printx System Administrator',
             whatsappNumber: '+919876543210',
             whatsappVerified: true,
             role: 'admin',
@@ -119,7 +119,7 @@ export class Database {
       id: 'usr-admin-001',
       email: 'printx286351@gmail.com',
       passwordHash: this.hashPassword('Ekma#1234'),
-      fullName: 'ADRTech System Administrator',
+      fullName: 'printx System Administrator',
       whatsappNumber: '+919876543210',
       whatsappVerified: true,
       role: 'admin',
