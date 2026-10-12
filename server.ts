@@ -1501,7 +1501,14 @@ app.get('/api/agent/download-job/:jobId', (req, res) => {
 // ==========================================
 // 6. VITE SSR / STATIC SERVING
 // ==========================================
+export default app;
+
 async function startServer() {
+  // If running inside Vercel serverless function, don't start the standalone listener
+  if (process.env.VERCEL) {
+    return;
+  }
+
   const isDev = process.env.NODE_ENV !== 'production';
 
   if (isDev) {
