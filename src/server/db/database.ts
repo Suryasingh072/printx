@@ -31,12 +31,17 @@ interface DatabaseSchema {
   activityLogs: ActivityLog[];
 }
 
-const DB_DIR = path.resolve(process.cwd(), './data');
+const isVercel = Boolean(process.env.VERCEL);
+const DB_DIR = isVercel ? '/tmp/qrprint-data' : path.resolve(process.cwd(), './data');
 const DB_FILE = path.join(DB_DIR, 'qrprint.db.json');
 
-// Ensure DB directory exists
-if (!fs.existsSync(DB_DIR)) {
-  fs.mkdirSync(DB_DIR, { recursive: true });
+// Ensure DB directory exists safely without crashing
+try {
+  if (!fs.existsSync(DB_DIR)) {
+    fs.mkdirSync(DB_DIR, { recursive: true });
+  }
+} catch (err) {
+  console.warn('Could not create DB_DIR, running with in-memory persistence:', err);
 }
 
 export class Database {

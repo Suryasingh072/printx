@@ -2,13 +2,20 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
-const UPLOAD_ROOT = path.resolve(process.cwd(), process.env.STORAGE_DIR || './uploads');
+const isVercel = Boolean(process.env.VERCEL);
+const UPLOAD_ROOT = isVercel
+  ? '/tmp/qrprint-uploads'
+  : path.resolve(process.cwd(), process.env.STORAGE_DIR || './uploads');
 const DOCS_DIR = path.join(UPLOAD_ROOT, 'documents');
 const SECRET_KEY = process.env.AUTH_SECRET || 'adrtech-printqr-secure-storage-secret-2026';
 
-// Ensure directories exist
-if (!fs.existsSync(DOCS_DIR)) {
-  fs.mkdirSync(DOCS_DIR, { recursive: true });
+// Ensure directories exist safely without crashing
+try {
+  if (!fs.existsSync(DOCS_DIR)) {
+    fs.mkdirSync(DOCS_DIR, { recursive: true });
+  }
+} catch (err) {
+  console.warn('Could not create DOCS_DIR in storageService:', err);
 }
 
 export interface StoredFile {

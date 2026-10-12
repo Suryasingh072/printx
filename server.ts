@@ -14,6 +14,16 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 const AUTH_SECRET = process.env.AUTH_SECRET || 'adrtech-printqr-auth-session-key-2026';
 
 // Middleware
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(express.json({ limit: '60mb' }));
 app.use(express.urlencoded({ extended: true, limit: '60mb' }));
 
@@ -185,33 +195,38 @@ app.post('/api/auth/register', (req, res) => {
 
 // Login
 app.post('/api/auth/login', (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required.' });
+  try {
+    const { email, password } = req.body || {};
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required.' });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanPassword = String(password).trim();
+    const user = db.getUserByEmail(cleanEmail);
+    if (!user || !db.verifyPassword(cleanPassword, user.passwordHash)) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    const shop = user.role === 'admin' ? undefined : db.getShopByOwnerId(user.id);
+    const token = createSessionToken(user, shop);
+
+    return res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        whatsappNumber: user.whatsappNumber,
+        whatsappVerified: user.whatsappVerified,
+        role: user.role,
+      },
+      shop,
+      token,
+    });
+  } catch (err: any) {
+    console.error('Error during login:', err);
+    return res.status(500).json({ error: err.message || 'Internal server error during login' });
   }
-
-  const cleanEmail = String(email).trim();
-  const cleanPassword = String(password).trim();
-  const user = db.getUserByEmail(cleanEmail);
-  if (!user || !db.verifyPassword(cleanPassword, user.passwordHash)) {
-    return res.status(401).json({ error: 'Invalid email or password.' });
-  }
-
-  const shop = user.role === 'admin' ? undefined : db.getShopByOwnerId(user.id);
-  const token = createSessionToken(user, shop);
-
-  res.json({
-    user: {
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      whatsappNumber: user.whatsappNumber,
-      whatsappVerified: user.whatsappVerified,
-      role: user.role,
-    },
-    shop,
-    token,
-  });
 });
 
 // Get Current User Profile
@@ -1496,6 +1511,15 @@ app.get('/api/agent/download-job/:jobId', (req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: 'File read error' });
   }
+});
+
+// Global Error Handler
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  console.error('Unhandled Server Error:', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(500).json({ error: err.message || 'Internal server error occurred.' });
 });
 
 // ==========================================
