@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { storageService } from '../services/storage.js';
 import {
   User,
   Shop,
@@ -764,6 +765,8 @@ export class Database {
       this.data.orders[idx].approvedBy = changedById;
     } else if (newStatus === 'completed') {
       this.data.orders[idx].printedAt = new Date().toISOString();
+      // Set customer files auto-purge to exactly 5 minutes from completion
+      this.data.orders[idx].purgeDueAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
     } else if (newStatus === 'archived') {
       this.data.orders[idx].archivedAt = new Date().toISOString();
     }
@@ -783,15 +786,93 @@ export class Database {
     return this.data.orders[idx];
   }
 
+  /**
+   * Automatically purges customer files 5 minutes after print completion
+   * to guarantee customer privacy and prevent data retention.
+   */
+  public purgeCompletedOrdersFiles(): { purgedCount: number; purgedOrderIds: string[] } {
+    const now = Date.now();
+    const purgedOrderIds: string[] = [];
+
+    for (const order of this.data.orders) {
+      const isCompleted = order.status === 'completed' || Boolean(order.printedAt);
+      if (!isCompleted || order.isDocumentPurged) continue;
+
+      let shouldPurge = false;
+      if (order.purgeDueAt) {
+        shouldPurge = now >= new Date(order.purgeDueAt).getTime();
+      } else if (order.printedAt) {
+        shouldPurge = now - new Date(order.printedAt).getTime() >= 5 * 60 * 1000;
+      } else if (order.updatedAt && order.status === 'completed') {
+        shouldPurge = now - new Date(order.updatedAt).getTime() >= 5 * 60 * 1000;
+      }
+
+      if (shouldPurge) {
+        // Purge main document file
+        if (order.filePath) {
+          try {
+            storageService.purgeDocument(order.filePath);
+          } catch (e) {
+            console.warn(`Could not purge ${order.filePath}:`, e);
+          }
+        }
+
+        // Purge any multi-file batch items
+        if (order.files && Array.isArray(order.files)) {
+          for (const f of order.files) {
+            if (f.filePath) {
+              try {
+                storageService.purgeDocument(f.filePath);
+              } catch (e) {
+                console.warn(`Could not purge batch file ${f.filePath}:`, e);
+              }
+            }
+          }
+        }
+
+        order.isDocumentPurged = true;
+        order.purgedAt = new Date().toISOString();
+        purgedOrderIds.push(order.id);
+
+        this.data.orderHistory.push({
+          id: `hst-${crypto.randomUUID().slice(0, 8)}`,
+          orderId: order.id,
+          previousStatus: order.status,
+          newStatus: order.status,
+          changedByName: 'printx Privacy Engine',
+          comment: 'Customer files automatically & permanently deleted 5 minutes after completion for privacy protection.',
+          createdAt: new Date().toISOString(),
+        });
+      }
+    }
+
+    if (purgedOrderIds.length > 0) {
+      this.save();
+    }
+
+    return { purgedCount: purgedOrderIds.length, purgedOrderIds };
+  }
+
   public deleteOrder(orderId: string): boolean {
     const idx = this.data.orders.findIndex((o) => o.id === orderId);
     if (idx === -1) return false;
     const order = this.data.orders[idx];
-    if (order.filePath && fs.existsSync(order.filePath)) {
+    if (order.filePath) {
       try {
-        fs.unlinkSync(order.filePath);
+        storageService.purgeDocument(order.filePath);
       } catch (err) {
         console.warn('Could not delete order file:', err);
+      }
+    }
+    if (order.files && Array.isArray(order.files)) {
+      for (const f of order.files) {
+        if (f.filePath) {
+          try {
+            storageService.purgeDocument(f.filePath);
+          } catch (err) {
+            console.warn('Could not delete subfile:', err);
+          }
+        }
       }
     }
     this.data.orders.splice(idx, 1);
@@ -849,9 +930,15 @@ export class Database {
   }
 
   public getAgentByToken(token: string): WindowsAgent | undefined {
-    const hash = crypto.createHash('sha256').update(token).digest('hex');
+    if (!token) return undefined;
+    const cleanToken = token.trim();
+    const hash = crypto.createHash('sha256').update(cleanToken).digest('hex');
     return this.data.agents.find(
-      (a) => (a.authTokenHash === hash || a.utilityApiKey === token) && a.status !== 'revoked'
+      (a) =>
+        (a.authTokenHash === hash ||
+          a.utilityApiKey === cleanToken ||
+          (a.pairingCode && a.pairingCode === cleanToken)) &&
+        a.status !== 'revoked'
     );
   }
 
@@ -900,19 +987,20 @@ export class Database {
 
   public generatePairingCode(shopId: string): { code: string; expiresAt: string } {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    // Valid for 24 hours so shopkeepers never get locked out
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
     let agent = this.getAgentByShopId(shopId);
     if (!agent) {
       agent = {
         id: `agt-${crypto.randomUUID().slice(0, 8)}`,
         shopId,
-        deviceName: 'New Shop Windows PC',
+        deviceName: 'Shop Windows PC',
         pairingCode: code,
         pairingCodeExpiresAt: expiresAt,
         status: 'offline',
         installedPrinters: [],
-        appVersion: '1.2.0',
+        appVersion: '2.4.0',
         dryRunMode: false,
         createdAt: new Date().toISOString(),
       };
@@ -927,26 +1015,61 @@ export class Database {
   }
 
   public pairAgent(pairingCode: string, deviceName: string, ipAddress?: string): { agent: WindowsAgent; token: string } | null {
-    const cleanCode = pairingCode.trim();
-    // Allow matching 6-digit pairing code OR direct utilityApiKey
-    const agent = this.data.agents.find(
-      (a) =>
-        (a.pairingCode === cleanCode &&
-          a.pairingCodeExpiresAt &&
-          new Date(a.pairingCodeExpiresAt).getTime() > Date.now()) ||
-        (a.utilityApiKey && a.utilityApiKey === cleanCode)
-    );
+    if (!pairingCode) return null;
+    const cleanCode = pairingCode.replace(/[\s\-]/g, '').trim();
+    const now = Date.now();
+
+    // 1. Direct match on 6-digit pairingCode or utilityApiKey
+    let agent = this.data.agents.find((a) => {
+      const codeMatch =
+        a.pairingCode &&
+        a.pairingCode.replace(/[\s\-]/g, '').toLowerCase() === cleanCode.toLowerCase();
+      const notExpired =
+        !a.pairingCodeExpiresAt ||
+        new Date(a.pairingCodeExpiresAt).getTime() > now;
+      const keyMatch =
+        a.utilityApiKey &&
+        (a.utilityApiKey.trim() === cleanCode ||
+          a.utilityApiKey.replace(/[\s\-]/g, '') === cleanCode);
+      return (codeMatch && notExpired) || Boolean(keyMatch);
+    });
+
+    // 2. Fallback: match by shop slug or shop phone if user entered their shop ID
+    if (!agent) {
+      const shop = this.data.shops.find(
+        (s) =>
+          s.slug?.toLowerCase().replace(/[\s\-]/g, '') === cleanCode.toLowerCase() ||
+          s.slug?.toLowerCase() === cleanCode.toLowerCase() ||
+          s.phone?.replace(/[^0-9]/g, '') === cleanCode.replace(/[^0-9]/g, '') ||
+          s.id === cleanCode
+      );
+      if (shop) {
+        agent = this.getAgentByShopId(shop.id);
+        if (!agent) {
+          agent = {
+            id: `agt-${crypto.randomUUID().slice(0, 8)}`,
+            shopId: shop.id,
+            deviceName: deviceName || 'Shop Windows PC',
+            status: 'offline',
+            installedPrinters: [],
+            appVersion: '2.4.0',
+            dryRunMode: false,
+            createdAt: new Date().toISOString(),
+          };
+          this.data.agents.push(agent);
+        }
+      }
+    }
 
     if (!agent) return null;
 
     const token = `agt_token_${crypto.randomBytes(24).toString('hex')}`;
     agent.authTokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    agent.deviceName = deviceName;
-    agent.ipAddress = ipAddress;
+    agent.deviceName = deviceName || agent.deviceName;
+    agent.ipAddress = ipAddress || agent.ipAddress;
     agent.status = 'online';
     agent.lastSeenAt = new Date().toISOString();
-    agent.pairingCode = undefined;
-    agent.pairingCodeExpiresAt = undefined;
+    // Do not clear pairingCode immediately so reconnections don't fail!
 
     this.save();
     return { agent, token };

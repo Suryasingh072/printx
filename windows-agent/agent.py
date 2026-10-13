@@ -355,9 +355,13 @@ class MainWindow(QMainWindow):
         self.append_log(f"Dry-run mode set to: {checked}")
 
     def handle_pair(self):
-        code = self.code_input.text().strip()
+        code = re.sub(r'[\s\-]', '', self.code_input.text().strip())
         server = self.server_input.text().strip().rstrip("/")
-        if not code or len(code) != 6:
+        if server and not server.startswith("http://") and not server.startswith("https://"):
+            server = f"https://{server}"
+            self.server_input.setText(server)
+
+        if not code or len(code) < 4:
             QMessageBox.warning(self, "Validation Error", "Please enter the 6-digit pairing code from your Shop Dashboard.")
             return
 
@@ -366,7 +370,7 @@ class MainWindow(QMainWindow):
             resp = requests.post(f"{server}/api/agent/pair", json={
                 "pairingCode": code,
                 "deviceName": os.environ.get("COMPUTERNAME", "Shop-Counter-Windows-PC")
-            }, timeout=10)
+            }, timeout=15)
 
             if resp.status_code == 200:
                 data = resp.json()

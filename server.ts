@@ -85,13 +85,24 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 // Agent Auth Middleware
 function requireAgentAuth(req: Request, res: Response, next: NextFunction) {
-  const token = req.headers['x-agent-token'] as string;
+  let token = req.headers['x-agent-token'] as string;
+  if (!token && req.headers.authorization) {
+    const authHeader = req.headers.authorization;
+    if (authHeader.startsWith('Bearer ')) {
+      token = authHeader.slice(7).trim();
+    } else {
+      token = authHeader.trim();
+    }
+  }
+  if (!token && typeof req.query.token === 'string') {
+    token = req.query.token;
+  }
   if (!token) {
-    return res.status(401).json({ error: 'Agent token missing' });
+    return res.status(401).json({ error: 'Agent token missing. Please pair your Windows device.' });
   }
   const agent = db.getAgentByToken(token);
   if (!agent) {
-    return res.status(401).json({ error: 'Invalid or revoked agent credentials' });
+    return res.status(401).json({ error: 'Invalid or revoked agent credentials.' });
   }
   (req as any).agent = agent;
   next();
@@ -1165,6 +1176,14 @@ app.get('/api/documents/preview/:orderId', (req, res) => {
   const order = db.getOrderById(orderId);
   if (!order) return res.status(404).json({ error: 'Order not found' });
 
+  if (order.isDocumentPurged) {
+    return res.status(410).json({
+      error: 'Customer document files were permanently deleted 5 minutes after print completion as per customer privacy policy.',
+      purged: true,
+      purgedAt: order.purgedAt,
+    });
+  }
+
   try {
     const filePath = storageService.getAbsolutePath(order.filePath);
     res.removeHeader('X-Frame-Options');
@@ -1193,6 +1212,14 @@ app.get('/api/documents/download/:orderId', (req, res) => {
   const { orderId } = req.params;
   const order = db.getOrderById(orderId);
   if (!order) return res.status(404).json({ error: 'Order not found' });
+
+  if (order.isDocumentPurged) {
+    return res.status(410).json({
+      error: 'Customer document files were permanently deleted 5 minutes after print completion as per customer privacy policy.',
+      purged: true,
+      purgedAt: order.purgedAt,
+    });
+  }
 
   try {
     const filePath = storageService.getAbsolutePath(order.filePath);
@@ -1256,61 +1283,157 @@ app.post('/api/shop/agent/utility-key', requireAuth, (req, res) => {
   });
 });
 
-// Download Windows app package (Valid Windows .zip package)
-// Download Windows app package (Valid Windows .zip package)
+// Helper to build dynamic Windows ZIP package with current host pre-configured
+function buildDynamicAgentZip(currentHost: string): Buffer {
+  const batPath = path.resolve(process.cwd(), './windows-agent/printx-PrintAgent.bat');
+  const pyPath = path.resolve(process.cwd(), './windows-agent/agent.py');
+  const psPath = path.resolve(process.cwd(), './windows-agent/Install-And-Run.ps1');
+  const startBatPath = path.resolve(process.cwd(), './windows-agent/start_agent.bat');
+  const reqPath = path.resolve(process.cwd(), './windows-agent/requirements.txt');
+
+  let batContent = fs.existsSync(batPath) ? fs.readFileSync(batPath, 'utf8') : '';
+  batContent = batContent.replace(/\$ServerBox\.Text = "[^"]*"/g, `$ServerBox.Text = "${currentHost}"`);
+
+  let pyContent = fs.existsSync(pyPath) ? fs.readFileSync(pyPath, 'utf8') : '';
+  pyContent = pyContent.replace(/DEFAULT_SERVER = "[^"]*"/g, `DEFAULT_SERVER = "${currentHost}"`);
+
+  let psContent = fs.existsSync(psPath) ? fs.readFileSync(psPath, 'utf8') : '';
+  psContent = psContent.replace(/\[string\]\$ServerUrl = "[^"]*"/g, `[string]$ServerUrl = "${currentHost}"`);
+
+  const files = [
+    { name: 'printx-PrintAgent.bat', content: Buffer.from(batContent, 'utf8') },
+    { name: 'start_agent.bat', content: fs.existsSync(startBatPath) ? fs.readFileSync(startBatPath) : Buffer.from('') },
+    { name: 'Install-And-Run.ps1', content: Buffer.from(psContent, 'utf8') },
+    { name: 'agent.py', content: Buffer.from(pyContent, 'utf8') },
+    { name: 'requirements.txt', content: fs.existsSync(reqPath) ? fs.readFileSync(reqPath) : Buffer.from('requests\nPySide6\npywin32\n') },
+  ];
+
+  const parts: Buffer[] = [];
+  const centralDirectory: Buffer[] = [];
+  let offset = 0;
+
+  files.forEach((f) => {
+    const nameBuf = Buffer.from(f.name, 'utf8');
+    const dataBuf = f.content;
+    const localHeader = Buffer.alloc(30);
+    localHeader.writeUInt32LE(0x04034b50, 0);
+    localHeader.writeUInt16LE(20, 4);
+    localHeader.writeUInt16LE(0, 6);
+    localHeader.writeUInt16LE(0, 8);
+    localHeader.writeUInt16LE(0, 10);
+    localHeader.writeUInt16LE(0, 12);
+    localHeader.writeUInt32LE(0, 14);
+    localHeader.writeUInt32LE(dataBuf.length, 18);
+    localHeader.writeUInt32LE(dataBuf.length, 22);
+    localHeader.writeUInt16LE(nameBuf.length, 26);
+    localHeader.writeUInt16LE(0, 28);
+
+    parts.push(localHeader, nameBuf, dataBuf);
+
+    const cdHeader = Buffer.alloc(46);
+    cdHeader.writeUInt32LE(0x02014b50, 0);
+    cdHeader.writeUInt16LE(20, 4);
+    cdHeader.writeUInt16LE(20, 6);
+    cdHeader.writeUInt16LE(0, 8);
+    cdHeader.writeUInt16LE(0, 10);
+    cdHeader.writeUInt16LE(0, 12);
+    cdHeader.writeUInt32LE(0, 14);
+    cdHeader.writeUInt32LE(dataBuf.length, 20);
+    cdHeader.writeUInt32LE(dataBuf.length, 24);
+    cdHeader.writeUInt16LE(nameBuf.length, 28);
+    cdHeader.writeUInt16LE(0, 30);
+    cdHeader.writeUInt16LE(0, 32);
+    cdHeader.writeUInt16LE(0, 34);
+    cdHeader.writeUInt16LE(0, 36);
+    cdHeader.writeUInt32LE(0, 38);
+    cdHeader.writeUInt32LE(offset, 42);
+
+    centralDirectory.push(cdHeader, nameBuf);
+    offset += localHeader.length + nameBuf.length + dataBuf.length;
+  });
+
+  const cdBuf = Buffer.concat(centralDirectory);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(0, 4);
+  eocd.writeUInt16LE(0, 6);
+  eocd.writeUInt16LE(files.length, 8);
+  eocd.writeUInt16LE(files.length, 10);
+  eocd.writeUInt32LE(cdBuf.length, 12);
+  eocd.writeUInt32LE(offset, 16);
+  eocd.writeUInt16LE(0, 20);
+
+  return Buffer.concat([...parts, cdBuf, eocd]);
+}
+
+// Download Windows app package (Valid Windows .zip package with currentHost preconfigured)
 app.get('/api/agent/download-windows-exe', (req, res) => {
-  const zipPath = path.resolve(process.cwd(), './windows-agent/printx-Windows-Desktop-Package.zip');
-  const fallbackZip = path.resolve(process.cwd(), './windows-agent/ADRTech-Windows-Desktop-Package.zip');
+  const currentHost = `${req.protocol}://${req.get('host')}`;
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Content-Type', 'application/zip');
   res.setHeader('Content-Disposition', 'attachment; filename="printx-Windows-Desktop-Package.zip"');
 
-  if (fs.existsSync(zipPath)) {
-    res.sendFile(zipPath);
-  } else if (fs.existsSync(fallbackZip)) {
-    res.sendFile(fallbackZip);
-  } else {
-    const scriptPath = path.resolve(process.cwd(), './windows-agent/agent.py');
-    res.sendFile(scriptPath);
+  try {
+    const zipBuf = buildDynamicAgentZip(currentHost);
+    res.send(zipBuf);
+  } catch (err) {
+    const zipPath = path.resolve(process.cwd(), './windows-agent/printx-Windows-Desktop-Package.zip');
+    if (fs.existsSync(zipPath)) {
+      res.sendFile(zipPath);
+    } else {
+      res.sendFile(path.resolve(process.cwd(), './windows-agent/agent.py'));
+    }
   }
 });
 
-// Download Windows Batch Runner directly (.bat)
+// Download Windows Batch Runner directly (.bat with currentHost pre-configured)
 app.get('/api/agent/download-bat', (req, res) => {
   const batPath = path.resolve(process.cwd(), './windows-agent/printx-PrintAgent.bat');
-  const fallbackPath = path.resolve(process.cwd(), './windows-agent/start_agent.bat');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/x-bat');
   res.setHeader('Content-Disposition', 'attachment; filename="printx-PrintAgent.bat"');
+
+  const currentHost = `${req.protocol}://${req.get('host')}`;
   if (fs.existsSync(batPath)) {
-    res.sendFile(batPath);
+    let content = fs.readFileSync(batPath, 'utf8');
+    content = content.replace(/\$ServerBox\.Text = "[^"]*"/g, `$ServerBox.Text = "${currentHost}"`);
+    return res.send(content);
   } else {
+    const fallbackPath = path.resolve(process.cwd(), './windows-agent/start_agent.bat');
     res.sendFile(fallbackPath);
   }
 });
 
-// Download Python agent script directly
+// Download Python agent script directly (with currentHost pre-configured)
 app.get('/api/agent/download-script', (req, res) => {
   const scriptPath = path.resolve(process.cwd(), './windows-agent/agent.py');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'text/x-python');
   res.setHeader('Content-Disposition', 'attachment; filename="printx_agent.py"');
+
+  const currentHost = `${req.protocol}://${req.get('host')}`;
   if (fs.existsSync(scriptPath)) {
-    res.sendFile(scriptPath);
+    let content = fs.readFileSync(scriptPath, 'utf8');
+    content = content.replace(/DEFAULT_SERVER = "[^"]*"/g, `DEFAULT_SERVER = "${currentHost}"`);
+    return res.send(content);
   } else {
     res.send('# printx Print Agent');
   }
 });
 
-// Download PowerShell One-Click Runner (.ps1)
+// Download PowerShell One-Click Runner (.ps1 with currentHost pre-configured)
 app.get('/api/agent/download-ps1', (req, res) => {
   const psPath = path.resolve(process.cwd(), './windows-agent/Install-And-Run.ps1');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'text/plain');
   res.setHeader('Content-Disposition', 'attachment; filename="Install-And-Run.ps1"');
+
+  const currentHost = `${req.protocol}://${req.get('host')}`;
   if (fs.existsSync(psPath)) {
-    res.sendFile(psPath);
+    let content = fs.readFileSync(psPath, 'utf8');
+    content = content.replace(/\[string\]\$ServerUrl = "[^"]*"/g, `[string]$ServerUrl = "${currentHost}"`);
+    return res.send(content);
   } else {
     res.send('Write-Host "printx Print Agent"');
   }
@@ -1526,6 +1649,21 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   }
   res.status(500).json({ error: err.message || 'Internal server error occurred.' });
 });
+
+// ==========================================
+// 5.5 PRIVACY ENGINE: 5-MINUTE AUTO-PURGE
+// ==========================================
+// Continuously checks completed/printed orders and permanently purges customer files after 5 minutes
+setInterval(() => {
+  try {
+    const result = db.purgeCompletedOrdersFiles();
+    if (result.purgedCount > 0) {
+      console.log(`[Privacy Engine] 5-minute auto-purge completed: ${result.purgedCount} order files permanently erased.`);
+    }
+  } catch (err) {
+    console.error('[Privacy Engine] Scheduled purge encountered error:', err);
+  }
+}, 30 * 1000);
 
 // ==========================================
 // 6. VITE SSR / STATIC SERVING

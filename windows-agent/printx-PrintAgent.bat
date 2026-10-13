@@ -193,14 +193,18 @@ $ConnectBtn.Add_Click({
     }
 
     $Server = $ServerBox.Text.Trim().TrimEnd('/')
+    if ($Server -notmatch '^https?://') {
+        $Server = "https://$Server"
+        $ServerBox.Text = $Server
+    }
     $Code = $KeyBox.Text.Trim()
 
     if ($Code.Length -lt 4) {
-        [System.Windows.Forms.MessageBox]::Show("Please enter the Pairing Code from your Shop Dashboard.", "Input Required")
+        [System.Windows.Forms.MessageBox]::Show("Please enter the 6-Digit Pairing Code or Utility Key from your Shop Dashboard.", "Input Required")
         return
     }
 
-    LogMessage "Connecting to $Server using Pairing Code..."
+    LogMessage "Connecting to $Server using Pairing Code '$Code'..."
 
     try {
         $body = @{
@@ -208,23 +212,32 @@ $ConnectBtn.Add_Click({
             deviceName = $env:COMPUTERNAME
         } | ConvertTo-Json
 
-        $resp = Invoke-RestMethod -Uri "$Server/api/agent/pair" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 10
+        $resp = Invoke-RestMethod -Uri "$Server/api/agent/pair" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 15
 
         if ($resp.token) {
             $Global:AgentToken = $resp.token
             $Global:IsConnected = $true
             $ConnectBtn.Text = "Disconnect"
             $ConnectBtn.BackColor = [System.Drawing.Color]::FromArgb(220, 38, 38)
-            $StatusBadge.Text = "Online (Live Spooling)"
+            $StatusBadge.Text = "Online (Connected)"
             $StatusBadge.BackColor = [System.Drawing.Color]::FromArgb(209, 250, 229)
             $StatusBadge.ForeColor = [System.Drawing.Color]::FromArgb(6, 95, 70)
-            LogMessage "SUCCESS: Paired with shop counter!"
-            LogMessage "Listening for customer print jobs..."
+            LogMessage "SUCCESS: Windows Agent paired and connected!"
+            LogMessage "Active Shop ID: $($resp.shopId)"
+            LogMessage "Monitoring print queue in real-time..."
             $Timer.Start()
         }
     } catch {
-        LogMessage "Pairing failed: $_"
-        [System.Windows.Forms.MessageBox]::Show("Could not connect. Verify pairing code from dashboard.", "Connection Error")
+        $errDetail = $_.Exception.Message
+        if ($_.Exception.Response) {
+            try {
+                $sr = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+                $serverErr = $sr.ReadToEnd()
+                if ($serverErr) { $errDetail = $serverErr }
+            } catch {}
+        }
+        LogMessage "Connection failed: $errDetail"
+        [System.Windows.Forms.MessageBox]::Show("Connection Failed!`n`nError: $errDetail`n`nPlease check:`n1. Shop Server URL is: $Server`n2. 6-Digit Code is active in Shop Dashboard Tab 5 (Printers)", "Connection Error")
     }
 })
 
@@ -234,6 +247,7 @@ $Timer.Add_Tick({
     $Server = $ServerBox.Text.Trim().TrimEnd('/')
     $headers = @{
         "Authorization" = "Bearer $Global:AgentToken"
+        "x-agent-token" = "$Global:AgentToken"
     }
 
     try {

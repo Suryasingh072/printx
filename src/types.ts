@@ -137,6 +137,9 @@ export interface Order {
   approvedAt?: string;
   printedAt?: string;
   archivedAt?: string;
+  isDocumentPurged?: boolean;
+  purgedAt?: string;
+  purgeDueAt?: string;
   createdAt: string;
   updatedAt: string;
 }

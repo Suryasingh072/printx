@@ -228,6 +228,10 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
   };
 
   const openDocumentPreview = async (order: Order) => {
+    if (order.isDocumentPurged) {
+      alert('Privacy Protection Guarantee:\nThis customer document file was permanently deleted 5 minutes after print completion in compliance with customer privacy & data security policy.');
+      return;
+    }
     setSelectedOrderForPreview(order);
     try {
       const res = await api.getDocumentToken(order.id);
@@ -275,7 +279,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
       setUtilityKey(res.apiKey);
       setAgent(res.agent);
       if (res.agent.defaultPrinter) setDefaultPrinterSelection(res.agent.defaultPrinter);
-      alert('Utility API Key created! Paste this key into the ADRTECH Desktop application.');
+      alert('Utility API Key created! Paste this key into the printx Desktop application.');
     } catch (e: any) {
       alert(e.message || 'Failed to create utility API key');
     } finally {
@@ -632,6 +636,23 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                             >
                               {isPaid ? `PAID (₹${ord.totalAmount})` : `UNPAID (₹${ord.totalAmount})`}
                             </span>
+
+                            {/* 5-Min Privacy Auto-Purge Badge */}
+                            {ord.isDocumentPurged ? (
+                              <span
+                                className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 inline-flex items-center gap-1"
+                                title="Customer document files permanently deleted 5 mins after print completion for privacy"
+                              >
+                                🔒 Files Purged (5m Privacy)
+                              </span>
+                            ) : ord.status === 'completed' ? (
+                              <span
+                                className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/80 inline-flex items-center gap-1"
+                                title="Customer files will automatically be deleted 5 minutes after completion"
+                              >
+                                ⏱️ Auto-purging in 5m
+                              </span>
+                            ) : null}
                           </div>
 
                           <p className="text-xs font-semibold text-slate-800 mt-1">
@@ -1091,20 +1112,42 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                 </div>
 
                 {pairingCodeInfo ? (
-                  <div className="pt-2 flex flex-col sm:flex-row items-center gap-4">
-                    <div className="px-6 py-3 bg-white border-2 border-blue-600 rounded-2xl shadow-sm">
-                      <span className="text-3xl sm:text-4xl font-black font-mono tracking-widest text-blue-900">
-                        {pairingCodeInfo.code}
-                      </span>
+                  <div className="pt-2 space-y-3">
+                    <div className="flex flex-col sm:flex-row items-center gap-4">
+                      <div className="px-6 py-3 bg-white border-2 border-blue-600 rounded-2xl shadow-sm">
+                        <span className="text-3xl sm:text-4xl font-black font-mono tracking-widest text-blue-900">
+                          {pairingCodeInfo.code}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-600 space-y-1">
+                        <p className="font-bold text-emerald-700 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                          Active & Ready for Windows App
+                        </p>
+                        <p className="text-slate-500">
+                          Enter this 6-digit code in the <strong>"6-Digit Pair Code"</strong> box on your PC.
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-xs text-slate-600 space-y-1">
-                      <p className="font-bold text-emerald-700 flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                        Active & Ready for Windows App
-                      </p>
-                      <p className="text-slate-500">
-                        Enter this 6-digit code in the <strong>"6-Digit Pair Code"</strong> box on your PC.
-                      </p>
+
+                    {/* Server URL helper */}
+                    <div className="p-3 bg-white/90 border border-blue-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="text-xs">
+                        <span className="font-bold text-slate-700">Windows App "Shop Server URL":</span>
+                        <code className="ml-2 font-mono text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded text-[11px]">
+                          {typeof window !== 'undefined' ? window.location.origin : ''}
+                        </code>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(window.location.origin);
+                          alert('Server URL copied! Paste this into the "Shop Server URL" box in Windows app.');
+                        }}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+                      >
+                        <Copy className="w-3.5 h-3.5" /> Copy URL
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -1523,8 +1566,8 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                   <Laptop className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">ADRTECH Desktop for Windows</h3>
-                  <p className="text-xs text-slate-500">Official Windows spooler background agent v1.2.0</p>
+                  <h3 className="text-lg font-bold text-slate-900">printx Desktop for Windows</h3>
+                  <p className="text-xs text-slate-500">Official Windows Spooler background agent v2.4</p>
                 </div>
               </div>
               <button
@@ -1582,20 +1625,68 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                 </div>
               </div>
 
-              {/* Step 2: Utility API Key */}
+              {/* Step 2: 6-Digit Pairing Code & Server URL */}
               <div>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-                  Step 2: Connect with your Shop Utility Key
+                  Step 2: Connect with 6-Digit Quick Pairing Code
                 </h4>
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-                  <p className="text-xs text-slate-600">
-                    Paste this utility key when prompted in the printx Desktop app:
-                  </p>
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl space-y-3">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="px-4 py-2 bg-white border border-blue-500 rounded-xl shadow-xs">
+                        <span className="text-2xl font-black font-mono tracking-widest text-blue-900">
+                          {pairingCodeInfo?.code || '------'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-600">
+                        <p className="font-bold text-slate-900">Your 6-Digit Code</p>
+                        <p className="text-[11px] text-slate-500">Valid for 24 hours</p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleGeneratePairingCode}
+                      className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      {pairingCodeInfo ? 'New Code' : 'Generate Code'}
+                    </button>
+                  </div>
+
+                  {/* Server URL Box */}
+                  <div className="pt-2 border-t border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                    <div>
+                      <span className="font-bold text-slate-700">App "Server URL":</span>
+                      <code className="ml-1.5 font-mono text-blue-700 font-bold bg-white px-2 py-0.5 rounded border border-blue-200 text-[11px]">
+                        {typeof window !== 'undefined' ? window.location.origin : ''}
+                      </code>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(window.location.origin);
+                        alert('Server URL copied!');
+                      }}
+                      className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 text-[11px] font-bold rounded-lg border border-slate-200 transition flex items-center gap-1 cursor-pointer self-start sm:self-auto"
+                    >
+                      <Copy className="w-3 h-3" /> Copy URL
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3: Alternative Utility API Key */}
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                  Alternative: Permanent Shop Utility Key
+                </h4>
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
                       readOnly
-                      value={utilityKey || 'Click below to generate utility key'}
+                      value={utilityKey || 'Click generate key for permanent token'}
                       className="flex-1 font-mono text-xs bg-white border border-slate-200 rounded-xl py-2 px-3 text-slate-800 select-all"
                     />
                     {utilityKey ? (

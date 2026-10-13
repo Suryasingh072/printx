@@ -146,6 +146,8 @@ export interface Order {
   archivedAt?: string;
   documentRetentionUntil?: string;
   isDocumentPurged?: boolean;
+  purgedAt?: string;
+  purgeDueAt?: string;
   createdAt: string;
   updatedAt: string;
 }

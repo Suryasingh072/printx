@@ -1,17 +1,17 @@
 <# :
 @echo off
 setlocal
-title ADRTech PrintQR - Windows Desktop Spooler Agent
+title printx - Windows Desktop Spooler Agent
 color 0b
 
 :: Self-elevating or direct execution script that looks and behaves like an executable installer
 echo ======================================================================
-echo    ADRTech PrintQR - Windows Desktop Printing Agent v2.4
+echo    printx - Windows Desktop Printing Agent v2.4
 echo    Native Windows Spooler Connector for Shop Workstations
 echo ======================================================================
 echo.
 
-set "APP_DIR=%USERPROFILE%\ADRTech-PrintAgent"
+set "APP_DIR=%USERPROFILE%\printx-PrintAgent"
 if not exist "%APP_DIR%" mkdir "%APP_DIR%"
 cd /d "%APP_DIR%"
 
@@ -21,14 +21,14 @@ goto :eof
 #>
 
 $ErrorActionPreference = "SilentlyContinue"
-$Host.UI.RawUI.WindowTitle = "ADRTech PrintQR - Desktop Print Agent"
+$Host.UI.RawUI.WindowTitle = "printx - Desktop Print Agent"
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "    ADRTech PrintQR - Windows Native Desktop Agent" -ForegroundColor Yellow
+Write-Host "    printx - Windows Native Desktop Agent" -ForegroundColor Yellow
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host ""
 
-$WorkDir = Join-Path $env:USERPROFILE "ADRTech-PrintAgent"
+$WorkDir = Join-Path $env:USERPROFILE "printx-PrintAgent"
 if (!(Test-Path $WorkDir)) {
     New-Item -ItemType Directory -Force -Path $WorkDir | Out-Null
 }
@@ -49,14 +49,14 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 $Form = New-Object System.Windows.Forms.Form
-$Form.Text = "ADRTech PrintQR - Windows Desktop Spooler Agent"
+$Form.Text = "printx - Windows Desktop Spooler Agent"
 $Form.Size = New-Object System.Drawing.Size(720, 560)
 $Form.StartPosition = "CenterScreen"
 $Form.BackColor = [System.Drawing.Color]::FromArgb(248, 250, 252)
 
 # Title
 $TitleLabel = New-Object System.Windows.Forms.Label
-$TitleLabel.Text = "ADRTech PrintQR Desktop Agent"
+$TitleLabel.Text = "printx Desktop Agent"
 $TitleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
 $TitleLabel.Location = New-Object System.Drawing.Point(20, 15)
 $TitleLabel.Size = New-Object System.Drawing.Size(400, 30)
@@ -169,7 +169,7 @@ function LogMessage($msg) {
     $LogBox.AppendText("[$time] $msg`r`n")
 }
 
-LogMessage "ADRTech Windows Agent ready."
+LogMessage "printx Windows Agent ready."
 LogMessage "Detected local printers: $($PrinterBox.Items.Count) available."
 LogMessage "Enter pairing code from your Shop Dashboard and click 'Connect'."
 
@@ -193,14 +193,18 @@ $ConnectBtn.Add_Click({
     }
 
     $Server = $ServerBox.Text.Trim().TrimEnd('/')
+    if ($Server -notmatch '^https?://') {
+        $Server = "https://$Server"
+        $ServerBox.Text = $Server
+    }
     $Code = $KeyBox.Text.Trim()
 
     if ($Code.Length -lt 4) {
-        [System.Windows.Forms.MessageBox]::Show("Please enter the Pairing Code from your Shop Dashboard.", "Input Required")
+        [System.Windows.Forms.MessageBox]::Show("Please enter the 6-Digit Pairing Code or Utility Key from your Shop Dashboard.", "Input Required")
         return
     }
 
-    LogMessage "Connecting to $Server using Pairing Code..."
+    LogMessage "Connecting to $Server using Pairing Code '$Code'..."
 
     try {
         $body = @{
@@ -208,23 +212,32 @@ $ConnectBtn.Add_Click({
             deviceName = $env:COMPUTERNAME
         } | ConvertTo-Json
 
-        $resp = Invoke-RestMethod -Uri "$Server/api/agent/pair" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 10
+        $resp = Invoke-RestMethod -Uri "$Server/api/agent/pair" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 15
 
         if ($resp.token) {
             $Global:AgentToken = $resp.token
             $Global:IsConnected = $true
             $ConnectBtn.Text = "Disconnect"
             $ConnectBtn.BackColor = [System.Drawing.Color]::FromArgb(220, 38, 38)
-            $StatusBadge.Text = "Online (Live Spooling)"
+            $StatusBadge.Text = "Online (Connected)"
             $StatusBadge.BackColor = [System.Drawing.Color]::FromArgb(209, 250, 229)
             $StatusBadge.ForeColor = [System.Drawing.Color]::FromArgb(6, 95, 70)
-            LogMessage "SUCCESS: Paired with shop counter!"
-            LogMessage "Listening for customer print jobs..."
+            LogMessage "SUCCESS: Windows Agent paired and connected!"
+            LogMessage "Active Shop ID: $($resp.shopId)"
+            LogMessage "Monitoring print queue in real-time..."
             $Timer.Start()
         }
     } catch {
-        LogMessage "Pairing failed: $_"
-        [System.Windows.Forms.MessageBox]::Show("Could not connect. Verify pairing code from dashboard.", "Connection Error")
+        $errDetail = $_.Exception.Message
+        if ($_.Exception.Response) {
+            try {
+                $sr = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+                $serverErr = $sr.ReadToEnd()
+                if ($serverErr) { $errDetail = $serverErr }
+            } catch {}
+        }
+        LogMessage "Connection failed: $errDetail"
+        [System.Windows.Forms.MessageBox]::Show("Connection Failed!`n`nError: $errDetail`n`nPlease check:`n1. Shop Server URL is: $Server`n2. 6-Digit Code is active in Shop Dashboard Tab 5 (Printers)", "Connection Error")
     }
 })
 
@@ -234,6 +247,7 @@ $Timer.Add_Tick({
     $Server = $ServerBox.Text.Trim().TrimEnd('/')
     $headers = @{
         "Authorization" = "Bearer $Global:AgentToken"
+        "x-agent-token" = "$Global:AgentToken"
     }
 
     try {

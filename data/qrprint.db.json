@@ -4,7 +4,7 @@
       "id": "usr-admin-001",
       "email": "printx286351@gmail.com",
       "passwordHash": "8bbda22312cc5a13036290a21500876d62bfe54c6e8d6d2f397bc438ebf7e8de",
-      "fullName": "ADRTech System Administrator",
+      "fullName": "printx System Administrator",
       "whatsappNumber": "+919876543210",
       "whatsappVerified": true,
       "role": "admin",
@@ -167,11 +167,11 @@
     {
       "id": "agt-apex-001",
       "shopId": "shp-apex-001",
-      "deviceName": "DESKTOP-PRINT-01 (Shop Front Counter)",
+      "deviceName": "Shop-Windows-Workstation",
       "pairingCode": "749102",
-      "authTokenHash": "87ef6776412cb2fb234a280cb4bf20d4a752074a6f35173e613805837e229451",
+      "authTokenHash": "e779f39aaa304995803588ad24372b7678d74bedf263645db81d56adcecbd931",
       "status": "online",
-      "lastSeenAt": "2026-10-10T07:02:21.443Z",
+      "lastSeenAt": "2026-10-13T17:29:13.655Z",
       "defaultPrinter": "HP LaserJet Pro M404dn",
       "bwPrinter": "HP LaserJet Pro M404dn",
       "colorPrinter": "Canon PIXMA G3010",
@@ -198,7 +198,7 @@
           "driverName": "Epson ESC/P-R"
         }
       ],
-      "ipAddress": "192.168.1.104",
+      "ipAddress": "127.0.0.1",
       "appVersion": "1.2.0",
       "dryRunMode": false,
       "createdAt": "2026-10-09T07:02:21.443Z"
@@ -230,12 +230,14 @@
           "supportsColor": true
         }
       ],
-      "defaultPrinter": "HP LaserJet Pro M404dn",
+      "defaultPrinter": "Canon PIXMA G3010",
       "bwPrinter": "HP LaserJet Pro M404dn",
       "colorPrinter": "Canon PIXMA G3010",
       "appVersion": "1.2.0",
       "dryRunMode": false,
-      "createdAt": "2026-10-10T07:37:02.466Z"
+      "createdAt": "2026-10-10T07:37:02.466Z",
+      "pairingCode": "903029",
+      "pairingCodeExpiresAt": "2026-10-13T17:25:02.625Z"
     }
   ],
   "orders": [
@@ -321,7 +323,9 @@
       "approvedBy": "usr-owner-001",
       "printedAt": "2026-10-10T06:02:21.443Z",
       "createdAt": "2026-10-10T06:02:21.443Z",
-      "updatedAt": "2026-10-10T06:02:21.443Z"
+      "updatedAt": "2026-10-10T06:02:21.443Z",
+      "isDocumentPurged": true,
+      "purgedAt": "2026-10-13T17:09:53.866Z"
     },
     {
       "id": "ord-004",
@@ -368,7 +372,9 @@
       "orderNumber": "ORD-591055",
       "createdAt": "2026-10-10T07:02:21.447Z",
       "updatedAt": "2026-10-10T07:02:21.448Z",
-      "printedAt": "2026-10-10T07:02:21.448Z"
+      "printedAt": "2026-10-10T07:02:21.448Z",
+      "isDocumentPurged": true,
+      "purgedAt": "2026-10-13T17:09:53.866Z"
     },
     {
       "shopId": "shp-00ff309e",
@@ -398,7 +404,9 @@
       "paymentCollectorName": "surya",
       "paymentMethod": "counter_upi",
       "printedAt": "2026-10-10T07:11:20.405Z",
-      "archivedAt": "2026-10-10T07:44:34.649Z"
+      "archivedAt": "2026-10-10T07:44:34.649Z",
+      "isDocumentPurged": true,
+      "purgedAt": "2026-10-13T17:09:53.866Z"
     },
     {
       "shopId": "shp-apex-001",
@@ -422,7 +430,9 @@
       "orderNumber": "ORD-373396",
       "createdAt": "2026-10-10T07:33:17.482Z",
       "updatedAt": "2026-10-10T07:33:17.483Z",
-      "printedAt": "2026-10-10T07:33:17.484Z"
+      "printedAt": "2026-10-10T07:33:17.484Z",
+      "isDocumentPurged": true,
+      "purgedAt": "2026-10-13T17:09:53.867Z"
     },
     {
       "shopId": "shp-00ff309e",
@@ -811,6 +821,42 @@
       "changedById": "usr-3129a8fa",
       "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
       "createdAt": "2026-10-10T07:45:41.132Z"
+    },
+    {
+      "id": "hst-0b2266c3",
+      "orderId": "ord-003",
+      "previousStatus": "completed",
+      "newStatus": "completed",
+      "changedByName": "printx Privacy Engine",
+      "comment": "Customer files automatically & permanently deleted 5 minutes after completion for privacy protection.",
+      "createdAt": "2026-10-13T17:09:53.866Z"
+    },
+    {
+      "id": "hst-c201f6f4",
+      "orderId": "ord-88128368",
+      "previousStatus": "completed",
+      "newStatus": "completed",
+      "changedByName": "printx Privacy Engine",
+      "comment": "Customer files automatically & permanently deleted 5 minutes after completion for privacy protection.",
+      "createdAt": "2026-10-13T17:09:53.866Z"
+    },
+    {
+      "id": "hst-5e624234",
+      "orderId": "ord-10f046cc",
+      "previousStatus": "archived",
+      "newStatus": "archived",
+      "changedByName": "printx Privacy Engine",
+      "comment": "Customer files automatically & permanently deleted 5 minutes after completion for privacy protection.",
+      "createdAt": "2026-10-13T17:09:53.866Z"
+    },
+    {
+      "id": "hst-22a53f13",
+      "orderId": "ord-228b2979",
+      "previousStatus": "completed",
+      "newStatus": "completed",
+      "changedByName": "printx Privacy Engine",
+      "comment": "Customer files automatically & permanently deleted 5 minutes after completion for privacy protection.",
+      "createdAt": "2026-10-13T17:09:53.867Z"
     }
   ],
   "payments": [
@@ -1140,6 +1186,22 @@
     }
   ],
   "activityLogs": [
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "printer_config_updated",
+      "description": "Updated printer routing: B&W -> HP LaserJet Pro M404dn, Color -> Canon PIXMA G3010",
+      "id": "log-3335e1bf",
+      "createdAt": "2026-10-13T17:22:35.025Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "pairing_code_generated",
+      "description": "Generated 6-digit Windows Agent pairing code: 903029 (Expires in 15 min)",
+      "id": "log-b2c9f08e",
+      "createdAt": "2026-10-13T17:10:02.626Z"
+    },
     {
       "shopId": "shp-00ff309e",
       "userId": "usr-3129a8fa",
