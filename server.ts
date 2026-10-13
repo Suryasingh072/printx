@@ -8,6 +8,7 @@ import { storageService } from './src/server/services/storage.js';
 import { whatsAppService } from './src/server/services/whatsapp.js';
 import { calculateOrderPrice } from './src/server/services/pricing.js';
 import { User, Shop, Order } from './src/server/types.js';
+import { supabaseService } from './src/server/db/supabase.js';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -897,24 +898,49 @@ app.get('/api/shop/current', requireAuth, (req, res) => {
   res.json(shop);
 });
 
+// Supabase Cloud Status & Manual Trigger
+app.get('/api/supabase/status', (req, res) => {
+  res.json(supabaseService.getStatus());
+});
+
+app.post('/api/supabase/sync', async (req, res) => {
+  try {
+    const success = await supabaseService.saveRemoteState((db as any).data);
+    res.json({ success, status: supabaseService.getStatus() });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Update Shop Details
-app.put('/api/shop/current', requireAuth, (req, res) => {
+const handleUpdateShop = (req: Request, res: Response) => {
   const session = (req as any).user;
   const shop = session.shopId ? db.getShopById(session.shopId) : db.getShopByOwnerId(session.userId);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
-  const { name, phone, address, city } = req.body;
-  const updated = db.updateShop(shop.id, { name, phone, address, city });
+  const { name, phone, address, city, upiId, requiresCounterPayment } = req.body;
+  const updates: any = {};
+  if (name !== undefined) updates.name = name;
+  if (phone !== undefined) updates.phone = phone;
+  if (address !== undefined) updates.address = address;
+  if (city !== undefined) updates.city = city;
+  if (upiId !== undefined) updates.upiId = upiId;
+  if (requiresCounterPayment !== undefined) updates.requiresCounterPayment = Boolean(requiresCounterPayment);
+
+  const updated = db.updateShop(shop.id, updates);
 
   db.logActivity({
     shopId: shop.id,
     userId: session.userId,
     actionType: 'shop_profile_updated',
-    description: `Shop profile updated by owner.`,
+    description: `Shop profile updated by owner (${shop.name}).`,
   });
 
   res.json(updated);
-});
+};
+
+app.put('/api/shop/current', requireAuth, handleUpdateShop);
+app.put('/api/shop/profile', requireAuth, handleUpdateShop);
 
 // Get & Update Pricing
 app.get('/api/shop/pricing', requireAuth, (req, res) => {

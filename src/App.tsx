@@ -106,6 +106,7 @@ export default function App() {
         shop={currentShop}
         onLogout={handleLogout}
         onNavigateHome={() => navigateTo('/')}
+        onShopUpdate={(updated) => setCurrentShop(updated)}
       />
     );
   }

@@ -298,4 +298,19 @@ export const api = {
   async revokeAgent(): Promise<{ message: string }> {
     return this.request('/api/shop/agent/revoke', { method: 'POST' });
   },
+
+  async updateShopProfile(data: Partial<Shop>): Promise<Shop> {
+    return this.request('/api/shop/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async getSupabaseStatus(): Promise<{ connected: boolean; url: string; lastSyncedAt?: string; mode: string; error?: string }> {
+    return this.request('/api/supabase/status');
+  },
+
+  async syncSupabase(): Promise<{ success: boolean; status: any }> {
+    return this.request('/api/supabase/sync', { method: 'POST' });
+  },
 };

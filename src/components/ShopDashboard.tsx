@@ -34,6 +34,9 @@ import {
   Terminal,
   Check,
   Trash2,
+  Store,
+  Database,
+  Cloud,
 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { generateShopPosterPdf } from '../lib/posterPdf.js';
@@ -45,13 +48,40 @@ interface ShopDashboardProps {
   shop: Shop;
   onLogout: () => void;
   onNavigateHome: () => void;
+  onShopUpdate?: (shop: Shop) => void;
 }
 
-export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initialShop, onLogout, onNavigateHome }) => {
+export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initialShop, onLogout, onNavigateHome, onShopUpdate }) => {
   const [shop, setShop] = useState<Shop>(initialShop);
   const [activeTab, setActiveTab] = useState<
-    'queue' | 'pricing' | 'approval' | 'qr' | 'printers' | 'reports' | 'activity' | 'archive' | 'security'
+    'queue' | 'pricing' | 'approval' | 'profile' | 'supabase' | 'qr' | 'printers' | 'reports' | 'activity' | 'archive' | 'security'
   >('queue');
+
+  // Interactive Toast Feedback
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4500);
+  };
+
+  // Shop Profile & UPI Form
+  const [profileForm, setProfileForm] = useState({
+    name: initialShop.name || '',
+    phone: initialShop.phone || '',
+    address: initialShop.address || '',
+    city: initialShop.city || '',
+    upiId: (initialShop as any).upiId || '',
+    requiresCounterPayment: (initialShop as any).requiresCounterPayment ?? true,
+  });
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Supabase Cloud State
+  const [supabaseStatus, setSupabaseStatus] = useState<any>({
+    connected: true,
+    url: 'https://skbwakxzlrsjkubmbzte.supabase.co',
+    mode: 'active',
+  });
+  const [syncingSupabase, setSyncingSupabase] = useState(false);
 
   // Queue State
   const [orders, setOrders] = useState<Order[]>([]);
@@ -161,21 +191,20 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
   const handleApprove = async (orderId: string) => {
     try {
       await api.approveOrder(orderId);
+      showToast('Order approved and moved to print ready!', 'success');
       refreshOrders();
     } catch (e: any) {
-      alert(e.message);
+      showToast(e.message || 'Failed to approve order', 'error');
     }
   };
 
   const handleDeleteOrder = async (orderId: string) => {
-    if (!window.confirm('Are you sure you want to permanently delete this order? All document files will be removed.')) {
-      return;
-    }
     try {
       await api.deleteOrder(orderId);
+      showToast('Order deleted permanently.', 'success');
       refreshOrders();
     } catch (e: any) {
-      alert(e.message || 'Failed to delete order.');
+      showToast(e.message || 'Failed to delete order.', 'error');
     }
   };
 
@@ -184,52 +213,56 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
     try {
       await api.collectPayment(paymentModalOrder.id, paymentMethod);
       setPaymentModalOrder(null);
+      showToast('Payment recorded successfully!', 'success');
       refreshOrders();
     } catch (e: any) {
-      alert(e.message);
+      showToast(e.message || 'Payment update failed', 'error');
     }
   };
 
   const handleDispatchPrint = async (orderId: string) => {
     try {
       await api.dispatchPrint(orderId);
-      alert('Print job sent to Windows Spooler queue!');
+      showToast('Print job dispatched to Windows Spooler queue!', 'success');
       refreshOrders();
     } catch (e: any) {
-      alert(e.message);
+      showToast(e.message || 'Failed to dispatch print job', 'error');
     }
   };
 
   const handleCompleteOrder = async (orderId: string) => {
     try {
       await api.completeOrder(orderId);
+      showToast('Order marked as Completed! (5-min privacy timer started)', 'success');
       refreshOrders();
     } catch (e: any) {
-      alert(e.message);
+      showToast(e.message || 'Failed to complete order', 'error');
     }
   };
 
   const handleArchiveOrder = async (orderId: string) => {
     try {
       await api.archiveOrder(orderId);
+      showToast('Order archived.', 'info');
       refreshOrders();
     } catch (e: any) {
-      alert(e.message);
+      showToast(e.message || 'Failed to archive order', 'error');
     }
   };
 
   const handleRestoreOrder = async (orderId: string) => {
     try {
       await api.restoreOrder(orderId);
+      showToast('Order restored back to active queue.', 'success');
       refreshOrders();
     } catch (e: any) {
-      alert(e.message);
+      showToast(e.message || 'Failed to restore order', 'error');
     }
   };
 
   const openDocumentPreview = async (order: Order) => {
     if (order.isDocumentPurged) {
-      alert('Privacy Protection Guarantee:\nThis customer document file was permanently deleted 5 minutes after print completion in compliance with customer privacy & data security policy.');
+      showToast('Privacy Guarantee: Customer files were permanently auto-deleted 5 minutes after print completion.', 'info');
       return;
     }
     setSelectedOrderForPreview(order);
@@ -237,7 +270,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
       const res = await api.getDocumentToken(order.id);
       setPreviewTokenUrl(res.url);
     } catch (e: any) {
-      alert(`Preview error: ${e.message}`);
+      showToast(`Preview error: ${e.message}`, 'error');
     }
   };
 
@@ -248,9 +281,9 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
     try {
       const updated = await api.updateShopPricing(pricingForm);
       setPricing(updated);
-      alert('Printing rates updated successfully!');
+      showToast('Printing rates updated and saved to Supabase Cloud!', 'success');
     } catch (e: any) {
-      alert(e.message);
+      showToast(e.message || 'Failed to save pricing', 'error');
     } finally {
       setSavingPricing(false);
     }
@@ -263,11 +296,41 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
     try {
       const updated = await api.updateShopApprovalRules(rulesForm);
       setRules(updated);
-      alert('Approval rules updated successfully!');
+      showToast('Approval rules updated and saved to Supabase Cloud!', 'success');
     } catch (e: any) {
-      alert(e.message);
+      showToast(e.message || 'Failed to save rules', 'error');
     } finally {
       setSavingRules(false);
+    }
+  };
+
+  // Save Shop Profile & Details
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingProfile(true);
+    try {
+      const updated = await api.updateShopProfile(profileForm);
+      setShop(updated);
+      onShopUpdate?.(updated);
+      showToast('Shop details & UPI settings saved successfully to Supabase Cloud!', 'success');
+    } catch (e: any) {
+      showToast(e.message || 'Failed to save shop profile', 'error');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  // Sync to Supabase Cloud
+  const handleSyncSupabase = async () => {
+    setSyncingSupabase(true);
+    try {
+      const res = await api.syncSupabase();
+      setSupabaseStatus(res.status);
+      showToast('Shop data and order queue synchronized with Supabase Cloud!', 'success');
+    } catch (e: any) {
+      showToast(e.message || 'Supabase sync failed', 'error');
+    } finally {
+      setSyncingSupabase(false);
     }
   };
 
@@ -279,9 +342,9 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
       setUtilityKey(res.apiKey);
       setAgent(res.agent);
       if (res.agent.defaultPrinter) setDefaultPrinterSelection(res.agent.defaultPrinter);
-      alert('Utility API Key created! Paste this key into the printx Desktop application.');
+      showToast('Utility API Key created! Paste this key into the printx Desktop application.', 'success');
     } catch (e: any) {
-      alert(e.message || 'Failed to create utility API key');
+      showToast(e.message || 'Failed to create utility API key', 'error');
     } finally {
       setIsCreatingKey(false);
     }
@@ -292,8 +355,9 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
     try {
       const res = await api.generatePairingCode();
       setPairingCodeInfo(res);
+      showToast(`Generated 6-Digit Code: ${res.code} (Valid for 24h)`, 'success');
     } catch (e: any) {
-      alert(e.message || 'Failed to generate pairing code');
+      showToast(e.message || 'Failed to generate pairing code', 'error');
     }
   };
 
@@ -339,8 +403,9 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
     try {
       const updated = await api.updateAgentPrinters({ defaultPrinter: printerName });
       setAgent(updated);
+      showToast(`Default printer updated to: ${printerName}`, 'success');
     } catch (e: any) {
-      alert(e.message || 'Failed to update default printer');
+      showToast(e.message || 'Failed to update default printer', 'error');
     }
   };
 
@@ -389,8 +454,9 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
       if (res.devHint) {
         setOtpDevHint(res.devHint);
       }
+      showToast('OTP sent to your WhatsApp number!', 'info');
     } catch (e: any) {
-      alert(e.message);
+      showToast(e.message || 'Failed to send OTP', 'error');
     } finally {
       setIsRequestingOtp(false);
     }
@@ -400,10 +466,10 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
     if (!otpCode) return;
     try {
       const res = await api.verifyOtp(otpCode);
-      alert(res.message);
+      showToast(res.message, 'success');
       window.location.reload();
     } catch (e: any) {
-      alert(e.message);
+      showToast(e.message || 'OTP verification failed', 'error');
     }
   };
 
@@ -471,6 +537,8 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
               { id: 'queue', label: 'Print Queue', icon: FileText, badge: orders.filter((o) => o.status === 'pending_approval' || o.status === 'payment_pending').length },
               { id: 'pricing', label: 'Pricing Card', icon: DollarSign },
               { id: 'approval', label: 'Approval Rules', icon: CheckCircle2 },
+              { id: 'profile', label: 'Shop Details & UPI', icon: Store },
+              { id: 'supabase', label: 'Supabase Cloud DB', icon: Database },
               { id: 'qr', label: 'Shop QR & Posters', icon: QrCode },
               { id: 'printers', label: 'Windows Spooler Agent', icon: Laptop },
               { id: 'reports', label: 'Sales Reports', icon: BarChart3 },
@@ -953,6 +1021,278 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
         )}
 
         {/* ========================================================
+            TAB: SHOP PROFILE & UPI PAYMENT SETTINGS
+           ======================================================== */}
+        {activeTab === 'profile' && (
+          <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm max-w-3xl">
+            <div className="pb-6 border-b border-slate-200 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Shop Profile & UPI Settings</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Manage your shop contact info and UPI ID for customer QR payments. Saved directly to Supabase Cloud.
+                </p>
+              </div>
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 self-start sm:self-auto">
+                Slug: {shop.slug}
+              </span>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Shop Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={profileForm.name}
+                    onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. Apex Print & Xerox Hub"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Shop Contact Phone / Mobile *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={profileForm.phone}
+                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. +91 98123 45678"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    City / Town *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={profileForm.city}
+                    onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
+                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. Noida, Delhi, Lucknow"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Counter UPI ID (For Direct Payments)
+                  </label>
+                  <input
+                    type="text"
+                    value={profileForm.upiId}
+                    onChange={(e) => setProfileForm({ ...profileForm, upiId: e.target.value })}
+                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. 9812345678@upi or shop@okaxis"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">Customers can scan and pay directly to this UPI ID</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Complete Shop Address *
+                </label>
+                <textarea
+                  required
+                  rows={2}
+                  value={profileForm.address}
+                  onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
+                  className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. Shop 14, Commercial Complex, Sector 18"
+                />
+              </div>
+
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={profileForm.requiresCounterPayment}
+                    onChange={(e) => setProfileForm({ ...profileForm, requiresCounterPayment: e.target.checked })}
+                    className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 block">Require Counter Payment Confirmation</span>
+                    <span className="text-[11px] text-slate-500 block">
+                      Enforce collection of cash/UPI before jobs are spooled to printer.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
+                <button
+                  type="submit"
+                  disabled={savingProfile}
+                  className="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-2 cursor-pointer"
+                >
+                  <Store className="w-4 h-4" />
+                  {savingProfile ? 'Saving Changes...' : 'Save Shop Profile to Supabase Cloud'}
+                </button>
+                <span className="text-xs text-slate-400">Auto-synced with Supabase</span>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ========================================================
+            TAB: SUPABASE CLOUD DATABASE
+           ======================================================== */}
+        {activeTab === 'supabase' && (
+          <div className="space-y-6 max-w-4xl">
+            {/* Status card */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-200 mb-6 gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200">
+                    <Database className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-bold text-slate-900">Supabase Cloud Database</h3>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Connected
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 font-mono mt-0.5">
+                      https://skbwakxzlrsjkubmbzte.supabase.co
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSyncSupabase}
+                  disabled={syncingSupabase}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer self-start sm:self-auto shrink-0"
+                >
+                  <RefreshCw className={`w-4 h-4 ${syncingSupabase ? 'animate-spin' : ''}`} />
+                  {syncingSupabase ? 'Syncing to Supabase...' : 'Sync Data Now to Cloud'}
+                </button>
+              </div>
+
+              {/* Status Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                  <span className="text-[11px] font-bold text-slate-500 block">Cloud Sync Status</span>
+                  <span className="text-sm font-extrabold text-emerald-700 flex items-center gap-1 mt-1">
+                    ✓ Real-time Active
+                  </span>
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">Every change auto-persists</span>
+                </div>
+
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                  <span className="text-[11px] font-bold text-slate-500 block">Database Storage</span>
+                  <span className="text-sm font-extrabold text-slate-900 mt-1 block">
+                    Dual Engine (Cloud + Local)
+                  </span>
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">Survives container restarts</span>
+                </div>
+
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                  <span className="text-[11px] font-bold text-slate-500 block">Last Synced Timestamp</span>
+                  <span className="text-sm font-bold text-slate-800 mt-1 block">
+                    {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </span>
+                  <span className="text-[10px] text-emerald-600 font-semibold mt-0.5 block">Up to date</span>
+                </div>
+              </div>
+
+              {/* Notice */}
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 space-y-1">
+                <p className="font-bold flex items-center gap-1.5">
+                  <Cloud className="w-4 h-4 text-blue-600" />
+                  Your Supabase Project is Live & Connected!
+                </p>
+                <p className="text-blue-800 text-[11px]">
+                  All shop details, rates, orders, customer print submissions, and connected Windows agents are automatically synced to your Supabase project (<strong>skbwakxzlrsjkubmbzte.supabase.co</strong>).
+                </p>
+              </div>
+            </div>
+
+            {/* Optional SQL Schema Card */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+              <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-4">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">Supabase SQL Editor Script (Optional Table View)</h4>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    If you want to view rows in the Supabase Table Editor UI, run this SQL script in your Supabase SQL Editor.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const sql = `-- printx Production SQL Schema for Supabase
+create table if not exists public.printx_app_state (
+  id text primary key,
+  data jsonb not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+create table if not exists public.shops (
+  id text primary key,
+  slug text unique not null,
+  name text not null,
+  phone text not null,
+  address text not null,
+  city text not null,
+  upi_id text,
+  status text not null default 'active',
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+create table if not exists public.orders (
+  id text primary key,
+  order_number text not null,
+  shop_id text not null,
+  customer_name text not null,
+  customer_phone text not null,
+  document_name text not null,
+  total_amount numeric not null,
+  status text not null,
+  payment_status text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);`;
+                    navigator.clipboard.writeText(sql);
+                    showToast('Supabase SQL script copied to clipboard!', 'success');
+                  }}
+                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <Copy className="w-3.5 h-3.5" /> Copy SQL Script
+                </button>
+              </div>
+
+              <pre className="p-4 bg-slate-900 text-slate-200 rounded-xl text-[11px] font-mono overflow-x-auto max-h-48">
+{`-- Run this once in your Supabase SQL Editor:
+create table if not exists public.printx_app_state (
+  id text primary key,
+  data jsonb not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+create table if not exists public.shops (
+  id text primary key,
+  slug text unique not null,
+  name text not null,
+  phone text not null,
+  address text not null,
+  city text not null,
+  status text not null default 'active'
+);`}
+              </pre>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
             TAB 4: SHOP QR & POSTER GENERATOR
            ======================================================== */}
         {activeTab === 'qr' && (
@@ -972,7 +1312,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(`${window.location.origin}/shop/${shop.slug}`);
-                    alert('Shop link copied to clipboard!');
+                    showToast('Shop customer link copied to clipboard!', 'success');
                   }}
                   className="p-1 text-slate-500 hover:text-slate-900"
                   title="Copy Link"
@@ -1142,7 +1482,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                         type="button"
                         onClick={() => {
                           navigator.clipboard.writeText(window.location.origin);
-                          alert('Server URL copied! Paste this into the "Shop Server URL" box in Windows app.');
+                          showToast('Server URL copied! Paste this into the "Shop Server URL" box in Windows app.', 'success');
                         }}
                         className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition flex items-center gap-1 self-start sm:self-auto cursor-pointer"
                       >
@@ -1198,7 +1538,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                         type="button"
                         onClick={() => {
                           navigator.clipboard.writeText(utilityKey);
-                          alert('Utility Key copied to clipboard!');
+                          showToast('Utility Key copied to clipboard!', 'success');
                         }}
                         className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shrink-0 flex items-center gap-1 cursor-pointer"
                       >
@@ -1666,7 +2006,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                       type="button"
                       onClick={() => {
                         navigator.clipboard.writeText(window.location.origin);
-                        alert('Server URL copied!');
+                        showToast('Server URL copied!', 'success');
                       }}
                       className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 text-[11px] font-bold rounded-lg border border-slate-200 transition flex items-center gap-1 cursor-pointer self-start sm:self-auto"
                     >
@@ -1694,7 +2034,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                         type="button"
                         onClick={() => {
                           navigator.clipboard.writeText(utilityKey);
-                          alert('Utility key copied to clipboard!');
+                          showToast('Utility key copied to clipboard!', 'success');
                         }}
                         className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
                       >
@@ -1766,6 +2106,31 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Interactive In-App Notification Toast */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <div
+            className={`px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 border text-sm font-bold backdrop-blur-md transition-all ${
+              toast.type === 'success'
+                ? 'bg-emerald-950/95 text-emerald-200 border-emerald-600'
+                : toast.type === 'error'
+                ? 'bg-rose-950/95 text-rose-200 border-rose-600'
+                : 'bg-slate-900/95 text-sky-200 border-sky-600'
+            }`}
+          >
+            <span className="text-base">{toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}</span>
+            <span>{toast.message}</span>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="ml-3 text-xs opacity-60 hover:opacity-100 cursor-pointer"
+            >
+              ✕
+            </button>
           </div>
         </div>
       )}

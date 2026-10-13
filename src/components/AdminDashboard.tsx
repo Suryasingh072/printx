@@ -44,6 +44,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   const [formOwnerEmail, setFormOwnerEmail] = useState('');
   const [formOwnerPassword, setFormOwnerPassword] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4500);
+  };
 
   const fetchShops = async () => {
     try {
@@ -51,7 +57,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       const data = await api.getAdminShops();
       setShops(data);
     } catch (e: any) {
-      alert(e.message);
+      showToast(e.message || 'Failed to load shops', 'error');
     } finally {
       setLoading(false);
     }

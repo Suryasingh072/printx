@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { storageService } from '../services/storage.js';
+import { supabaseService } from './supabase.js';
 import {
   User,
   Shop,
@@ -48,8 +49,99 @@ try {
 export class Database {
   private data: DatabaseSchema;
 
+  private saveTimeout: NodeJS.Timeout | null = null;
+
   constructor() {
     this.data = this.loadOrCreateDatabase();
+    this.initSupabaseHydration();
+  }
+
+  private initSupabaseHydration(): void {
+    // In background, hydrate/restore from Supabase Cloud
+    setTimeout(async () => {
+      try {
+        const remote = await supabaseService.loadRemoteState();
+        if (remote) {
+          console.log('[Supabase Cloud] Restoring database state from cloud backup...');
+          this.mergeRemoteData(remote);
+        }
+      } catch (err) {
+        console.warn('Initial Supabase hydration notice:', err);
+      }
+    }, 1200);
+  }
+
+  public mergeRemoteData(remote: DatabaseSchema): void {
+    if (!remote) return;
+    if (Array.isArray(remote.shops) && remote.shops.length > 0) {
+      for (const s of remote.shops) {
+        const existingIdx = this.data.shops.findIndex((item) => item.id === s.id);
+        if (existingIdx !== -1) {
+          this.data.shops[existingIdx] = { ...this.data.shops[existingIdx], ...s };
+        } else {
+          this.data.shops.push(s);
+        }
+      }
+    }
+    if (Array.isArray(remote.pricing) && remote.pricing.length > 0) {
+      for (const p of remote.pricing) {
+        const existingIdx = this.data.pricing.findIndex((item) => item.shopId === p.shopId);
+        if (existingIdx !== -1) {
+          this.data.pricing[existingIdx] = { ...this.data.pricing[existingIdx], ...p };
+        } else {
+          this.data.pricing.push(p);
+        }
+      }
+    }
+    if (Array.isArray(remote.approvalRules) && remote.approvalRules.length > 0) {
+      for (const r of remote.approvalRules) {
+        const existingIdx = this.data.approvalRules.findIndex((item) => item.shopId === r.shopId);
+        if (existingIdx !== -1) {
+          this.data.approvalRules[existingIdx] = { ...this.data.approvalRules[existingIdx], ...r };
+        } else {
+          this.data.approvalRules.push(r);
+        }
+      }
+    }
+    if (Array.isArray(remote.orders) && remote.orders.length > 0) {
+      for (const o of remote.orders) {
+        const existingIdx = this.data.orders.findIndex((item) => item.id === o.id);
+        if (existingIdx !== -1) {
+          this.data.orders[existingIdx] = { ...this.data.orders[existingIdx], ...o };
+        } else {
+          this.data.orders.push(o);
+        }
+      }
+    }
+    if (Array.isArray(remote.agents) && remote.agents.length > 0) {
+      for (const a of remote.agents) {
+        const existingIdx = this.data.agents.findIndex((item) => item.id === a.id);
+        if (existingIdx !== -1) {
+          this.data.agents[existingIdx] = { ...this.data.agents[existingIdx], ...a };
+        } else {
+          this.data.agents.push(a);
+        }
+      }
+    }
+    if (Array.isArray(remote.users) && remote.users.length > 0) {
+      for (const u of remote.users) {
+        const existingIdx = this.data.users.findIndex((item) => item.id === u.id);
+        if (existingIdx === -1) {
+          this.data.users.push(u);
+        }
+      }
+    }
+    this.saveDiskOnly();
+  }
+
+  private saveDiskOnly(): void {
+    try {
+      const tempPath = `${DB_FILE}.tmp`;
+      fs.writeFileSync(tempPath, JSON.stringify(this.data, null, 2), 'utf-8');
+      fs.renameSync(tempPath, DB_FILE);
+    } catch (e) {
+      console.error('Failed to persist database to disk:', e);
+    }
   }
 
   private hashPassword(password: string): string {
@@ -60,14 +152,17 @@ export class Database {
     return this.hashPassword(plain) === hash;
   }
 
-  private save(): void {
-    try {
-      const tempPath = `${DB_FILE}.tmp`;
-      fs.writeFileSync(tempPath, JSON.stringify(this.data, null, 2), 'utf-8');
-      fs.renameSync(tempPath, DB_FILE);
-    } catch (e) {
-      console.error('Failed to persist database to disk:', e);
-    }
+  public save(): void {
+    // 1. Immediately persist to local disk
+    this.saveDiskOnly();
+
+    // 2. Automatically sync to Supabase Cloud
+    if (this.saveTimeout) clearTimeout(this.saveTimeout);
+    this.saveTimeout = setTimeout(() => {
+      supabaseService.saveRemoteState(this.data).catch((err) => {
+        console.warn('Supabase auto-sync notification:', err);
+      });
+    }, 1000);
   }
 
   private loadOrCreateDatabase(): DatabaseSchema {

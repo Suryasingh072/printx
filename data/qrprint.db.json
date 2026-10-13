@@ -49,17 +49,19 @@
     {
       "id": "shp-apex-001",
       "slug": "apex-print",
-      "name": "Apex Print & Copy Hub",
+      "name": "Apex Super Print & Xerox Hub",
       "ownerId": "usr-owner-001",
       "phone": "+919812345678",
-      "address": "Shop 14, Commercial Complex, Sector 18",
+      "address": "Shop 14, Commercial Market, Sector 18",
       "city": "Noida",
       "status": "active",
       "activatedAt": "2026-10-09T07:02:21.443Z",
       "activatedBy": "usr-admin-001",
       "createdAt": "2026-10-09T07:02:21.443Z",
-      "updatedAt": "2026-10-10T07:08:31.188Z",
-      "rejectionReason": "Incomplete documentation / verification"
+      "updatedAt": "2026-10-13T18:16:27.314Z",
+      "rejectionReason": "Incomplete documentation / verification",
+      "upiId": "apexprint@upi",
+      "requiresCounterPayment": true
     },
     {
       "id": "shp-sai-002",
@@ -94,15 +96,15 @@
     {
       "id": "prc-apex-001",
       "shopId": "shp-apex-001",
-      "bwSinglePrice": 2,
-      "bwDuplexPrice": 3,
-      "colorSinglePrice": 10,
-      "colorDuplexPrice": 18,
-      "legalExtra": 1,
-      "photo4x6Price": 20,
-      "idCardSinglePrice": 15,
+      "bwSinglePrice": 3.5,
+      "bwDuplexPrice": 5,
+      "colorSinglePrice": 12,
+      "colorDuplexPrice": 20,
+      "legalExtra": 2,
+      "photo4x6Price": null,
+      "idCardSinglePrice": 25,
       "currency": "INR",
-      "updatedAt": "2026-10-09T07:02:21.443Z"
+      "updatedAt": "2026-10-13T18:16:15.253Z"
     },
     {
       "id": "prc-sai-002",
@@ -1186,6 +1188,22 @@
     }
   ],
   "activityLogs": [
+    {
+      "shopId": "shp-apex-001",
+      "userId": "usr-owner-001",
+      "actionType": "shop_profile_updated",
+      "description": "Shop profile updated by owner (Apex Print & Copy Hub).",
+      "id": "log-4ce9cb27",
+      "createdAt": "2026-10-13T18:16:27.315Z"
+    },
+    {
+      "shopId": "shp-apex-001",
+      "userId": "usr-owner-001",
+      "actionType": "pricing_updated",
+      "description": "Updated printing rates: B&W ₹3.5/₹5, Color ₹12/₹20",
+      "id": "log-e295aad6",
+      "createdAt": "2026-10-13T18:16:15.255Z"
+    },
     {
       "shopId": "shp-00ff309e",
       "userId": "usr-3129a8fa",

@@ -82,8 +82,19 @@ $ServerLabel.Location = New-Object System.Drawing.Point(20, 60)
 $ServerLabel.Size = New-Object System.Drawing.Size(120, 20)
 $Form.Controls.Add($ServerLabel)
 
+$ConfigFile = Join-Path $PSScriptRoot "printx-agent-config.json"
+$SavedServer = "https://ais-dev-j4wzxf4ek3yadrvyzajprv-973482974092.asia-southeast1.run.app"
+$SavedCode = ""
+if (Test-Path $ConfigFile) {
+    try {
+        $cfg = Get-Content $ConfigFile -Raw | ConvertFrom-Json
+        if ($cfg.server_url) { $SavedServer = $cfg.server_url }
+        if ($cfg.pairing_code) { $SavedCode = $cfg.pairing_code }
+    } catch {}
+}
+
 $ServerBox = New-Object System.Windows.Forms.TextBox
-$ServerBox.Text = "https://ais-pre-j4wzxf4ek3yadrvyzajprv-973482974092.asia-southeast1.run.app"
+$ServerBox.Text = $SavedServer
 $ServerBox.Font = New-Object System.Drawing.Font("Segoe UI", 9)
 $ServerBox.Location = New-Object System.Drawing.Point(140, 58)
 $ServerBox.Size = New-Object System.Drawing.Size(540, 24)
@@ -98,6 +109,7 @@ $KeyLabel.Size = New-Object System.Drawing.Size(120, 20)
 $Form.Controls.Add($KeyLabel)
 
 $KeyBox = New-Object System.Windows.Forms.TextBox
+$KeyBox.Text = $SavedCode
 $KeyBox.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
 $KeyBox.Location = New-Object System.Drawing.Point(140, 92)
 $KeyBox.Size = New-Object System.Drawing.Size(160, 26)
@@ -217,6 +229,16 @@ $ConnectBtn.Add_Click({
         if ($resp.token) {
             $Global:AgentToken = $resp.token
             $Global:IsConnected = $true
+
+            # Save config for next session
+            try {
+                @{
+                    server_url = $Server
+                    pairing_code = $Code
+                    agent_token = $resp.token
+                } | ConvertTo-Json | Set-Content $ConfigFile -Force
+            } catch {}
+
             $ConnectBtn.Text = "Disconnect"
             $ConnectBtn.BackColor = [System.Drawing.Color]::FromArgb(220, 38, 38)
             $StatusBadge.Text = "Online (Connected)"
