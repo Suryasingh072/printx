@@ -165,18 +165,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   });
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#080b14] text-[#f1f5f9] flex flex-col relative overflow-hidden font-sans">
+      {/* Background Neon Ambient Glows */}
+      <div className="w-96 h-96 bg-[rgba(255,46,99,0.12)] blur-[140px] rounded-full pointer-events-none absolute -top-24 -left-24 z-0" />
+      <div className="w-96 h-96 bg-[rgba(124,92,255,0.14)] blur-[140px] rounded-full pointer-events-none absolute top-1/3 -right-24 z-0" />
+
       {/* Admin Navbar */}
-      <header className="bg-slate-900 text-white sticky top-0 z-40 border-b border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center font-black text-white shadow-md">
-              <ShieldCheck className="w-6 h-6" />
+      <header className="sticky top-0 z-40 backdrop-blur-xl bg-[#080b14]/80 border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-grad grid place-items-center shadow-[0_6px_20px_rgba(255,46,99,0.4)] text-white">
+              <ShieldCheck className="w-5 h-5 stroke-[2.5]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-black text-base tracking-tight">print<span className="text-blue-400">x</span> Master Admin</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                <span className="font-black text-lg tracking-tight font-head">
+                  print<span className="grad font-extrabold">x</span> Master Admin
+                </span>
+                <span className="badge text-[10px] font-black uppercase tracking-wider py-0.5 px-2.5 border-violet-500/30 bg-violet-500/10 text-violet-300">
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
                   Super Admin
                 </span>
               </div>
@@ -184,17 +191,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <button
               onClick={fetchShops}
-              className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition cursor-pointer"
+              className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-slate-300 rounded-xl transition cursor-pointer"
               title="Refresh"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-pink-400' : ''}`} />
+            </button>
+            <button
+              onClick={onNavigateHome}
+              className="btn btn-ghost btn-sm text-xs font-bold"
+            >
+              Website Home
             </button>
             <button
               onClick={onLogout}
-              className="px-3 py-1.5 text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl transition border border-rose-500/20 flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-xl transition border border-rose-500/25 flex items-center gap-1.5 cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" /> Sign Out
             </button>
@@ -203,95 +216,145 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-7 relative z-10">
+        {/* Header Title & Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Registered Shop Master Management</h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Add new shops, edit all shop configurations, or delete shop accounts. Only Administrator has full control.
+            <div className="eyebrow">MASTER NETWORK MANAGEMENT</div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold font-head tracking-tight text-white">
+              Registered Shop <span className="grad">Command Center</span>
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl">
+              Add new retail shops, customize live URLs, activate pending accounts, and manage system-wide print routing.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             <button
               onClick={handleOpenCreateModal}
-              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer"
+              className="btn btn-primary text-xs font-black shadow-[0_10px_30px_rgba(255,46,99,0.35)]"
             >
-              <Plus className="w-4 h-4" /> Register New Shop
+              <Plus className="w-4 h-4 stroke-[3]" /> Register New Shop
             </button>
-            <span className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 shadow-xs">
-              Total Shops: {shops.length}
-            </span>
+          </div>
+        </div>
+
+        {/* Quick Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="card flex items-center justify-between">
+            <div>
+              <p className="text-xs text-slate-400 uppercase font-black tracking-wider">Total Registered Shops</p>
+              <h3 className="text-2xl font-black text-white mt-1 font-head">{shops.length}</h3>
+              <p className="text-[11px] text-slate-400 mt-1">Platform-wide total counters</p>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-violet-400 text-xl font-black">
+              🏪
+            </div>
+          </div>
+
+          <div className="card flex items-center justify-between">
+            <div>
+              <p className="text-xs text-slate-400 uppercase font-black tracking-wider">Active Live Shops</p>
+              <h3 className="text-2xl font-black text-emerald-400 mt-1 font-head">
+                {shops.filter((s) => s.status === 'active').length}
+              </h3>
+              <p className="text-[11px] text-emerald-400/80 mt-1">Receiving customer orders 24/7</p>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-xl font-black">
+              ⚡
+            </div>
+          </div>
+
+          <div className="card flex items-center justify-between">
+            <div>
+              <p className="text-xs text-slate-400 uppercase font-black tracking-wider">Pending Review</p>
+              <h3 className="text-2xl font-black text-amber-400 mt-1 font-head">
+                {shops.filter((s) => s.status !== 'active').length}
+              </h3>
+              <p className="text-[11px] text-amber-400/80 mt-1">Awaiting admin review</p>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-xl font-black">
+              ⏳
+            </div>
           </div>
         </div>
 
         {/* Search Bar */}
         <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
           <input
             type="text"
-            placeholder="Search shops by name, slug, owner email or city..."
+            placeholder="Search shops by name, slug (/shop/slug), owner email or city..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-2xl pl-10 pr-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-xs"
+            className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-pink-500/80 focus:ring-1 focus:ring-pink-500/50 shadow-inner transition"
           />
         </div>
 
         {/* Shops Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {filteredShops.map((s) => (
-            <div key={s.id} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4 hover:shadow-md transition">
-              <div className="flex items-start justify-between">
+            <div
+              key={s.id}
+              className="card space-y-4 hover:border-white/20 transition-all duration-200"
+            >
+              <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-slate-900">{s.name}</h3>
+                    <h3 className="text-base font-black text-white font-head">{s.name}</h3>
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                         s.status === 'active'
-                          ? 'bg-emerald-100 text-emerald-800'
+                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                           : s.status === 'pending_review'
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-rose-100 text-rose-800'
+                          ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                          : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
                       }`}
                     >
-                      {s.status.replace('_', ' ').toUpperCase()}
+                      {s.status.replace('_', ' ')}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">Slug: /shop/{s.slug}</p>
+                  <p className="text-xs text-slate-400 font-mono mt-1">
+                    Slug: <span className="text-pink-300 font-bold">/shop/{s.slug}</span>
+                  </p>
                 </div>
 
                 <a
                   href={`/shop/${s.slug}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1"
+                  className="btn btn-ghost btn-sm text-xs text-pink-300 hover:text-white flex items-center gap-1.5"
                 >
                   Visit Portal <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
 
               {/* Details */}
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-xs space-y-1.5 text-slate-600">
-                <p className="flex items-center gap-1.5">
-                  <UserIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span>Owner: <strong className="text-slate-800">{s.ownerName}</strong> ({s.ownerEmail})</span>
+              <div className="p-3.5 bg-white/[0.03] rounded-xl border border-white/[0.06] text-xs space-y-2 text-slate-300">
+                <p className="flex items-center gap-2">
+                  <UserIcon className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                  <span>
+                    Owner: <strong className="text-white">{s.ownerName}</strong> ({s.ownerEmail})
+                  </span>
                 </p>
-                <p className="flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span>Phone: <strong className="text-slate-800">{s.phone}</strong> | WhatsApp: <strong className="text-slate-800">{s.ownerWhatsApp}</strong></span>
+                <p className="flex items-center gap-2">
+                  <Phone className="w-3.5 h-3.5 text-pink-400 shrink-0" />
+                  <span>
+                    Phone: <strong className="text-white">{s.phone}</strong> | WhatsApp: <strong className="text-white">{s.ownerWhatsApp}</strong>
+                  </span>
                 </p>
-                <p className="flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <p className="flex items-center gap-2">
+                  <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span>{s.address}, {s.city}</span>
                 </p>
               </div>
 
               {/* Action buttons: Edit & Delete */}
-              <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+              <div className="flex items-center gap-2 pt-2 border-t border-white/[0.06]">
                 {s.status !== 'active' && (
                   <button
                     onClick={() => handleActivate(s.id)}
-                    className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                    className="flex-1 py-2 px-3 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                   >
                     <CheckCircle2 className="w-4 h-4" /> Approve & Activate
                   </button>
@@ -299,14 +362,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
                 <button
                   onClick={() => handleOpenEditModal(s)}
-                  className="flex-1 py-2 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="flex-1 py-2 px-3 bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <Edit className="w-3.5 h-3.5" /> Edit Shop
+                  <Edit className="w-3.5 h-3.5 text-blue-400" /> Edit Shop
                 </button>
 
                 <button
                   onClick={() => handleDeleteShop(s)}
-                  className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="py-2 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/25 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
                   title="Delete Shop Permanently"
                 >
                   <Trash2 className="w-3.5 h-3.5" /> Delete
@@ -319,21 +382,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
       {/* Edit / Create Shop Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-8 shadow-2xl my-8">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-[#0d1220] border border-white/15 rounded-3xl max-w-lg w-full p-8 shadow-2xl my-8 text-white relative">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
               <div>
-                <h3 className="text-xl font-bold text-slate-900">
+                <h3 className="text-xl font-bold font-head text-white">
                   {editingShop ? `Edit Shop: ${editingShop.name}` : 'Register New Print Shop'}
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-400 mt-0.5">
                   Administrator exclusive master controls.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowEditModal(false)}
-                className="text-slate-400 hover:text-slate-700 font-bold p-1 cursor-pointer"
+                className="text-slate-400 hover:text-white font-bold p-1 cursor-pointer rounded-lg hover:bg-white/5"
               >
                 ✕
               </button>
@@ -341,73 +404,73 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
             <form onSubmit={handleSaveShop} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Shop Name</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Shop Name</label>
                 <input
                   type="text"
                   required
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder="e.g. Apex Print & Digital Studio"
-                  className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm"
+                  className="w-full py-2.5 px-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-pink-500"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Custom Slug (URL identifier)</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Custom Slug (URL identifier)</label>
                 <input
                   type="text"
                   value={formSlug}
                   onChange={(e) => setFormSlug(e.target.value)}
                   placeholder="e.g. apex-print"
-                  className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm"
+                  className="w-full py-2.5 px-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-pink-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Phone Number</label>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">Phone Number</label>
                   <input
                     type="text"
                     required
                     value={formPhone}
                     onChange={(e) => setFormPhone(e.target.value)}
                     placeholder="+919812345678"
-                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm"
+                    className="w-full py-2.5 px-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-pink-500"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">City</label>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">City</label>
                   <input
                     type="text"
                     required
                     value={formCity}
                     onChange={(e) => setFormCity(e.target.value)}
                     placeholder="e.g. Noida / Ekma"
-                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm"
+                    className="w-full py-2.5 px-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-pink-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Full Counter Address</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Full Counter Address</label>
                 <input
                   type="text"
                   required
                   value={formAddress}
                   onChange={(e) => setFormAddress(e.target.value)}
                   placeholder="Shop #12, Market Square"
-                  className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm"
+                  className="w-full py-2.5 px-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-pink-500"
                 />
               </div>
 
               {editingShop ? (
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Status</label>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">Status</label>
                   <select
                     value={formStatus}
                     onChange={(e) => setFormStatus(e.target.value as any)}
-                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm"
+                    className="w-full py-2.5 px-3 bg-slate-900 border border-white/15 rounded-xl text-sm text-white focus:outline-none focus:border-pink-500"
                   >
                     <option value="active">Active (Live Customer Orders)</option>
                     <option value="pending_review">Pending Review</option>
@@ -416,39 +479,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                 </div>
               ) : (
                 <>
-                  <div className="pt-2 border-t border-slate-100">
-                    <p className="text-xs font-bold text-slate-900 mb-3 uppercase tracking-wider">Owner Account Credentials</p>
+                  <div className="pt-2 border-t border-white/10">
+                    <p className="text-xs font-bold text-pink-300 mb-3 uppercase tracking-wider font-head">Owner Account Credentials</p>
                     <div className="space-y-3">
                       <div>
-                        <label className="text-xs font-semibold text-slate-700 block mb-1">Owner Name</label>
+                        <label className="text-xs font-semibold text-slate-300 block mb-1">Owner Name</label>
                         <input
                           type="text"
                           required
                           value={formOwnerName}
                           onChange={(e) => setFormOwnerName(e.target.value)}
                           placeholder="Rajesh Sharma"
-                          className="w-full py-2 px-3 border border-slate-200 rounded-xl text-sm"
+                          className="w-full py-2 px-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-pink-500"
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-semibold text-slate-700 block mb-1">Owner Email</label>
+                        <label className="text-xs font-semibold text-slate-300 block mb-1">Owner Email</label>
                         <input
                           type="email"
                           required
                           value={formOwnerEmail}
                           onChange={(e) => setFormOwnerEmail(e.target.value)}
                           placeholder="owner@printshop.in"
-                          className="w-full py-2 px-3 border border-slate-200 rounded-xl text-sm"
+                          className="w-full py-2 px-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-pink-500"
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-semibold text-slate-700 block mb-1">Initial Password</label>
+                        <label className="text-xs font-semibold text-slate-300 block mb-1">Initial Password</label>
                         <input
                           type="text"
                           value={formOwnerPassword}
                           onChange={(e) => setFormOwnerPassword(e.target.value)}
                           placeholder="Shop#1234"
-                          className="w-full py-2 px-3 border border-slate-200 rounded-xl text-sm font-mono"
+                          className="w-full py-2 px-3 bg-white/5 border border-white/10 rounded-xl text-sm font-mono text-white focus:outline-none focus:border-pink-500"
                         />
                       </div>
                     </div>
@@ -460,14 +523,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition cursor-pointer"
+                  className="btn btn-ghost flex-1 py-3 text-sm font-bold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition shadow-xs cursor-pointer"
+                  className="btn btn-primary flex-1 py-3 text-sm font-black"
                 >
                   {isSaving ? 'Saving...' : editingShop ? 'Update Shop' : 'Register Shop'}
                 </button>
@@ -483,10 +546,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           <div
             className={`px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 border text-sm font-bold backdrop-blur-md transition-all ${
               toast.type === 'success'
-                ? 'bg-emerald-950/95 text-emerald-200 border-emerald-600'
+                ? 'bg-emerald-950/95 text-emerald-200 border-emerald-500 shadow-[0_10px_30px_rgba(34,197,94,0.3)]'
                 : toast.type === 'error'
-                ? 'bg-rose-950/95 text-rose-200 border-rose-600'
-                : 'bg-slate-900/95 text-sky-200 border-sky-600'
+                ? 'bg-rose-950/95 text-rose-200 border-rose-500 shadow-[0_10px_30px_rgba(244,63,94,0.3)]'
+                : 'bg-[#0d1220]/95 text-sky-200 border-sky-500'
             }`}
           >
             <span className="text-base">{toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}</span>

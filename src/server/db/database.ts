@@ -358,6 +358,9 @@ export class Database {
     };
     this.data.approvalRules.push(defaultRules);
 
+    // Initialize fixed permanent 6-digit Windows Agent pairing code immediately
+    this.getOrCreateAgent(newShop.id);
+
     this.save();
     return newShop;
   }

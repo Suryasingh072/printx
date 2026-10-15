@@ -146,20 +146,31 @@ $Form.Controls.Add($PrinterBox)
 
 # Connect Button
 $ConnectBtn = New-Object System.Windows.Forms.Button
-$ConnectBtn.Text = "Connect & Start Spooler"
-$ConnectBtn.Font = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+$ConnectBtn.Text = "Connect & Stay Online"
+$ConnectBtn.Font = New-Object System.Drawing.Font("Segoe UI", 9.5, [System.Drawing.FontStyle]::Bold)
 $ConnectBtn.Location = New-Object System.Drawing.Point(20, 135)
-$ConnectBtn.Size = New-Object System.Drawing.Size(220, 36)
+$ConnectBtn.Size = New-Object System.Drawing.Size(180, 36)
 $ConnectBtn.BackColor = [System.Drawing.Color]::FromArgb(37, 99, 235)
 $ConnectBtn.ForeColor = [System.Drawing.Color]::White
 $ConnectBtn.FlatStyle = "Flat"
 $Form.Controls.Add($ConnectBtn)
 
+# Dedicated Logout / Disconnect Button
+$LogoutBtn = New-Object System.Windows.Forms.Button
+$LogoutBtn.Text = "Logout / Unpair"
+$LogoutBtn.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+$LogoutBtn.Location = New-Object System.Drawing.Point(210, 135)
+$LogoutBtn.Size = New-Object System.Drawing.Size(130, 36)
+$LogoutBtn.BackColor = [System.Drawing.Color]::FromArgb(241, 245, 249)
+$LogoutBtn.ForeColor = [System.Drawing.Color]::FromArgb(100, 116, 139)
+$LogoutBtn.FlatStyle = "Flat"
+$Form.Controls.Add($LogoutBtn)
+
 # Dry Run Checkbox
 $DryRunBox = New-Object System.Windows.Forms.CheckBox
 $DryRunBox.Text = "Test Simulation Mode (Print without paper)"
 $DryRunBox.Font = New-Object System.Drawing.Font("Segoe UI", 8.5)
-$DryRunBox.Location = New-Object System.Drawing.Point(260, 142)
+$DryRunBox.Location = New-Object System.Drawing.Point(360, 142)
 $DryRunBox.Size = New-Object System.Drawing.Size(300, 24)
 $DryRunBox.Checked = $false
 $Form.Controls.Add($DryRunBox)
@@ -181,42 +192,33 @@ function LogMessage($msg) {
     $LogBox.AppendText("[$time] $msg`r`n")
 }
 
-LogMessage "printx Windows Agent ready."
+LogMessage "ADRTech Windows Agent v2.5 initialized."
 LogMessage "Detected local printers: $($PrinterBox.Items.Count) available."
-LogMessage "Enter pairing code from your Shop Dashboard and click 'Connect'."
+LogMessage "Permanent 6-Digit Pairing Code connects 24/7 until you click 'Logout'."
 
 # Timer for Background Job Polling
 $Timer = New-Object System.Windows.Forms.Timer
 $Timer.Interval = 4000
 $Global:AgentToken = ""
 $Global:IsConnected = $false
+$Global:PairingCode = $SavedCode
 
-$ConnectBtn.Add_Click({
-    if ($Global:IsConnected) {
-        $Timer.Stop()
-        $Global:IsConnected = $false
-        $ConnectBtn.Text = "Connect & Start Spooler"
-        $ConnectBtn.BackColor = [System.Drawing.Color]::FromArgb(37, 99, 235)
-        $StatusBadge.Text = "Disconnected"
-        $StatusBadge.BackColor = [System.Drawing.Color]::FromArgb(254, 226, 226)
-        $StatusBadge.ForeColor = [System.Drawing.Color]::FromArgb(185, 28, 28)
-        LogMessage "Spooler stopped."
-        return
-    }
-
+function ConnectShopAgent($isSilent = $false) {
     $Server = $ServerBox.Text.Trim().TrimEnd('/')
     if ($Server -notmatch '^https?://') {
         $Server = "https://$Server"
         $ServerBox.Text = $Server
     }
     $Code = $KeyBox.Text.Trim()
-
     if ($Code.Length -lt 4) {
-        [System.Windows.Forms.MessageBox]::Show("Please enter the 6-Digit Pairing Code or Utility Key from your Shop Dashboard.", "Input Required")
+        if (!$isSilent) {
+            [System.Windows.Forms.MessageBox]::Show("Please enter the 6-Digit Pairing Code from your Shop Dashboard.", "Input Required")
+        }
         return
     }
 
-    LogMessage "Connecting to $Server using Pairing Code '$Code'..."
+    $Global:PairingCode = $Code
+    LogMessage "Connecting to $Server with fixed code '$Code'..."
 
     try {
         $body = @{
@@ -230,7 +232,7 @@ $ConnectBtn.Add_Click({
             $Global:AgentToken = $resp.token
             $Global:IsConnected = $true
 
-            # Save config for next session
+            # Save config permanently so restart/reboot reconnects automatically
             try {
                 @{
                     server_url = $Server
@@ -239,27 +241,52 @@ $ConnectBtn.Add_Click({
                 } | ConvertTo-Json | Set-Content $ConfigFile -Force
             } catch {}
 
-            $ConnectBtn.Text = "Disconnect"
-            $ConnectBtn.BackColor = [System.Drawing.Color]::FromArgb(220, 38, 38)
+            $ConnectBtn.Text = "Connected (24/7)"
+            $ConnectBtn.BackColor = [System.Drawing.Color]::FromArgb(16, 185, 129)
             $StatusBadge.Text = "Online (Connected)"
             $StatusBadge.BackColor = [System.Drawing.Color]::FromArgb(209, 250, 229)
             $StatusBadge.ForeColor = [System.Drawing.Color]::FromArgb(6, 95, 70)
             LogMessage "SUCCESS: Windows Agent paired and connected!"
-            LogMessage "Active Shop ID: $($resp.shopId)"
-            LogMessage "Monitoring print queue in real-time..."
+            LogMessage "Active Shop: $($resp.shopId)"
+            LogMessage "Continuous 24/7 spooler monitoring active..."
             $Timer.Start()
         }
     } catch {
         $errDetail = $_.Exception.Message
-        if ($_.Exception.Response) {
-            try {
-                $sr = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
-                $serverErr = $sr.ReadToEnd()
-                if ($serverErr) { $errDetail = $serverErr }
-            } catch {}
+        LogMessage "Connection attempt note: $errDetail"
+        if (!$isSilent) {
+            [System.Windows.Forms.MessageBox]::Show("Connection note: $errDetail`n`nPlease verify your server URL and 6-digit code in Shop Dashboard.", "Connection")
         }
-        LogMessage "Connection failed: $errDetail"
-        [System.Windows.Forms.MessageBox]::Show("Connection Failed!`n`nError: $errDetail`n`nPlease check:`n1. Shop Server URL is: $Server`n2. 6-Digit Code is active in Shop Dashboard Tab 5 (Printers)", "Connection Error")
+    }
+}
+
+$ConnectBtn.Add_Click({
+    ConnectShopAgent($false)
+})
+
+# Explicit Logout handler
+$LogoutBtn.Add_Click({
+    $Timer.Stop()
+    $Global:IsConnected = $false
+    $Global:AgentToken = ""
+    $Global:PairingCode = ""
+    $KeyBox.Text = ""
+    if (Test-Path $ConfigFile) {
+        try { Remove-Item $ConfigFile -Force } catch {}
+    }
+    $ConnectBtn.Text = "Connect & Stay Online"
+    $ConnectBtn.BackColor = [System.Drawing.Color]::FromArgb(37, 99, 235)
+    $StatusBadge.Text = "Logged Out"
+    $StatusBadge.BackColor = [System.Drawing.Color]::FromArgb(254, 226, 226)
+    $StatusBadge.ForeColor = [System.Drawing.Color]::FromArgb(185, 28, 28)
+    LogMessage "Logged out from shop. Device unlinked until new code is entered."
+})
+
+# Auto-connect immediately when form is displayed if code is saved!
+$Form.Add_Shown({
+    if ($SavedCode -and $SavedCode.Length -ge 4) {
+        LogMessage "Found saved permanent 6-digit code '$SavedCode'. Auto-connecting now..."
+        ConnectShopAgent($true)
     }
 })
 
@@ -316,7 +343,12 @@ $Timer.Add_Tick({
             }
         }
     } catch {
-        # Silent retry on transient polling errors
+        # If server restarted or token expired, auto-re-pair using the permanent code so connection never breaks!
+        $exMsg = $_.Exception.Message
+        if ($exMsg -match "401" -or $exMsg -match "Unauthorized") {
+            LogMessage "Token refreshed. Auto-re-authenticating with permanent code..."
+            ConnectShopAgent($true)
+        }
     }
 })
 

@@ -172,6 +172,18 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
         if (a) {
           if (a.utilityApiKey) setUtilityKey(a.utilityApiKey);
           if (a.defaultPrinter) setDefaultPrinterSelection(a.defaultPrinter);
+          if (a.pairingCode) {
+            setPairingCodeInfo({ code: a.pairingCode, isFixed: true } as any);
+          } else {
+            api.generatePairingCode(false).then((res) => {
+              setPairingCodeInfo(res as any);
+              if (res.code) setAgent((prev) => (prev ? { ...prev, pairingCode: res.code } : prev));
+            }).catch(() => {});
+          }
+        } else {
+          api.generatePairingCode(false).then((res) => {
+            setPairingCodeInfo(res as any);
+          }).catch(() => {});
         }
         setStats(s);
         setActivityLogs(l);
@@ -350,12 +362,12 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
     }
   };
 
-  // 6-Digit Pairing Code Handler
-  const handleGeneratePairingCode = async () => {
+  // 6-Digit Pairing Code Handler (Fixed & Permanent per shop)
+  const handleGeneratePairingCode = async (reset = false) => {
     try {
-      const res = await api.generatePairingCode();
-      setPairingCodeInfo(res);
-      showToast(`Generated 6-Digit Code: ${res.code} (Valid for 24h)`, 'success');
+      const res = await api.generatePairingCode(reset);
+      setPairingCodeInfo(res as any);
+      showToast(reset ? `New 6-Digit Code: ${res.code}` : `Fixed 6-Digit Code: ${res.code} (Permanent)`, 'success');
     } catch (e: any) {
       showToast(e.message || 'Failed to generate pairing code', 'error');
     }
@@ -485,23 +497,28 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
   });
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col">
-      {/* Top Navigation */}
-      <header className="bg-slate-900 text-white sticky top-0 z-40 border-b border-slate-800">
+    <div className="min-h-screen bg-[#080b14] text-[#f1f5f9] font-sans pb-16 relative overflow-hidden flex flex-col">
+      {/* Background Ambient Colored Glow Orbs */}
+      <div className="w-[500px] h-[500px] bg-[rgba(255,46,99,0.12)] blur-[150px] rounded-full pointer-events-none absolute -top-32 -left-32 z-0" />
+      <div className="w-[500px] h-[500px] bg-[rgba(124,92,255,0.14)] blur-[160px] rounded-full pointer-events-none absolute top-1/3 -right-32 z-0" />
+      <div className="w-[400px] h-[400px] bg-[rgba(34,197,94,0.06)] blur-[130px] rounded-full pointer-events-none absolute bottom-12 left-1/3 z-0" />
+
+      {/* Top Navigation Bar */}
+      <header className="backdrop-blur-xl bg-[#080b14]/85 border-b border-white/10 sticky top-0 z-40 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black text-white shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-grad flex items-center justify-center font-black text-white shadow-lg shadow-rose-500/30">
               <Printer className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-base tracking-tight">{shop.name}</span>
+                <span className="font-bold text-base font-head tracking-tight text-white">{shop.name}</span>
                 {shop.status === 'active' ? (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
                     Active
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30">
                     Pending Review
                   </span>
                 )}
@@ -516,14 +533,14 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
               onClick={() => {
                 window.location.href = `/shop/${shop.slug}`;
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition border border-slate-700 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-pink-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition border border-white/10 cursor-pointer"
             >
               <ExternalLink className="w-3.5 h-3.5" /> View Public Shop
             </button>
 
             <button
               onClick={onLogout}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl transition border border-rose-500/20"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-xl transition border border-rose-500/20 cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" /> Sign Out
             </button>
@@ -531,7 +548,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
         </div>
 
         {/* Secondary Sub-Tabs */}
-        <div className="bg-slate-800/80 border-t border-slate-800 overflow-x-auto">
+        <div className="bg-[#0d1220]/80 backdrop-blur-md border-t border-white/10 overflow-x-auto relative z-10">
           <div className="max-w-7xl mx-auto px-4 flex gap-1">
             {[
               { id: 'queue', label: 'Print Queue', icon: FileText, badge: orders.filter((o) => o.status === 'pending_approval' || o.status === 'payment_pending').length },
@@ -551,16 +568,16 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-3.5 py-3 text-xs font-bold border-b-2 transition whitespace-nowrap ${
+                  className={`flex items-center gap-2 px-4 py-3 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
                     activeTab === tab.id
-                      ? 'border-blue-500 text-white bg-slate-900/40'
-                      : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                      ? 'border-pink-500 text-white bg-white/5 shadow-[inset_0_-2px_8px_rgba(255,46,99,0.2)]'
+                      : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
                   {tab.label}
                   {tab.badge ? (
-                    <span className="w-4 h-4 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center font-bold">
+                    <span className="px-1.5 py-0.2 rounded-full bg-grad text-white text-[10px] flex items-center justify-center font-black shadow-xs">
                       {tab.badge}
                     </span>
                   ) : null}
@@ -573,10 +590,10 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
 
       {/* Verification Notice Banner if not active */}
       {shop.status !== 'active' && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-3">
-          <div className="max-w-7xl mx-auto flex items-center justify-between text-xs text-amber-800">
+        <div className="bg-amber-500/10 border-b border-amber-500/25 px-4 py-3 backdrop-blur-sm relative z-10">
+          <div className="max-w-7xl mx-auto flex items-center justify-between text-xs text-amber-300">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
               <span>
                 <strong>Shop Status: Pending Administrator Review.</strong> While awaiting activation, you can configure rates, print QR standees, and pair your Windows printer agent. Customer orders will become active once reviewed.
               </span>
@@ -584,7 +601,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
             {!user.whatsappVerified && (
               <button
                 onClick={() => setActiveTab('security')}
-                className="font-bold underline text-amber-900 hover:text-black"
+                className="font-bold underline text-amber-200 hover:text-white cursor-pointer"
               >
                 Verify WhatsApp Now
               </button>
@@ -594,14 +611,14 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
       )}
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full relative z-10">
         {/* ========================================================
             TAB 1: PRINT QUEUE
            ======================================================== */}
         {activeTab === 'queue' && (
           <div className="space-y-6">
             {/* Filter Bar & Controls */}
-            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="card p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
                 {[
                   { id: 'all', label: 'All Jobs' },
@@ -615,10 +632,10 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                   <button
                     key={f.id}
                     onClick={() => setQueueFilter(f.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
                       queueFilter === f.id
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                        ? 'btn-grad text-white shadow-md shadow-rose-500/25'
+                        : 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10'
                     }`}
                   >
                     {f.label}
@@ -634,29 +651,29 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                     placeholder="Search order # or customer..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full pl-9 pr-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pink-500"
                   />
                 </div>
 
                 <button
                   onClick={refreshOrders}
                   disabled={loadingOrders}
-                  className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition"
+                  className="p-2 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 rounded-xl transition cursor-pointer"
                   title="Refresh Queue"
                 >
-                  <RefreshCw className={`w-4 h-4 ${loadingOrders ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-4 h-4 ${loadingOrders ? 'animate-spin text-pink-400' : ''}`} />
                 </button>
               </div>
             </div>
 
             {/* Orders Table / Cards */}
             {filteredOrders.length === 0 ? (
-              <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-sm">
-                <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mx-auto mb-3">
+              <div className="card p-12 text-center space-y-3">
+                <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-slate-400 mx-auto">
                   <FileText className="w-6 h-6" />
                 </div>
-                <h3 className="text-base font-bold text-slate-800">No Orders in this Queue</h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <h3 className="text-base font-bold text-white font-head">No Orders in this Queue</h3>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto">
                   Orders submitted by customers via your QR code will appear here instantly.
                 </p>
               </div>
@@ -667,30 +684,30 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                   return (
                     <div
                       key={ord.id}
-                      className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition flex flex-col md:flex-row md:items-center justify-between gap-4"
+                      className="card p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-white/20 transition-all duration-200"
                     >
                       {/* Left: Info */}
                       <div className="flex items-start gap-4">
-                        <div className="p-3 bg-blue-50 text-blue-700 rounded-2xl shrink-0">
+                        <div className="p-3.5 bg-gradient-to-br from-pink-500/20 to-purple-500/20 text-pink-400 border border-pink-500/30 rounded-2xl shrink-0 shadow-lg shadow-rose-500/10">
                           <FileText className="w-6 h-6" />
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-extrabold text-slate-900 text-base">{ord.orderNumber}</span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-black text-white text-base font-head tracking-tight">{ord.orderNumber}</span>
                             {/* Status badge */}
                             <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                                 ord.status === 'completed'
-                                  ? 'bg-emerald-100 text-emerald-800'
+                                  ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                                   : ord.status === 'printing'
-                                  ? 'bg-blue-100 text-blue-800 animate-pulse'
+                                  ? 'bg-pink-500/20 text-pink-300 border border-pink-500/30 animate-pulse'
                                   : ord.status === 'queued'
-                                  ? 'bg-indigo-100 text-indigo-800'
+                                  ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
                                   : ord.status === 'payment_pending'
-                                  ? 'bg-amber-100 text-amber-800'
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                                   : ord.status === 'rejected'
-                                  ? 'bg-rose-100 text-rose-800'
-                                  : 'bg-slate-100 text-slate-800'
+                                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                  : 'bg-white/10 text-slate-300 border border-white/15'
                               }`}
                             >
                               {ord.status.replace('_', ' ').toUpperCase()}
@@ -698,24 +715,26 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
 
                             {/* Payment Badge */}
                             <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                isPaid ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                isPaid
+                                  ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                                  : 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
                               }`}
                             >
-                              {isPaid ? `PAID (₹${ord.totalAmount})` : `UNPAID (₹${ord.totalAmount})`}
+                              {isPaid ? `PAID (₹${ord.totalAmount.toFixed(2)})` : `UNPAID (₹${ord.totalAmount.toFixed(2)})`}
                             </span>
 
                             {/* 5-Min Privacy Auto-Purge Badge */}
                             {ord.isDocumentPurged ? (
                               <span
-                                className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 inline-flex items-center gap-1"
+                                className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-slate-400 border border-white/10 inline-flex items-center gap-1"
                                 title="Customer document files permanently deleted 5 mins after print completion for privacy"
                               >
                                 🔒 Files Purged (5m Privacy)
                               </span>
                             ) : ord.status === 'completed' ? (
                               <span
-                                className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/80 inline-flex items-center gap-1"
+                                className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20 inline-flex items-center gap-1"
                                 title="Customer files will automatically be deleted 5 minutes after completion"
                               >
                                 ⏱️ Auto-purging in 5m
@@ -723,21 +742,21 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                             ) : null}
                           </div>
 
-                          <p className="text-xs font-semibold text-slate-800 mt-1">
+                          <p className="text-xs font-semibold text-slate-200 mt-1">
                             {ord.documentName}
                           </p>
 
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-1.5">
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 mt-1.5">
                             <span>👤 {ord.customerName} ({ord.customerPhone})</span>
                             <span>📄 {ord.pageCount} pgs × {ord.copies} {ord.copies === 1 ? 'copy' : 'copies'}</span>
-                            <span className="font-medium text-slate-700">
+                            <span className="font-medium text-slate-300">
                               {ord.colorMode === 'color' ? '🎨 Full Colour' : '⚫ B&W'} ({ord.duplexMode})
                             </span>
                             <span>🕒 {new Date(ord.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
 
                           {ord.customNotes && (
-                            <p className="text-xs text-indigo-600 bg-indigo-50/80 px-2 py-1 rounded-md mt-2 inline-block">
+                            <p className="text-xs text-pink-300 bg-pink-500/10 border border-pink-500/20 px-2 py-1 rounded-md mt-2 inline-block">
                               Note: {ord.customNotes}
                             </p>
                           )}
@@ -746,28 +765,41 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
 
                       {/* Right: Actions */}
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        {/* Quick Approve Button for Pending Orders */}
+                        {ord.status === 'pending_approval' && (
+                          <button
+                            type="button"
+                            onClick={() => handleApprove(ord.id)}
+                            className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Approve Order
+                          </button>
+                        )}
+
+                        {/* Quick Collect Counter Payment Button */}
+                        {!isPaid && ord.status !== 'rejected' && ord.status !== 'archived' && (
+                          <button
+                            type="button"
+                            onClick={() => setPaymentModalOrder(ord)}
+                            className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                          >
+                            <DollarSign className="w-3.5 h-3.5" /> Collect Payment
+                          </button>
+                        )}
+
                         {/* Preview */}
                         <button
                           onClick={() => openDocumentPreview(ord)}
-                          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+                          className="btn btn-ghost btn-sm text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                         >
                           <Eye className="w-3.5 h-3.5" /> Preview
-                        </button>
-
-                        {/* Delete Order button */}
-                        <button
-                          onClick={() => handleDeleteOrder(ord.id)}
-                          className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-semibold transition flex items-center gap-1 cursor-pointer"
-                          title="Delete Order Permanently"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" /> Delete
                         </button>
 
                         {/* Dispatch to Print */}
                         {(ord.status === 'queued' || (ord.status === 'payment_pending' && isPaid)) && (
                           <button
                             onClick={() => handleDispatchPrint(ord.id)}
-                            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                            className="btn-grad text-white font-black text-xs px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-lg shadow-rose-500/30 cursor-pointer"
                           >
                             <Printer className="w-3.5 h-3.5" /> Print Now
                           </button>
@@ -777,7 +809,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                         {ord.status === 'printing' && (
                           <button
                             onClick={() => handleCompleteOrder(ord.id)}
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition"
+                            className="px-3.5 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition cursor-pointer"
                           >
                             Mark Done
                           </button>
@@ -787,12 +819,21 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                         {ord.status === 'completed' && (
                           <button
                             onClick={() => handleArchiveOrder(ord.id)}
-                            className="px-2.5 py-1.5 text-slate-400 hover:text-slate-700 rounded-xl text-xs font-medium transition"
+                            className="px-2.5 py-1.5 text-slate-400 hover:text-white rounded-xl text-xs font-medium transition cursor-pointer hover:bg-white/5"
                             title="Archive Order"
                           >
                             <Archive className="w-4 h-4" />
                           </button>
                         )}
+
+                        {/* Delete Order button */}
+                        <button
+                          onClick={() => handleDeleteOrder(ord.id)}
+                          className="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 rounded-xl text-xs font-semibold transition flex items-center gap-1 cursor-pointer"
+                          title="Delete Order Permanently"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Delete
+                        </button>
                       </div>
                     </div>
                   );
@@ -806,10 +847,11 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
             TAB 2: PRICING CONFIGURATION
            ======================================================== */}
         {activeTab === 'pricing' && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm max-w-3xl">
-            <div className="pb-6 border-b border-slate-200 mb-6">
-              <h3 className="text-xl font-bold text-slate-900">Printing Price Configuration</h3>
-              <p className="text-xs text-slate-500 mt-1">
+          <div className="card max-w-3xl space-y-6">
+            <div className="pb-6 border-b border-white/10 mb-2">
+              <div className="eyebrow">CUSTOM PRINT TARIFFS</div>
+              <h3 className="text-xl font-black font-head text-white">Printing Price Configuration</h3>
+              <p className="text-xs text-slate-400 mt-1">
                 Configure your shop's per-page printing rates. These rates are authoritatively applied to all incoming orders.
               </p>
             </div>
@@ -818,7 +860,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* B&W Single */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">
                     A4 Black & White (Single Side) ₹
                   </label>
                   <input
@@ -827,14 +869,14 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                     required
                     value={pricingForm.bwSinglePrice || ''}
                     onChange={(e) => setPricingForm({ ...pricingForm, bwSinglePrice: e.target.value })}
-                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900"
+                    className="w-full py-2.5 px-3 bg-white/5 border border-white/10 rounded-xl text-sm font-semibold text-white focus:outline-none focus:border-pink-500"
                   />
                   <p className="text-[11px] text-slate-400 mt-1">Standard Xerox rate per page (e.g. ₹2.00)</p>
                 </div>
 
                 {/* B&W Duplex */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">
                     A4 Black & White (Duplex / Back-to-Back) ₹
                   </label>
                   <input
@@ -843,14 +885,14 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                     required
                     value={pricingForm.bwDuplexPrice || ''}
                     onChange={(e) => setPricingForm({ ...pricingForm, bwDuplexPrice: e.target.value })}
-                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900"
+                    className="w-full py-2.5 px-3 bg-white/5 border border-white/10 rounded-xl text-sm font-semibold text-white focus:outline-none focus:border-pink-500"
                   />
                   <p className="text-[11px] text-slate-400 mt-1">Total price for 2 sides on 1 sheet (e.g. ₹3.00)</p>
                 </div>
 
                 {/* Colour Single */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">
                     A4 Full Colour (Single Side) ₹
                   </label>
                   <input
@@ -859,14 +901,14 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                     required
                     value={pricingForm.colorSinglePrice || ''}
                     onChange={(e) => setPricingForm({ ...pricingForm, colorSinglePrice: e.target.value })}
-                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900"
+                    className="w-full py-2.5 px-3 bg-white/5 border border-white/10 rounded-xl text-sm font-semibold text-white focus:outline-none focus:border-pink-500"
                   />
                   <p className="text-[11px] text-slate-400 mt-1">Colour document per page (e.g. ₹10.00)</p>
                 </div>
 
                 {/* Colour Duplex */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">
                     A4 Full Colour (Duplex / Back-to-Back) ₹
                   </label>
                   <input
@@ -875,14 +917,14 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                     required
                     value={pricingForm.colorDuplexPrice || ''}
                     onChange={(e) => setPricingForm({ ...pricingForm, colorDuplexPrice: e.target.value })}
-                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900"
+                    className="w-full py-2.5 px-3 bg-white/5 border border-white/10 rounded-xl text-sm font-semibold text-white focus:outline-none focus:border-pink-500"
                   />
                   <p className="text-[11px] text-slate-400 mt-1">Full colour back-to-back rate (e.g. ₹18.00)</p>
                 </div>
 
                 {/* Legal Extra */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">
                     Legal Paper Extra Surcharge ₹
                   </label>
                   <input
@@ -890,13 +932,13 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                     step="0.5"
                     value={pricingForm.legalExtra || ''}
                     onChange={(e) => setPricingForm({ ...pricingForm, legalExtra: e.target.value })}
-                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900"
+                    className="w-full py-2.5 px-3 bg-white/5 border border-white/10 rounded-xl text-sm font-semibold text-white focus:outline-none focus:border-pink-500"
                   />
                 </div>
 
                 {/* ID Card Sheet Rate */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">
                     ID Card Sheet / Photo Print ₹
                   </label>
                   <input
@@ -904,17 +946,17 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                     step="1"
                     value={pricingForm.idCardSinglePrice || ''}
                     onChange={(e) => setPricingForm({ ...pricingForm, idCardSinglePrice: e.target.value })}
-                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900"
+                    className="w-full py-2.5 px-3 bg-white/5 border border-white/10 rounded-xl text-sm font-semibold text-white focus:outline-none focus:border-pink-500"
                   />
                   <p className="text-[11px] text-slate-400 mt-1">Per set rate for Aadhaar / ID card sheet (e.g. ₹15.00)</p>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-200">
+              <div className="pt-4 border-t border-white/10">
                 <button
                   type="submit"
                   disabled={savingPricing}
-                  className="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                  className="btn btn-primary text-xs font-black shadow-lg shadow-rose-500/30 cursor-pointer"
                 >
                   {savingPricing ? 'Saving Pricing...' : 'Save Pricing Changes'}
                 </button>
@@ -927,10 +969,11 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
             TAB 3: APPROVAL SETTINGS
            ======================================================== */}
         {activeTab === 'approval' && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm max-w-3xl">
-            <div className="pb-6 border-b border-slate-200 mb-6">
-              <h3 className="text-xl font-bold text-slate-900">Order Approval & Workflow Rules</h3>
-              <p className="text-xs text-slate-500 mt-1">
+          <div className="card max-w-3xl space-y-6">
+            <div className="pb-6 border-b border-white/10 mb-2">
+              <div className="eyebrow">AUTOMATED WORKFLOW</div>
+              <h3 className="text-xl font-black font-head text-white">Order Approval & Workflow Rules</h3>
+              <p className="text-xs text-slate-400 mt-1">
                 Control how customer orders enter your print queue. Enforce counter payment before releasing jobs to printers.
               </p>
             </div>
@@ -938,7 +981,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
             <form onSubmit={handleSaveRules} className="space-y-6">
               {/* Approval Mode */}
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-3">Order Approval Mode</label>
+                <label className="text-xs font-bold text-slate-300 block mb-3">Order Approval Mode</label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {[
                     { id: 'smart', title: 'Smart Rule (Recommended)', desc: 'Auto-approves small jobs under limits. Requires review for large orders.' },
@@ -949,14 +992,14 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                       key={m.id}
                       type="button"
                       onClick={() => setRulesForm({ ...rulesForm, mode: m.id })}
-                      className={`p-4 rounded-xl border text-left transition ${
+                      className={`p-4 rounded-2xl border text-left transition cursor-pointer ${
                         rulesForm.mode === m.id
-                          ? 'border-blue-600 bg-blue-50/70 text-blue-900 font-bold'
-                          : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                          ? 'border-pink-500 bg-pink-500/10 text-white font-bold shadow-[0_0_15px_rgba(255,46,99,0.2)]'
+                          : 'border-white/10 bg-white/[0.02] hover:border-white/20 text-slate-300'
                       }`}
                     >
                       <p className="text-xs font-bold">{m.title}</p>
-                      <p className="text-[11px] text-slate-500 font-normal mt-1">{m.desc}</p>
+                      <p className="text-[11px] text-slate-400 font-normal mt-1 leading-relaxed">{m.desc}</p>
                     </button>
                   ))}
                 </div>
@@ -964,54 +1007,54 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
 
               {/* Smart thresholds */}
               {rulesForm.mode === 'smart' && (
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 bg-white/5 rounded-2xl border border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">Max Auto-Approve Pages</label>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">Max Auto-Approve Pages</label>
                     <input
                       type="number"
                       value={rulesForm.maxAutoPages || 10}
                       onChange={(e) => setRulesForm({ ...rulesForm, maxAutoPages: e.target.value })}
-                      className="w-full py-2 px-3 border border-slate-200 rounded-xl text-xs bg-white font-bold"
+                      className="w-full py-2 px-3 bg-white/5 border border-white/10 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-pink-500"
                     />
-                    <p className="text-[10px] text-slate-400 mt-0.5">Orders with more pages require manual approval</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Orders with more pages require manual approval</p>
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">Max Auto-Approve Amount (₹)</label>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">Max Auto-Approve Amount (₹)</label>
                     <input
                       type="number"
                       value={rulesForm.maxAutoAmount || 50}
                       onChange={(e) => setRulesForm({ ...rulesForm, maxAutoAmount: e.target.value })}
-                      className="w-full py-2 px-3 border border-slate-200 rounded-xl text-xs bg-white font-bold"
+                      className="w-full py-2 px-3 bg-white/5 border border-white/10 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-pink-500"
                     />
-                    <p className="text-[10px] text-slate-400 mt-0.5">Orders above this ₹ amount require review</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Orders above this ₹ amount require review</p>
                   </div>
                 </div>
               )}
 
               {/* Payment enforcement */}
               <div className="pt-2">
-                <label className="flex items-start gap-3 p-4 bg-amber-50/70 border border-amber-200 rounded-xl cursor-pointer">
+                <label className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl cursor-pointer">
                   <input
                     type="checkbox"
                     checked={rulesForm.requirePaymentBeforePrint ?? true}
                     onChange={(e) => setRulesForm({ ...rulesForm, requirePaymentBeforePrint: e.target.checked })}
-                    className="mt-0.5 rounded border-amber-300 text-blue-600 focus:ring-blue-500"
+                    className="mt-0.5 rounded border-white/20 text-pink-500 focus:ring-pink-500"
                   />
                   <div>
-                    <p className="text-xs font-bold text-amber-900">Require Counter Payment Before Printing</p>
-                    <p className="text-[11px] text-amber-700 mt-0.5">
+                    <p className="text-xs font-bold text-amber-300">Require Counter Payment Before Printing</p>
+                    <p className="text-[11px] text-amber-300/80 mt-0.5 leading-relaxed">
                       Jobs will hold in "Payment Due" status until the shopkeeper collects cash/UPI at the counter. Prevents wasted paper from uncollected prints.
                     </p>
                   </div>
                 </label>
               </div>
 
-              <div className="pt-4 border-t border-slate-200">
+              <div className="pt-4 border-t border-white/10">
                 <button
                   type="submit"
                   disabled={savingRules}
-                  className="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                  className="btn btn-primary text-xs font-black shadow-lg shadow-rose-500/30 cursor-pointer"
                 >
                   {savingRules ? 'Saving Rules...' : 'Save Approval Rules'}
                 </button>
@@ -1021,26 +1064,27 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
         )}
 
         {/* ========================================================
-            TAB: SHOP PROFILE & UPI PAYMENT SETTINGS
+            TAB 4: SHOP PROFILE & UPI PAYMENT SETTINGS
            ======================================================== */}
         {activeTab === 'profile' && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm max-w-3xl">
-            <div className="pb-6 border-b border-slate-200 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="card max-w-3xl space-y-6">
+            <div className="pb-6 border-b border-white/10 mb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-xl font-bold text-slate-900">Shop Profile & UPI Settings</h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <div className="eyebrow">STORE IDENTITY</div>
+                <h3 className="text-xl font-black font-head text-white">Shop Profile & UPI Settings</h3>
+                <p className="text-xs text-slate-400 mt-1">
                   Manage your shop contact info and UPI ID for customer QR payments. Saved directly to Supabase Cloud.
                 </p>
               </div>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 self-start sm:self-auto">
-                Slug: {shop.slug}
+              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-white/5 text-pink-300 border border-pink-500/30 self-start sm:self-auto">
+                Slug: /shop/{shop.slug}
               </span>
             </div>
 
             <form onSubmit={handleSaveProfile} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">
                     Shop Name *
                   </label>
                   <input
@@ -1048,13 +1092,13 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                     required
                     value={profileForm.name}
                     onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                    className="w-full py-2.5 px-3 bg-white/5 border border-white/10 rounded-xl text-sm font-semibold text-white focus:outline-none focus:border-pink-500"
                     placeholder="e.g. Apex Print & Xerox Hub"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">
                     Shop Contact Phone / Mobile *
                   </label>
                   <input
@@ -1062,13 +1106,13 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                     required
                     value={profileForm.phone}
                     onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                    className="w-full py-2.5 px-3 bg-white/5 border border-white/10 rounded-xl text-sm font-semibold text-white focus:outline-none focus:border-pink-500"
                     placeholder="e.g. +91 98123 45678"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">
                     City / Town *
                   </label>
                   <input
@@ -1076,20 +1120,20 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                     required
                     value={profileForm.city}
                     onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
-                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                    className="w-full py-2.5 px-3 bg-white/5 border border-white/10 rounded-xl text-sm font-semibold text-white focus:outline-none focus:border-pink-500"
                     placeholder="e.g. Noida, Delhi, Lucknow"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">
                     Counter UPI ID (For Direct Payments)
                   </label>
                   <input
                     type="text"
                     value={profileForm.upiId}
                     onChange={(e) => setProfileForm({ ...profileForm, upiId: e.target.value })}
-                    className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                    className="w-full py-2.5 px-3 bg-white/5 border border-white/10 rounded-xl text-sm font-semibold text-white focus:outline-none focus:border-pink-500"
                     placeholder="e.g. 9812345678@upi or shop@okaxis"
                   />
                   <p className="text-[11px] text-slate-400 mt-1">Customers can scan and pay directly to this UPI ID</p>
@@ -1097,7 +1141,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-bold text-slate-300 block mb-1.5">
                   Complete Shop Address *
                 </label>
                 <textarea
@@ -1105,33 +1149,33 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                   rows={2}
                   value={profileForm.address}
                   onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
-                  className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                  className="w-full py-2.5 px-3 bg-white/5 border border-white/10 rounded-xl text-sm font-semibold text-white focus:outline-none focus:border-pink-500"
                   placeholder="e.g. Shop 14, Commercial Complex, Sector 18"
                 />
               </div>
 
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+              <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={profileForm.requiresCounterPayment}
                     onChange={(e) => setProfileForm({ ...profileForm, requiresCounterPayment: e.target.checked })}
-                    className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
+                    className="rounded text-pink-500 focus:ring-pink-500 w-4 h-4"
                   />
                   <div>
-                    <span className="text-xs font-bold text-slate-900 block">Require Counter Payment Confirmation</span>
-                    <span className="text-[11px] text-slate-500 block">
+                    <span className="text-xs font-bold text-white block">Require Counter Payment Confirmation</span>
+                    <span className="text-[11px] text-slate-400 block">
                       Enforce collection of cash/UPI before jobs are spooled to printer.
                     </span>
                   </div>
                 </label>
               </div>
 
-              <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
+              <div className="pt-4 border-t border-white/10 flex items-center justify-between">
                 <button
                   type="submit"
                   disabled={savingProfile}
-                  className="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-2 cursor-pointer"
+                  className="btn btn-primary text-xs font-black shadow-lg shadow-rose-500/30 flex items-center gap-2 cursor-pointer"
                 >
                   <Store className="w-4 h-4" />
                   {savingProfile ? 'Saving Changes...' : 'Save Shop Profile to Supabase Cloud'}
@@ -1143,26 +1187,26 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
         )}
 
         {/* ========================================================
-            TAB: SUPABASE CLOUD DATABASE
+            TAB 5: SUPABASE CLOUD DATABASE
            ======================================================== */}
         {activeTab === 'supabase' && (
           <div className="space-y-6 max-w-4xl">
             {/* Status card */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-200 mb-6 gap-4">
+            <div className="card space-y-6 p-6 sm:p-8">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-white/10 gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center border border-emerald-500/30 shadow-lg shadow-emerald-500/10">
                     <Database className="w-6 h-6" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-bold text-slate-900">Supabase Cloud Database</h3>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <h3 className="text-lg font-black font-head text-white">Supabase Cloud Database</h3>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                         Connected
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500 font-mono mt-0.5">
+                    <p className="text-xs text-slate-400 font-mono mt-0.5">
                       https://skbwakxzlrsjkubmbzte.supabase.co
                     </p>
                   </div>
@@ -1172,7 +1216,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                   type="button"
                   onClick={handleSyncSupabase}
                   disabled={syncingSupabase}
-                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer self-start sm:self-auto shrink-0"
+                  className="btn btn-primary text-xs font-black shadow-lg shadow-rose-500/30 flex items-center gap-2 cursor-pointer self-start sm:self-auto shrink-0"
                 >
                   <RefreshCw className={`w-4 h-4 ${syncingSupabase ? 'animate-spin' : ''}`} />
                   {syncingSupabase ? 'Syncing to Supabase...' : 'Sync Data Now to Cloud'}
@@ -1180,50 +1224,50 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
               </div>
 
               {/* Status Details */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                  <span className="text-[11px] font-bold text-slate-500 block">Cloud Sync Status</span>
-                  <span className="text-sm font-extrabold text-emerald-700 flex items-center gap-1 mt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                  <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">Cloud Sync Status</span>
+                  <span className="text-sm font-black text-emerald-400 flex items-center gap-1 mt-1 font-head">
                     ✓ Real-time Active
                   </span>
                   <span className="text-[10px] text-slate-400 mt-0.5 block">Every change auto-persists</span>
                 </div>
 
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                  <span className="text-[11px] font-bold text-slate-500 block">Database Storage</span>
-                  <span className="text-sm font-extrabold text-slate-900 mt-1 block">
+                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                  <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">Database Storage</span>
+                  <span className="text-sm font-black text-white mt-1 block font-head">
                     Dual Engine (Cloud + Local)
                   </span>
                   <span className="text-[10px] text-slate-400 mt-0.5 block">Survives container restarts</span>
                 </div>
 
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                  <span className="text-[11px] font-bold text-slate-500 block">Last Synced Timestamp</span>
-                  <span className="text-sm font-bold text-slate-800 mt-1 block">
+                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                  <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">Last Synced Timestamp</span>
+                  <span className="text-sm font-bold text-slate-200 mt-1 block font-mono">
                     {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </span>
-                  <span className="text-[10px] text-emerald-600 font-semibold mt-0.5 block">Up to date</span>
+                  <span className="text-[10px] text-emerald-400 font-semibold mt-0.5 block">Up to date</span>
                 </div>
               </div>
 
               {/* Notice */}
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 space-y-1">
-                <p className="font-bold flex items-center gap-1.5">
-                  <Cloud className="w-4 h-4 text-blue-600" />
+              <div className="p-4 bg-gradient-to-r from-violet-500/10 to-pink-500/10 border border-violet-500/20 rounded-2xl text-xs space-y-1">
+                <p className="font-bold text-violet-300 flex items-center gap-1.5">
+                  <Cloud className="w-4 h-4 text-pink-400" />
                   Your Supabase Project is Live & Connected!
                 </p>
-                <p className="text-blue-800 text-[11px]">
+                <p className="text-slate-300 text-[11px] leading-relaxed">
                   All shop details, rates, orders, customer print submissions, and connected Windows agents are automatically synced to your Supabase project (<strong>skbwakxzlrsjkubmbzte.supabase.co</strong>).
                 </p>
               </div>
             </div>
 
             {/* Optional SQL Schema Card */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-4">
+            <div className="card space-y-4 p-6 sm:p-8">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-white/10 gap-3">
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900">Supabase SQL Editor Script (Optional Table View)</h4>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <h4 className="text-sm font-bold text-white font-head">Supabase SQL Editor Script (Optional Table View)</h4>
+                  <p className="text-xs text-slate-400 mt-0.5">
                     If you want to view rows in the Supabase Table Editor UI, run this SQL script in your Supabase SQL Editor.
                   </p>
                 </div>
@@ -1264,13 +1308,13 @@ create table if not exists public.orders (
                     navigator.clipboard.writeText(sql);
                     showToast('Supabase SQL script copied to clipboard!', 'success');
                   }}
-                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                  className="btn btn-ghost btn-sm text-xs font-bold flex items-center gap-1.5 cursor-pointer self-start sm:self-auto shrink-0"
                 >
                   <Copy className="w-3.5 h-3.5" /> Copy SQL Script
                 </button>
               </div>
 
-              <pre className="p-4 bg-slate-900 text-slate-200 rounded-xl text-[11px] font-mono overflow-x-auto max-h-48">
+              <pre className="p-4 bg-[#080b14] text-pink-300 border border-white/10 rounded-2xl text-[11px] font-mono overflow-x-auto max-h-48">
 {`-- Run this once in your Supabase SQL Editor:
 create table if not exists public.printx_app_state (
   id text primary key,
@@ -1293,28 +1337,29 @@ create table if not exists public.shops (
         )}
 
         {/* ========================================================
-            TAB 4: SHOP QR & POSTER GENERATOR
+            TAB 6: SHOP QR & POSTER GENERATOR
            ======================================================== */}
         {activeTab === 'qr' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-8 shadow-sm flex flex-col items-center text-center">
-              <h3 className="text-lg font-bold text-slate-900 mb-1">Shop QR Code</h3>
-              <p className="text-xs text-slate-500 mb-6">Display this on your counter for customer self-service.</p>
+            <div className="lg:col-span-5 card p-8 flex flex-col items-center text-center">
+              <div className="eyebrow">COUNTER SELF-SERVICE</div>
+              <h3 className="text-xl font-black font-head text-white mb-1">Shop QR Code</h3>
+              <p className="text-xs text-slate-400 mb-6">Display this on your counter for customer self-service.</p>
 
               {qrDataUrl && (
-                <div className="p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl shadow-inner mb-6">
-                  <img src={qrDataUrl} alt="Shop QR Code" className="w-56 h-56 rounded-lg" />
+                <div className="p-4 bg-white rounded-3xl shadow-2xl shadow-rose-500/10 mb-6 border-4 border-white">
+                  <img src={qrDataUrl} alt="Shop QR Code" className="w-56 h-56 rounded-xl" />
                 </div>
               )}
 
-              <div className="w-full p-3 bg-slate-100 rounded-xl text-xs text-slate-700 font-mono break-all mb-6 flex items-center justify-between">
-                <span>{`${window.location.origin}/shop/${shop.slug}`}</span>
+              <div className="w-full p-3 bg-white/5 border border-white/10 rounded-2xl text-xs text-slate-300 font-mono break-all mb-6 flex items-center justify-between">
+                <span className="truncate mr-2">{`${window.location.origin}/shop/${shop.slug}`}</span>
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(`${window.location.origin}/shop/${shop.slug}`);
                     showToast('Shop customer link copied to clipboard!', 'success');
                   }}
-                  className="p-1 text-slate-500 hover:text-slate-900"
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 cursor-pointer shrink-0"
                   title="Copy Link"
                 >
                   <Copy className="w-4 h-4" />
@@ -1325,30 +1370,33 @@ create table if not exists public.shops (
                 <a
                   href={qrDataUrl}
                   download={`${shop.slug}-QR.png`}
-                  className="flex-1 py-2.5 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold text-center transition"
+                  className="btn btn-ghost flex-1 py-3 text-xs font-bold text-center cursor-pointer"
                 >
                   Download PNG
                 </a>
 
                 <button
                   onClick={() => generateShopPosterPdf(shop)}
-                  className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold text-center transition shadow-xs flex items-center justify-center gap-1.5"
+                  className="btn btn-primary flex-1 py-3 text-xs font-black shadow-lg shadow-rose-500/30 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Download className="w-4 h-4" /> Printable A4 Poster PDF
                 </button>
               </div>
             </div>
 
-            <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-              <h3 className="text-base font-bold text-slate-900 mb-2">Counter Standee & Print Poster Instructions</h3>
-              <p className="text-xs text-slate-600 mb-6">
-                Download the professional A4 poster PDF and laminate it or put it in an acrylic stand on your front counter.
-              </p>
+            <div className="lg:col-span-7 card p-8 space-y-6">
+              <div>
+                <div className="eyebrow">COUNTER SIGNAGE</div>
+                <h3 className="text-xl font-black font-head text-white mb-2">Counter Standee & Print Poster Instructions</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Download the professional A4 poster PDF and laminate it or put it in an acrylic stand on your front counter.
+                </p>
+              </div>
 
               <div className="space-y-4">
-                <div className="p-4 bg-blue-50/60 rounded-xl border border-blue-100">
-                  <h4 className="text-xs font-bold text-blue-900 mb-1">What's in the A4 Poster:</h4>
-                  <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                <div className="p-5 bg-gradient-to-br from-pink-500/10 to-violet-500/10 rounded-2xl border border-pink-500/20">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-pink-300 mb-2">What's in the A4 Poster:</h4>
+                  <ul className="text-xs text-slate-300 space-y-2 list-disc list-inside">
                     <li>High-resolution scannable QR code linking to your shop</li>
                     <li>3-Step visual instructions for customers (Scan & Upload, Review Price, Collect)</li>
                     <li>Clear "Counter Payment Required" notice to avoid confusion</li>
@@ -1356,9 +1404,9 @@ create table if not exists public.shops (
                   </ul>
                 </div>
 
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                  <h4 className="text-xs font-bold text-slate-800 mb-1">Customer Flow:</h4>
-                  <p className="text-xs text-slate-600">
+                <div className="p-5 bg-white/5 rounded-2xl border border-white/10">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-300 mb-1">Customer Flow:</h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">
                     Customers do not need an app or account. Any smartphone camera will open your shop upload page in 1 tap.
                   </p>
                 </div>
@@ -1368,18 +1416,21 @@ create table if not exists public.shops (
         )}
 
         {/* ========================================================
-            TAB 5: WINDOWS AGENT & PRINTERS
+            TAB 7: WINDOWS AGENT & PRINTERS
            ======================================================== */}
         {activeTab === 'printers' && (
           <div className="space-y-8 max-w-4xl">
             {/* 1. Download ADRTECH Desktop for Windows */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-900 mb-2">
-                1. Download ADRTECH Desktop for Windows
-              </h3>
-              <p className="text-xs text-slate-600 mb-6 leading-relaxed">
-                Install the app, connect with a utility API key, and keep it running for printer updates and approval notifications. Setup creates a desktop shortcut.
-              </p>
+            <div className="card space-y-6 p-6 sm:p-8">
+              <div>
+                <div className="eyebrow">AUTOMATED PRINT AGENT</div>
+                <h3 className="text-xl font-black font-head text-white mb-2">
+                  1. Download printx Desktop for Windows
+                </h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Install the app, connect with your fixed 6-Digit Quick Pairing Code, and keep it running for automated silent printing and live status updates.
+                </p>
+              </div>
 
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-3">
@@ -1387,9 +1438,9 @@ create table if not exists public.shops (
                     type="button"
                     onClick={() => handleDownloadAgent('bat')}
                     disabled={isDownloadingAgent}
-                    className="inline-flex items-center gap-2.5 px-5 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-sm transition cursor-pointer"
+                    className="btn btn-primary text-sm font-black shadow-lg shadow-rose-500/30 flex items-center gap-2.5 cursor-pointer"
                   >
-                    <Play className="w-4 h-4" />
+                    <Play className="w-4 h-4 fill-white" />
                     1-Click Windows App (printx-PrintAgent.bat)
                   </button>
 
@@ -1397,7 +1448,7 @@ create table if not exists public.shops (
                     type="button"
                     onClick={() => handleDownloadAgent('zip')}
                     disabled={isDownloadingAgent}
-                    className="inline-flex items-center gap-2.5 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-md shadow-blue-600/20 transition cursor-pointer disabled:opacity-50"
+                    className="btn btn-ghost text-sm font-bold flex items-center gap-2.5 cursor-pointer disabled:opacity-50"
                   >
                     <Download className="w-4 h-4" />
                     {isDownloadingAgent ? 'Preparing Download...' : 'Download Full Package (.zip)'}
@@ -1406,75 +1457,91 @@ create table if not exists public.shops (
                   <button
                     type="button"
                     onClick={() => setShowAgentSetupModal(true)}
-                    className="inline-flex items-center gap-2 px-4 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-sm font-bold transition cursor-pointer"
+                    className="btn btn-ghost text-sm font-bold flex items-center gap-2 cursor-pointer"
                   >
-                    <FileCode className="w-4 h-4 text-blue-600" />
+                    <FileCode className="w-4 h-4 text-pink-400" />
                     Setup Guide & Script
                   </button>
                 </div>
 
-                <p className="text-xs text-slate-500">
-                  Includes <strong>Start_Agent.bat</strong> and <strong>agent.py</strong>. Works on all 64-bit Windows PCs (Windows 10, Windows 11).
+                <p className="text-xs text-slate-400">
+                  Includes <strong>printx-PrintAgent.bat</strong> and <strong>agent.py</strong>. Works on all 64-bit Windows PCs (Windows 10, Windows 11).
                 </p>
               </div>
             </div>
 
-            {/* 2. Connect using 6-Digit Pairing Code or Utility Key */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm space-y-6">
+            {/* 2. Connect using Fixed 6-Digit Pairing Code */}
+            <div className="card border-2 border-pink-500/30 bg-gradient-to-br from-pink-500/10 via-purple-500/10 to-transparent p-6 sm:p-8 space-y-6 shadow-xl shadow-rose-500/10">
               <div>
-                <h3 className="text-lg font-bold text-slate-900 mb-1">
-                  2. Connect Your Windows Desktop Agent
+                <div className="eyebrow">PERSISTENT HARDWARE LINK</div>
+                <h3 className="text-xl font-black font-head text-white mb-1">
+                  2. Fixed 6-Digit Quick Pairing Code (Permanent Connection)
                 </h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Enter your <strong>6-Digit Pairing Code</strong> or <strong>Utility API Key</strong> into the Windows App to connect your printer instantly.
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Yeh 6-Digit Quick Pairing Code is shop ke liye <strong>permanently fixed</strong> hai. Windows App me enter karke connect karein — jab tak aap Windows App me Logout nahi karte, yeh 24/7 hamesha connected rahega.
                 </p>
               </div>
 
-              {/* 6-Digit Pairing Code Card */}
-              <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              {/* 6-Digit Pairing Code Showcase Card */}
+              <div className="p-6 bg-[#080b14]/90 border-2 border-pink-500/50 rounded-3xl space-y-4 shadow-2xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-700 block">
-                      6-Digit Quick Pairing Code
+                    <span className="text-xs font-black uppercase tracking-wider text-pink-400 block flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-pink-400" />
+                      Permanent 6-Digit Pairing Key
                     </span>
-                    <p className="text-xs text-slate-500">
-                      Type this 6-digit number directly into the Windows App
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Auto-reconnects on system restart or internet drop. Never expires unless reset manually.
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={handleGeneratePairingCode}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-xs"
+                    onClick={() => handleGeneratePairingCode(true)}
+                    className="btn btn-ghost btn-sm text-xs font-bold text-slate-300 hover:text-white flex items-center gap-1.5 shrink-0 cursor-pointer"
+                    title="Generate a different 6-digit code if needed"
                   >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    {pairingCodeInfo ? 'Get New 6-Digit Code' : 'Generate 6-Digit Code'}
+                    <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
+                    Reset Code
                   </button>
                 </div>
 
                 {pairingCodeInfo ? (
-                  <div className="pt-2 space-y-3">
-                    <div className="flex flex-col sm:flex-row items-center gap-4">
-                      <div className="px-6 py-3 bg-white border-2 border-blue-600 rounded-2xl shadow-sm">
-                        <span className="text-3xl sm:text-4xl font-black font-mono tracking-widest text-blue-900">
-                          {pairingCodeInfo.code}
-                        </span>
+                  <div className="pt-2 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-white/[0.03] rounded-2xl border border-white/10">
+                      <div className="flex items-center gap-4">
+                        <div className="px-6 py-3.5 bg-[#080b14] border-2 border-pink-500 rounded-2xl shadow-[0_0_25px_rgba(255,46,99,0.3)]">
+                          <span className="text-3xl sm:text-4xl font-black font-mono tracking-widest text-pink-400">
+                            {pairingCodeInfo.code}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-300 space-y-1">
+                          <p className="font-bold text-emerald-400 flex items-center gap-1.5 text-xs">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                            Permanent & Ready to Connect
+                          </p>
+                          <p className="text-[11px] text-slate-400">
+                            No expiration time • Auto-reconnect active 24/7
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-xs text-slate-600 space-y-1">
-                        <p className="font-bold text-emerald-700 flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                          Active & Ready for Windows App
-                        </p>
-                        <p className="text-slate-500">
-                          Enter this 6-digit code in the <strong>"6-Digit Pair Code"</strong> box on your PC.
-                        </p>
-                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(pairingCodeInfo.code);
+                          showToast(`Code ${pairingCodeInfo.code} copied!`, 'success');
+                        }}
+                        className="btn btn-primary text-xs font-black px-5 py-2.5 shadow-lg shadow-rose-500/30 flex items-center gap-1.5 cursor-pointer shrink-0"
+                      >
+                        <Copy className="w-3.5 h-3.5" /> Copy Code
+                      </button>
                     </div>
 
                     {/* Server URL helper */}
-                    <div className="p-3 bg-white/90 border border-blue-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="p-3.5 bg-white/5 border border-white/10 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="text-xs">
-                        <span className="font-bold text-slate-700">Windows App "Shop Server URL":</span>
-                        <code className="ml-2 font-mono text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded text-[11px]">
+                        <span className="font-bold text-slate-300">Windows App "Server URL":</span>
+                        <code className="ml-2 font-mono text-pink-300 font-bold bg-[#080b14] px-2.5 py-1 rounded-lg border border-white/10 text-[11px]">
                           {typeof window !== 'undefined' ? window.location.origin : ''}
                         </code>
                       </div>
@@ -1484,16 +1551,16 @@ create table if not exists public.shops (
                           navigator.clipboard.writeText(window.location.origin);
                           showToast('Server URL copied! Paste this into the "Shop Server URL" box in Windows app.', 'success');
                         }}
-                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+                        className="btn btn-ghost btn-sm text-[11px] font-bold self-start sm:self-auto cursor-pointer"
                       >
                         <Copy className="w-3.5 h-3.5" /> Copy URL
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="p-3 bg-white/80 rounded-xl border border-blue-100 flex items-center justify-between">
-                    <p className="text-xs text-slate-600">
-                      Click <strong>"Generate 6-Digit Code"</strong> above to display your instant connection number.
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-between">
+                    <p className="text-xs text-slate-400">
+                      Loading your permanent 6-digit code...
                     </p>
                   </div>
                 )}
@@ -1501,7 +1568,7 @@ create table if not exists public.shops (
 
               {/* Alternative: Utility API Key */}
               <div>
-                <span className="text-xs font-bold text-slate-700 block mb-2">
+                <span className="text-xs font-bold text-slate-300 block mb-2">
                   Alternative: Permanent Shop Utility API Key
                 </span>
                 {!utilityKey ? (
@@ -1509,19 +1576,19 @@ create table if not exists public.shops (
                     type="button"
                     onClick={handleCreateUtilityKey}
                     disabled={isCreatingKey}
-                    className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-2 cursor-pointer"
+                    className="btn btn-ghost text-xs font-bold flex items-center gap-2 cursor-pointer"
                   >
-                    <Key className="w-4 h-4" />
+                    <Key className="w-4 h-4 text-pink-400" />
                     {isCreatingKey ? 'Creating key...' : 'Create Utility API Key'}
                   </button>
                 ) : (
-                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-700">Permanent Utility Key:</span>
+                      <span className="text-xs font-bold text-slate-300">Permanent Utility Key:</span>
                       <button
                         type="button"
                         onClick={handleCreateUtilityKey}
-                        className="text-[11px] text-blue-600 hover:underline cursor-pointer"
+                        className="text-[11px] text-pink-400 hover:underline cursor-pointer"
                       >
                         Regenerate Key
                       </button>
@@ -1532,7 +1599,7 @@ create table if not exists public.shops (
                         type="text"
                         readOnly
                         value={utilityKey}
-                        className="w-full bg-white px-3 py-2 border border-slate-200 rounded-lg text-xs font-mono font-semibold text-slate-800 select-all"
+                        className="w-full bg-[#080b14] px-3 py-2 border border-white/10 rounded-xl text-xs font-mono font-semibold text-slate-200 select-all"
                       />
                       <button
                         type="button"
@@ -1540,7 +1607,7 @@ create table if not exists public.shops (
                           navigator.clipboard.writeText(utilityKey);
                           showToast('Utility Key copied to clipboard!', 'success');
                         }}
-                        className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shrink-0 flex items-center gap-1 cursor-pointer"
+                        className="btn btn-primary text-xs font-bold shrink-0 flex items-center gap-1 cursor-pointer"
                       >
                         <Copy className="w-3.5 h-3.5" /> Copy
                       </button>
@@ -1550,15 +1617,15 @@ create table if not exists public.shops (
               </div>
 
               {/* Shop default printer selection */}
-              <div className="pt-4 border-t border-slate-100">
-                <label className="text-xs font-bold text-slate-800 block mb-1.5">
+              <div className="pt-4 border-t border-white/10">
+                <label className="text-xs font-bold text-slate-300 block mb-1.5">
                   Shop default printer: Choose a printer below after the desktop app reports its inventory.
                 </label>
                 <div className="flex gap-2 max-w-md">
                   <select
                     value={defaultPrinterSelection}
                     onChange={(e) => handleUpdateDefaultPrinter(e.target.value)}
-                    className="flex-1 py-2.5 px-3 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 bg-white"
+                    className="flex-1 py-2.5 px-3 border border-white/10 rounded-xl text-xs font-medium text-white bg-[#080b14] focus:outline-none focus:border-pink-500"
                   >
                     <option value="">Choose a printer...</option>
                     {agent?.installedPrinters && agent.installedPrinters.length > 0 ? (
@@ -1577,16 +1644,16 @@ create table if not exists public.shops (
                   </select>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1.5">
-                  Current Default Printer: <strong className="text-slate-700">{defaultPrinterSelection || 'Not selected'}</strong>
+                  Current Default Printer: <strong className="text-slate-200">{defaultPrinterSelection || 'Not selected'}</strong>
                 </p>
               </div>
             </div>
 
             {/* In-Browser Interactive Windows Agent Simulator */}
-            <div className="bg-slate-900 text-white rounded-2xl p-8 border border-slate-800 shadow-md">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+            <div className="card space-y-4 p-6 sm:p-8">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
                 <div>
-                  <h4 className="text-base font-bold text-white flex items-center gap-2">
+                  <h4 className="text-base font-bold text-white flex items-center gap-2 font-head">
                     <Play className="w-4 h-4 text-emerald-400" /> Interactive Desktop Agent Spooler Simulator
                   </h4>
                   <p className="text-xs text-slate-400 mt-0.5">
@@ -1597,7 +1664,7 @@ create table if not exists public.shops (
                 <button
                   onClick={handleSimulateAgentJob}
                   disabled={isSimulatingAgent}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer"
+                  className="btn btn-primary text-xs font-black shadow-lg shadow-rose-500/30 flex items-center gap-2 cursor-pointer self-start sm:self-auto"
                 >
                   {isSimulatingAgent ? (
                     <>
@@ -1623,57 +1690,64 @@ create table if not exists public.shops (
         )}
 
         {/* ========================================================
-            TAB 6: SALES REPORTS & ANALYTICS
+            TAB 8: SALES REPORTS & ANALYTICS
            ======================================================== */}
         {activeTab === 'reports' && stats && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <p className="text-xs font-semibold text-slate-500">Today's Revenue</p>
-                <p className="text-2xl font-black text-slate-900 mt-1">₹{stats.todayRevenue.toFixed(2)}</p>
-                <p className="text-[11px] text-emerald-600 font-semibold mt-1">{stats.todayOrders} orders processed today</p>
+              <div className="card p-6">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today's Revenue</p>
+                <p className="text-3xl font-black text-white mt-1 font-head grad">₹{stats.todayRevenue.toFixed(2)}</p>
+                <p className="text-[11px] text-emerald-400 font-semibold mt-1.5 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  {stats.todayOrders} orders processed today
+                </p>
               </div>
 
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <p className="text-xs font-semibold text-slate-500">Weekly Revenue</p>
-                <p className="text-2xl font-black text-slate-900 mt-1">₹{stats.weeklyRevenue.toFixed(2)}</p>
-                <p className="text-[11px] text-slate-400 mt-1">{stats.weeklyOrders} orders this week</p>
+              <div className="card p-6">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Weekly Revenue</p>
+                <p className="text-3xl font-black text-white mt-1 font-head">₹{stats.weeklyRevenue.toFixed(2)}</p>
+                <p className="text-[11px] text-slate-400 mt-1.5">{stats.weeklyOrders} orders this week</p>
               </div>
 
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <p className="text-xs font-semibold text-slate-500">Lifetime Revenue</p>
-                <p className="text-2xl font-black text-blue-600 mt-1">₹{stats.lifetimeRevenue.toFixed(2)}</p>
-                <p className="text-[11px] text-slate-400 mt-1">{stats.lifetimeOrders} total orders recorded</p>
+              <div className="card p-6">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Lifetime Revenue</p>
+                <p className="text-3xl font-black text-pink-400 mt-1 font-head">₹{stats.lifetimeRevenue.toFixed(2)}</p>
+                <p className="text-[11px] text-slate-400 mt-1.5">{stats.lifetimeOrders} total orders recorded</p>
               </div>
 
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <p className="text-xs font-semibold text-slate-500">Total Page Impressions</p>
-                <p className="text-2xl font-black text-slate-900 mt-1">{stats.totalPageCount}</p>
-                <p className="text-[11px] text-slate-400 mt-1">{stats.completedJobs} print jobs completed</p>
+              <div className="card p-6">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Page Impressions</p>
+                <p className="text-3xl font-black text-white mt-1 font-head">{stats.totalPageCount}</p>
+                <p className="text-[11px] text-slate-400 mt-1.5">{stats.completedJobs} print jobs completed</p>
               </div>
             </div>
           </div>
         )}
 
         {/* ========================================================
-            TAB 7: ACTIVITY LOG
+            TAB 9: ACTIVITY LOG
            ======================================================== */}
         {activeTab === 'activity' && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <h3 className="text-base font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">
-              Audit Trail & Activity Log
-            </h3>
+          <div className="card p-6 sm:p-8 space-y-4">
+            <div className="pb-3 border-b border-white/10 flex items-center justify-between">
+              <div>
+                <div className="eyebrow">AUDIT TRAIL</div>
+                <h3 className="text-xl font-black font-head text-white">System Activity & Audit Log</h3>
+              </div>
+              <span className="text-xs text-slate-400 font-mono">{activityLogs.length} events logged</span>
+            </div>
 
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-white/[0.06]">
               {activityLogs.map((log) => (
-                <div key={log.id} className="py-3 flex items-start justify-between gap-4">
+                <div key={log.id} className="py-3.5 flex items-start justify-between gap-4">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-pink-300">
                       {log.actionType.replace('_', ' ')}
                     </span>
-                    <p className="text-xs font-semibold text-slate-800 mt-1">{log.description}</p>
+                    <p className="text-xs font-semibold text-slate-200 mt-1.5">{log.description}</p>
                   </div>
-                  <span className="text-[11px] text-slate-400 shrink-0">
+                  <span className="text-[11px] text-slate-400 font-mono shrink-0">
                     {new Date(log.createdAt).toLocaleString()}
                   </span>
                 </div>
@@ -1683,80 +1757,86 @@ create table if not exists public.shops (
         )}
 
         {/* ========================================================
-            TAB 8: ARCHIVE
+            TAB 10: ARCHIVE
            ======================================================== */}
         {activeTab === 'archive' && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <h3 className="text-base font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">
-              Archived Orders
-            </h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Completed and past orders archived for audit and financial record keeping.
-            </p>
+          <div className="card p-6 sm:p-8 space-y-4">
+            <div className="pb-3 border-b border-white/10">
+              <div className="eyebrow">HISTORICAL ORDERS</div>
+              <h3 className="text-xl font-black font-head text-white mb-1">Archived Orders</h3>
+              <p className="text-xs text-slate-400">
+                Completed and past orders archived for audit and financial record keeping.
+              </p>
+            </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 pt-2">
               {orders
                 .filter((o) => o.status === 'archived')
                 .map((ord) => (
                   <div
                     key={ord.id}
-                    className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between"
+                    className="p-4 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-between gap-3 hover:border-white/20 transition"
                   >
                     <div>
-                      <p className="text-xs font-bold text-slate-900">
+                      <p className="text-xs font-bold text-white">
                         {ord.orderNumber} - {ord.documentName}
                       </p>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[11px] text-slate-400 mt-0.5">
                         ₹{ord.totalAmount} • {ord.customerName} • {new Date(ord.createdAt).toLocaleDateString()}
                       </p>
                     </div>
 
                     <button
                       onClick={() => handleRestoreOrder(ord.id)}
-                      className="px-3 py-1 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold"
+                      className="btn btn-ghost btn-sm text-xs font-bold cursor-pointer"
                     >
                       Restore to Completed
                     </button>
                   </div>
                 ))}
               {orders.filter((o) => o.status === 'archived').length === 0 && (
-                <p className="text-xs text-slate-400 py-4 text-center">No orders currently archived.</p>
+                <div className="p-8 text-center text-xs text-slate-400">
+                  No orders currently archived.
+                </div>
               )}
             </div>
           </div>
         )}
 
         {/* ========================================================
-            TAB 9: ACCOUNT & SECURITY
+            TAB 11: ACCOUNT & SECURITY
            ======================================================== */}
         {activeTab === 'security' && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm max-w-2xl space-y-6">
-            <h3 className="text-xl font-bold text-slate-900 pb-4 border-b border-slate-200">
-              Account Security & WhatsApp Verification
-            </h3>
+          <div className="card max-w-2xl p-6 sm:p-8 space-y-6">
+            <div className="pb-4 border-b border-white/10">
+              <div className="eyebrow">AUTHENTICATION</div>
+              <h3 className="text-xl font-black font-head text-white">
+                Account Security & WhatsApp Verification
+              </h3>
+            </div>
 
             {/* WhatsApp Verification */}
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-              <div className="flex items-center justify-between mb-2">
+            <div className="p-5 bg-white/5 rounded-2xl border border-white/10 space-y-4">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-slate-800">WhatsApp Number</p>
-                  <p className="text-sm text-slate-600">{user.whatsappNumber}</p>
+                  <p className="text-xs font-bold text-slate-300">WhatsApp Number</p>
+                  <p className="text-sm text-white font-mono mt-0.5">{user.whatsappNumber}</p>
                 </div>
                 {user.whatsappVerified ? (
-                  <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Verified
+                  <span className="px-3 py-1 bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Verified
                   </span>
                 ) : (
-                  <span className="px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold">
+                  <span className="px-3 py-1 bg-amber-500/15 text-amber-300 border border-amber-500/30 rounded-full text-xs font-black uppercase tracking-wider">
                     Unverified
                   </span>
                 )}
               </div>
 
               {!user.whatsappVerified && (
-                <div className="mt-4 pt-3 border-t border-slate-200 space-y-3">
-                  <p className="text-xs text-slate-500">
-                    Verify your WhatsApp number to activate priority alerts and security notices.
+                <div className="pt-4 border-t border-white/10 space-y-3">
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Verify your WhatsApp number to activate priority alerts and critical print error notices.
                   </p>
 
                   <div className="flex gap-2">
@@ -1764,32 +1844,32 @@ create table if not exists public.shops (
                       type="button"
                       onClick={handleRequestOtp}
                       disabled={isRequestingOtp}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition"
+                      className="btn btn-primary text-xs font-bold py-2.5 px-4 cursor-pointer"
                     >
                       {isRequestingOtp ? 'Sending Code...' : 'Request Verification OTP'}
                     </button>
                   </div>
 
                   {otpMessage && (
-                    <p className="text-xs font-medium text-emerald-600">{otpMessage}</p>
+                    <p className="text-xs font-medium text-emerald-400">{otpMessage}</p>
                   )}
                   {otpDevHint && (
-                    <p className="text-xs font-bold text-indigo-600 bg-indigo-50 p-2 rounded-lg">{otpDevHint}</p>
+                    <p className="text-xs font-bold text-pink-300 bg-pink-500/10 border border-pink-500/20 p-2.5 rounded-xl font-mono">{otpDevHint}</p>
                   )}
 
-                  <div className="flex gap-2 mt-2">
+                  <div className="flex gap-2 pt-1">
                     <input
                       type="text"
                       placeholder="6-digit OTP"
                       maxLength={6}
                       value={otpCode}
                       onChange={(e) => setOtpCode(e.target.value)}
-                      className="w-36 px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold"
+                      className="w-36 px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-pink-500"
                     />
                     <button
                       type="button"
                       onClick={handleVerifyOtp}
-                      className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition"
+                      className="btn btn-ghost text-xs font-bold px-4 py-2 cursor-pointer"
                     >
                       Submit OTP
                     </button>
@@ -1836,28 +1916,28 @@ create table if not exists public.shops (
           PAYMENT COLLECTION MODAL
          ======================================================== */}
       {paymentModalOrder && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl">
-            <h3 className="text-base font-bold text-slate-900 mb-1">Collect Counter Payment</h3>
-            <p className="text-xs text-slate-500 mb-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0d1220] border border-white/15 rounded-3xl max-w-sm w-full p-6 sm:p-7 shadow-2xl text-white">
+            <h3 className="text-lg font-black font-head text-white mb-1">Collect Counter Payment</h3>
+            <p className="text-xs text-slate-400 mb-5">
               Record counter cash or UPI collection for Order {paymentModalOrder.orderNumber}.
             </p>
 
-            <div className="p-4 bg-blue-50 rounded-xl mb-4 text-center">
-              <p className="text-xs font-semibold text-blue-700">Total Amount Due</p>
-              <p className="text-3xl font-black text-blue-900 mt-1">₹{paymentModalOrder.totalAmount.toFixed(2)}</p>
+            <div className="p-5 bg-gradient-to-br from-pink-500/10 to-violet-500/10 border border-pink-500/25 rounded-2xl mb-5 text-center">
+              <p className="text-xs font-bold text-pink-300 uppercase tracking-wider">Total Amount Due</p>
+              <p className="text-3xl font-black text-white mt-1 font-head grad">₹{paymentModalOrder.totalAmount.toFixed(2)}</p>
             </div>
 
             <div className="space-y-3 mb-6">
-              <label className="text-xs font-bold text-slate-700 block">Payment Method Received</label>
+              <label className="text-xs font-bold text-slate-300 block">Payment Method Received</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('counter_upi')}
-                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition ${
+                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition cursor-pointer ${
                     paymentMethod === 'counter_upi'
-                      ? 'border-blue-600 bg-blue-50 text-blue-900'
-                      : 'border-slate-200 text-slate-600'
+                      ? 'border-pink-500 bg-pink-500/15 text-pink-300 shadow-[0_0_15px_rgba(255,46,99,0.2)]'
+                      : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
                   }`}
                 >
                   Shop Counter UPI QR
@@ -1865,10 +1945,10 @@ create table if not exists public.shops (
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('online_upi')}
-                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition ${
+                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition cursor-pointer ${
                     paymentMethod === 'online_upi'
-                      ? 'border-blue-600 bg-blue-50 text-blue-900'
-                      : 'border-slate-200 text-slate-600'
+                      ? 'border-pink-500 bg-pink-500/15 text-pink-300 shadow-[0_0_15px_rgba(255,46,99,0.2)]'
+                      : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
                   }`}
                 >
                   Online Payment Link
@@ -1879,13 +1959,13 @@ create table if not exists public.shops (
             <div className="flex gap-2">
               <button
                 onClick={() => setPaymentModalOrder(null)}
-                className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition"
+                className="btn btn-ghost flex-1 py-3 text-xs font-bold cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmPayment}
-                className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                className="btn btn-primary flex-1 py-3 text-xs font-black shadow-lg shadow-rose-500/30 cursor-pointer"
               >
                 Confirm Paid
               </button>
@@ -1898,46 +1978,56 @@ create table if not exists public.shops (
           WINDOWS AGENT SETUP & DOWNLOAD PACKAGE MODAL
          ======================================================== */}
       {showAgentSetupModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0d1220] border border-white/15 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto text-white">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-grad flex items-center justify-center text-white font-black shadow-lg shadow-rose-500/30">
                   <Laptop className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">printx Desktop for Windows</h3>
-                  <p className="text-xs text-slate-500">Official Windows Spooler background agent v2.4</p>
+                  <h3 className="text-lg font-black font-head text-white">printx Desktop for Windows</h3>
+                  <p className="text-xs text-slate-400">Official Windows Spooler background agent v2.4</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAgentSetupModal(false)}
-                className="text-slate-400 hover:text-slate-700 font-bold p-1 cursor-pointer"
+                className="text-slate-400 hover:text-white font-bold p-1 cursor-pointer rounded-lg hover:bg-white/5"
               >
                 ✕
               </button>
             </div>
 
             {agentDownloadStatus && (
-              <div className="mb-4 p-3 bg-blue-50/80 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center justify-between">
+              <div className="mb-4 p-3.5 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl text-xs text-emerald-300 flex items-center justify-between">
                 <span>{agentDownloadStatus}</span>
-                <span className="text-[10px] text-blue-600 font-semibold">Ready</span>
+                <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Ready</span>
               </div>
             )}
 
             <div className="space-y-6">
               {/* Step 1: Download package */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
                   Step 1: Download the application package
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <button
                     type="button"
+                    onClick={() => handleDownloadAgent('bat')}
+                    disabled={isDownloadingAgent}
+                    className="btn btn-primary p-3 text-xs font-black shadow-lg shadow-rose-500/30 flex items-center gap-2 justify-center cursor-pointer"
+                  >
+                    <Play className="w-4 h-4 fill-white" />
+                    <span>Start_Agent (.BAT)</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => handleDownloadAgent('zip')}
                     disabled={isDownloadingAgent}
-                    className="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 justify-center shadow-xs cursor-pointer"
+                    className="btn btn-ghost p-3 text-xs font-bold flex items-center gap-2 justify-center cursor-pointer"
                   >
                     <Download className="w-4 h-4" />
                     <span>Download App (.ZIP)</span>
@@ -1945,21 +2035,11 @@ create table if not exists public.shops (
 
                   <button
                     type="button"
-                    onClick={() => handleDownloadAgent('bat')}
-                    disabled={isDownloadingAgent}
-                    className="p-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 justify-center shadow-xs cursor-pointer"
-                  >
-                    <Play className="w-4 h-4" />
-                    <span>Start_Agent (.BAT)</span>
-                  </button>
-
-                  <button
-                    type="button"
                     onClick={() => handleDownloadAgent('script')}
                     disabled={isDownloadingAgent}
-                    className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition flex items-center gap-2 justify-center cursor-pointer border border-slate-200"
+                    className="btn btn-ghost p-3 text-xs font-bold flex items-center gap-2 justify-center cursor-pointer"
                   >
-                    <FileCode className="w-4 h-4 text-slate-600" />
+                    <FileCode className="w-4 h-4 text-pink-400" />
                     <span>Python Code (.PY)</span>
                   </button>
                 </div>
@@ -1967,38 +2047,53 @@ create table if not exists public.shops (
 
               {/* Step 2: 6-Digit Pairing Code & Server URL */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-                  Step 2: Connect with 6-Digit Quick Pairing Code
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
+                  Step 2: Connect with Fixed 6-Digit Quick Pairing Code
                 </h4>
-                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl space-y-3">
+                <div className="p-5 bg-gradient-to-br from-pink-500/10 via-purple-500/10 to-transparent border-2 border-pink-500/40 rounded-2xl space-y-4">
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="px-4 py-2 bg-white border border-blue-500 rounded-xl shadow-xs">
-                        <span className="text-2xl font-black font-mono tracking-widest text-blue-900">
-                          {pairingCodeInfo?.code || '------'}
+                      <div className="px-5 py-2.5 bg-[#080b14] border-2 border-pink-500 rounded-xl shadow-[0_0_20px_rgba(255,46,99,0.3)]">
+                        <span className="text-2xl sm:text-3xl font-black font-mono tracking-widest text-pink-400">
+                          {pairingCodeInfo?.code || agent?.pairingCode || '------'}
                         </span>
                       </div>
-                      <div className="text-xs text-slate-600">
-                        <p className="font-bold text-slate-900">Your 6-Digit Code</p>
-                        <p className="text-[11px] text-slate-500">Valid for 24 hours</p>
+                      <div className="text-xs text-slate-300">
+                        <p className="font-bold text-white">Fixed Permanent Code</p>
+                        <p className="text-[11px] text-emerald-400 font-semibold">Stays connected 24/7 until logout</p>
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleGeneratePairingCode}
-                      className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      {pairingCodeInfo ? 'New Code' : 'Generate Code'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const code = pairingCodeInfo?.code || agent?.pairingCode;
+                          if (code) {
+                            navigator.clipboard.writeText(code);
+                            showToast(`Pairing code ${code} copied!`, 'success');
+                          }
+                        }}
+                        className="btn btn-primary text-xs font-black py-2 px-3.5 shadow-lg shadow-rose-500/30 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Copy className="w-3.5 h-3.5" /> Copy Code
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleGeneratePairingCode(true)}
+                        className="btn btn-ghost btn-sm text-xs font-bold cursor-pointer"
+                        title="Generate a new code if needed"
+                      >
+                        Reset
+                      </button>
+                    </div>
                   </div>
 
                   {/* Server URL Box */}
-                  <div className="pt-2 border-t border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                     <div>
-                      <span className="font-bold text-slate-700">App "Server URL":</span>
-                      <code className="ml-1.5 font-mono text-blue-700 font-bold bg-white px-2 py-0.5 rounded border border-blue-200 text-[11px]">
+                      <span className="font-bold text-slate-300">App "Server URL":</span>
+                      <code className="ml-1.5 font-mono text-pink-300 font-bold bg-[#080b14] px-2 py-0.5 rounded border border-white/10 text-[11px]">
                         {typeof window !== 'undefined' ? window.location.origin : ''}
                       </code>
                     </div>
@@ -2008,7 +2103,7 @@ create table if not exists public.shops (
                         navigator.clipboard.writeText(window.location.origin);
                         showToast('Server URL copied!', 'success');
                       }}
-                      className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 text-[11px] font-bold rounded-lg border border-slate-200 transition flex items-center gap-1 cursor-pointer self-start sm:self-auto"
+                      className="btn btn-ghost btn-sm text-[11px] font-bold self-start sm:self-auto cursor-pointer"
                     >
                       <Copy className="w-3 h-3" /> Copy URL
                     </button>
@@ -2018,16 +2113,16 @@ create table if not exists public.shops (
 
               {/* Step 3: Alternative Utility API Key */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
                   Alternative: Permanent Shop Utility Key
                 </h4>
-                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-2">
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
                       readOnly
                       value={utilityKey || 'Click generate key for permanent token'}
-                      className="flex-1 font-mono text-xs bg-white border border-slate-200 rounded-xl py-2 px-3 text-slate-800 select-all"
+                      className="flex-1 font-mono text-xs bg-[#080b14] border border-white/10 rounded-xl py-2 px-3 text-slate-200 select-all"
                     />
                     {utilityKey ? (
                       <button
@@ -2036,7 +2131,7 @@ create table if not exists public.shops (
                           navigator.clipboard.writeText(utilityKey);
                           showToast('Utility key copied to clipboard!', 'success');
                         }}
-                        className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                        className="btn btn-primary text-xs font-bold py-2 px-3.5 flex items-center gap-1.5 cursor-pointer"
                       >
                         <Copy className="w-3.5 h-3.5" /> Copy
                       </button>
@@ -2044,7 +2139,7 @@ create table if not exists public.shops (
                       <button
                         type="button"
                         onClick={handleCreateUtilityKey}
-                        className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                        className="btn btn-primary text-xs font-bold py-2 px-3.5 flex items-center gap-1.5 cursor-pointer shrink-0"
                       >
                         <Key className="w-3.5 h-3.5" /> Generate Key
                       </button>
@@ -2053,12 +2148,12 @@ create table if not exists public.shops (
                 </div>
               </div>
 
-              {/* Step 3: PowerShell 1-liner */}
+              {/* PowerShell 1-liner */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
                   Option: Run directly in Windows PowerShell
                 </h4>
-                <div className="p-3 bg-slate-900 rounded-xl text-slate-200 text-xs font-mono flex items-center justify-between gap-2 overflow-x-auto">
+                <div className="p-3.5 bg-[#080b14] rounded-2xl border border-white/10 text-slate-200 text-xs font-mono flex items-center justify-between gap-2 overflow-x-auto">
                   <div className="flex items-center gap-2 truncate">
                     <Terminal className="w-4 h-4 text-emerald-400 shrink-0" />
                     <span className="truncate">curl -O {window.location.origin}/api/agent/download-windows-exe</span>
@@ -2070,7 +2165,7 @@ create table if not exists public.shops (
                       setCopiedPowerShell(true);
                       setTimeout(() => setCopiedPowerShell(false), 2000);
                     }}
-                    className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg shrink-0 cursor-pointer text-[11px] flex items-center gap-1"
+                    className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg shrink-0 cursor-pointer text-[11px] flex items-center gap-1"
                   >
                     {copiedPowerShell ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                     {copiedPowerShell ? 'Copied' : 'Copy'}
@@ -2079,10 +2174,10 @@ create table if not exists public.shops (
               </div>
 
               {/* Instant Browser Test Simulator */}
-              <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl flex items-center justify-between">
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-emerald-900">Test Agent Connection Live</p>
-                  <p className="text-[11px] text-emerald-800 mt-0.5">
+                  <p className="text-xs font-bold text-emerald-300">Test Agent Connection Live</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
                     Simulate active Windows Spooler connection directly in this session.
                   </p>
                 </div>
@@ -2090,18 +2185,18 @@ create table if not exists public.shops (
                   type="button"
                   onClick={handleSimulateAgentJob}
                   disabled={isSimulatingAgent}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer shrink-0"
+                  className="btn btn-primary text-xs font-black shadow-lg shadow-rose-500/30 flex items-center gap-1.5 cursor-pointer shrink-0"
                 >
                   {isSimulatingAgent ? 'Connecting...' : 'Run Simulation'}
                 </button>
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end">
+            <div className="mt-6 pt-4 border-t border-white/10 flex justify-end">
               <button
                 type="button"
                 onClick={() => setShowAgentSetupModal(false)}
-                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+                className="btn btn-ghost text-xs font-bold py-2.5 px-5 cursor-pointer"
               >
                 Close
               </button>
@@ -2116,10 +2211,10 @@ create table if not exists public.shops (
           <div
             className={`px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 border text-sm font-bold backdrop-blur-md transition-all ${
               toast.type === 'success'
-                ? 'bg-emerald-950/95 text-emerald-200 border-emerald-600'
+                ? 'bg-[#0d1220]/95 text-emerald-300 border-emerald-500/50 shadow-[0_10px_30px_rgba(34,197,94,0.25)]'
                 : toast.type === 'error'
-                ? 'bg-rose-950/95 text-rose-200 border-rose-600'
-                : 'bg-slate-900/95 text-sky-200 border-sky-600'
+                ? 'bg-[#0d1220]/95 text-rose-300 border-rose-500/50 shadow-[0_10px_30px_rgba(244,63,94,0.25)]'
+                : 'bg-[#0d1220]/95 text-sky-300 border-sky-500/50'
             }`}
           >
             <span className="text-base">{toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}</span>

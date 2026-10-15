@@ -70,38 +70,26 @@
     {
       "id": "agt-cf0f2f85",
       "shopId": "shp-00ff309e",
-      "deviceName": "Windows Shop Workstation",
+      "deviceName": "Ekta-PC-Main",
       "status": "online",
-      "authTokenHash": "e94721b789a32f79653abfc8d20014a6c9e20f07dfd40611a36b4d65c2fde8a1",
+      "authTokenHash": "959f6d627de8f1b8bc126431a60a4ffafc024a0430345676de1f8da196e851c8",
       "utilityApiKey": "adr_util_live_db74742faaf0ea766249170ef3f11a8c",
       "installedPrinters": [
         {
-          "name": "HP LaserJet Pro M404dn",
-          "isDefault": true,
-          "status": "Ready",
-          "supportsColor": false
-        },
-        {
-          "name": "Canon PIXMA G3010",
-          "isDefault": false,
-          "status": "Ready",
-          "supportsColor": true
-        },
-        {
-          "name": "Epson L3150 Series",
-          "isDefault": false,
-          "status": "Ready",
-          "supportsColor": true
+          "name": "HP LaserJet Pro M404n",
+          "isDefault": true
         }
       ],
-      "defaultPrinter": "Canon PIXMA G3010",
+      "defaultPrinter": "HP LaserJet Pro M404n",
       "bwPrinter": "HP LaserJet Pro M404dn",
       "colorPrinter": "Canon PIXMA G3010",
       "appVersion": "1.2.0",
       "dryRunMode": false,
       "createdAt": "2026-10-10T07:37:02.466Z",
       "pairingCode": "293843",
-      "pairingCodeExpiresAt": "2026-10-16T05:37:06.202Z"
+      "pairingCodeExpiresAt": "2026-10-16T05:37:06.202Z",
+      "ipAddress": "127.0.0.1",
+      "lastSeenAt": "2026-10-15T18:34:59.063Z"
     }
   ],
   "orders": [
