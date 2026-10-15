@@ -1,1 +1,80 @@
 @import "tailwindcss";
+
+:root {
+  --bg: #080b14;
+  --bg2: #0d1220;
+  --panel: rgba(255, 255, 255, 0.04);
+  --panel2: rgba(255, 255, 255, 0.07);
+  --line: rgba(255, 255, 255, 0.09);
+  --line2: rgba(255, 255, 255, 0.18);
+  --text: #f1f5f9;
+  --muted: #9aa7bd;
+  --dim: #6f7d95;
+  --pink: #ff2e63;
+  --pink2: #ff6a8f;
+  --violet: #7c5cff;
+  --green: #22c55e;
+  --amber: #f5a524;
+  --grad: linear-gradient(135deg, #ff2e63 0%, #c13cff 60%, #7c5cff 100%);
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  --glow: rgba(255, 46, 99, 0.18);
+  --glow2: rgba(124, 92, 255, 0.16);
+}
+
+:root[data-theme="light"] {
+  --bg: #f6f7fb;
+  --bg2: #ffffff;
+  --panel: rgba(15, 23, 42, 0.035);
+  --panel2: rgba(15, 23, 42, 0.06);
+  --line: rgba(15, 23, 42, 0.1);
+  --line2: rgba(15, 23, 42, 0.2);
+  --text: #0f172a;
+  --muted: #475569;
+  --dim: #64748b;
+  --shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+  --glow: rgba(255, 46, 99, 0.12);
+  --glow2: rgba(124, 92, 255, 0.1);
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Sora", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+}
+
+.text-grad {
+  background: linear-gradient(135deg, #ff2e63 0%, #c13cff 60%, #7c5cff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.bg-grad {
+  background: linear-gradient(135deg, #ff2e63 0%, #c13cff 60%, #7c5cff 100%);
+}
+
+.btn-grad {
+  background: linear-gradient(135deg, #ff2e63 0%, #c13cff 60%, #7c5cff 100%);
+  box-shadow: 0 10px 30px rgba(255, 46, 99, 0.35);
+  color: #ffffff;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-grad:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 38px rgba(255, 46, 99, 0.5);
+}
+
+@keyframes scanline-anim {
+  0%, 100% { top: 6%; }
+  50% { top: 90%; }
+}
+
+.animate-scanline {
+  animation: scanline-anim 1.8s ease-in-out infinite;
+}

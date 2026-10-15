@@ -12,28 +12,6 @@
       "updatedAt": "2026-10-09T07:02:21.443Z"
     },
     {
-      "id": "usr-owner-001",
-      "email": "rajesh@apexprint.in",
-      "passwordHash": "7df0c2774e084b17b0a964fe7921dc0bdec2f005774c4f4a4805e67e8cd0abfd",
-      "fullName": "Rajesh Sharma",
-      "whatsappNumber": "+919812345678",
-      "whatsappVerified": true,
-      "role": "shop_owner",
-      "createdAt": "2026-10-09T07:02:21.443Z",
-      "updatedAt": "2026-10-09T07:02:21.443Z"
-    },
-    {
-      "id": "usr-owner-002",
-      "email": "kavita@saidigital.com",
-      "passwordHash": "0197dc691b6ff461f80a534956ce59e8b6c8c04b1621897246e398ef6fb8f902",
-      "fullName": "Kavita Verma",
-      "whatsappNumber": "+919711223344",
-      "whatsappVerified": true,
-      "role": "shop_owner",
-      "createdAt": "2026-10-09T07:02:21.443Z",
-      "updatedAt": "2026-10-09T07:02:21.443Z"
-    },
-    {
       "email": "surya286351@gmail.com",
       "passwordHash": "199dbec4be35a155d7fc826a6757d4dac404899667cfa6bf7aa09bf048e35270",
       "fullName": "surya",
@@ -46,37 +24,6 @@
     }
   ],
   "shops": [
-    {
-      "id": "shp-apex-001",
-      "slug": "apex-print",
-      "name": "Apex Super Print & Xerox Hub",
-      "ownerId": "usr-owner-001",
-      "phone": "+919812345678",
-      "address": "Shop 14, Commercial Market, Sector 18",
-      "city": "Noida",
-      "status": "active",
-      "activatedAt": "2026-10-09T07:02:21.443Z",
-      "activatedBy": "usr-admin-001",
-      "createdAt": "2026-10-09T07:02:21.443Z",
-      "updatedAt": "2026-10-13T18:16:27.314Z",
-      "rejectionReason": "Incomplete documentation / verification",
-      "upiId": "apexprint@upi",
-      "requiresCounterPayment": true
-    },
-    {
-      "id": "shp-sai-002",
-      "slug": "sai-digital",
-      "name": "Sai Digital Xerox & Cyber Cafe",
-      "ownerId": "usr-owner-002",
-      "phone": "+919711223344",
-      "address": "Near Metro Gate 2, Main Market, Laxmi Nagar",
-      "city": "Delhi",
-      "status": "active",
-      "createdAt": "2026-10-09T07:02:21.443Z",
-      "updatedAt": "2026-10-10T07:06:35.910Z",
-      "activatedAt": "2026-10-10T07:06:35.910Z",
-      "activatedBy": "usr-admin-001"
-    },
     {
       "slug": "ekta-communication",
       "name": "ekta communication",
@@ -94,32 +41,6 @@
   ],
   "pricing": [
     {
-      "id": "prc-apex-001",
-      "shopId": "shp-apex-001",
-      "bwSinglePrice": 3.5,
-      "bwDuplexPrice": 5,
-      "colorSinglePrice": 12,
-      "colorDuplexPrice": 20,
-      "legalExtra": 2,
-      "photo4x6Price": null,
-      "idCardSinglePrice": 25,
-      "currency": "INR",
-      "updatedAt": "2026-10-13T18:16:15.253Z"
-    },
-    {
-      "id": "prc-sai-002",
-      "shopId": "shp-sai-002",
-      "bwSinglePrice": 2.5,
-      "bwDuplexPrice": 4,
-      "colorSinglePrice": 12,
-      "colorDuplexPrice": 20,
-      "legalExtra": 1.5,
-      "photo4x6Price": 25,
-      "idCardSinglePrice": 15,
-      "currency": "INR",
-      "updatedAt": "2026-10-09T07:02:21.443Z"
-    },
-    {
       "id": "prc-fb1d86f8",
       "shopId": "shp-00ff309e",
       "bwSinglePrice": 2,
@@ -135,26 +56,6 @@
   ],
   "approvalRules": [
     {
-      "id": "rul-apex-001",
-      "shopId": "shp-apex-001",
-      "mode": "smart",
-      "maxAutoPages": 10,
-      "maxAutoAmount": 50,
-      "requirePaymentBeforePrint": true,
-      "notifyWhatsapp": true,
-      "updatedAt": "2026-10-09T07:02:21.443Z"
-    },
-    {
-      "id": "rul-sai-002",
-      "shopId": "shp-sai-002",
-      "mode": "manual",
-      "maxAutoPages": 5,
-      "maxAutoAmount": 30,
-      "requirePaymentBeforePrint": true,
-      "notifyWhatsapp": false,
-      "updatedAt": "2026-10-09T07:02:21.443Z"
-    },
-    {
       "id": "rul-bdfc2cfb",
       "shopId": "shp-00ff309e",
       "mode": "auto",
@@ -162,49 +63,10 @@
       "maxAutoAmount": 50,
       "requirePaymentBeforePrint": false,
       "notifyWhatsapp": true,
-      "updatedAt": "2026-10-10T07:42:10.642Z"
+      "updatedAt": "2026-10-15T05:39:07.606Z"
     }
   ],
   "agents": [
-    {
-      "id": "agt-apex-001",
-      "shopId": "shp-apex-001",
-      "deviceName": "Shop-Windows-Workstation",
-      "pairingCode": "749102",
-      "authTokenHash": "e779f39aaa304995803588ad24372b7678d74bedf263645db81d56adcecbd931",
-      "status": "online",
-      "lastSeenAt": "2026-10-13T17:29:13.655Z",
-      "defaultPrinter": "HP LaserJet Pro M404dn",
-      "bwPrinter": "HP LaserJet Pro M404dn",
-      "colorPrinter": "Canon PIXMA G3010",
-      "installedPrinters": [
-        {
-          "name": "HP LaserJet Pro M404dn",
-          "isDefault": true,
-          "status": "Ready",
-          "supportsColor": false,
-          "driverName": "HP PCL 6 Driver"
-        },
-        {
-          "name": "Canon PIXMA G3010",
-          "isDefault": false,
-          "status": "Ready",
-          "supportsColor": true,
-          "driverName": "Canon G3000 Series"
-        },
-        {
-          "name": "Epson L3150 Series",
-          "isDefault": false,
-          "status": "Ready",
-          "supportsColor": true,
-          "driverName": "Epson ESC/P-R"
-        }
-      ],
-      "ipAddress": "127.0.0.1",
-      "appVersion": "1.2.0",
-      "dryRunMode": false,
-      "createdAt": "2026-10-09T07:02:21.443Z"
-    },
     {
       "id": "agt-cf0f2f85",
       "shopId": "shp-00ff309e",
@@ -238,146 +100,11 @@
       "appVersion": "1.2.0",
       "dryRunMode": false,
       "createdAt": "2026-10-10T07:37:02.466Z",
-      "pairingCode": "903029",
-      "pairingCodeExpiresAt": "2026-10-13T17:25:02.625Z"
+      "pairingCode": "293843",
+      "pairingCodeExpiresAt": "2026-10-16T05:37:06.202Z"
     }
   ],
   "orders": [
-    {
-      "id": "ord-001",
-      "orderNumber": "ORD-920412",
-      "shopId": "shp-apex-001",
-      "customerName": "Anil Gupta",
-      "customerPhone": "+919899123456",
-      "documentName": "Project_Report_Semester_6.pdf",
-      "documentType": "application/pdf",
-      "filePath": "sample_report.pdf",
-      "fileSizeBytes": 1420500,
-      "pageCount": 12,
-      "copies": 1,
-      "colorMode": "bw",
-      "duplexMode": "duplex",
-      "paperSize": "A4",
-      "orderType": "document",
-      "pageRange": "all",
-      "customNotes": "Please staple top-left corner",
-      "unitPrice": 1.5,
-      "totalAmount": 18,
-      "status": "payment_pending",
-      "paymentStatus": "unpaid",
-      "approvedAt": "2026-10-10T06:52:21.443Z",
-      "approvedBy": "usr-owner-001",
-      "createdAt": "2026-10-10T06:52:21.443Z",
-      "updatedAt": "2026-10-10T06:52:21.443Z"
-    },
-    {
-      "id": "ord-002",
-      "orderNumber": "ORD-920415",
-      "shopId": "shp-apex-001",
-      "customerName": "Priya Sharma",
-      "customerPhone": "+919877445566",
-      "documentName": "Aadhaar_Front_Back_Sheet.png",
-      "documentType": "image/png",
-      "filePath": "sample_idcard.png",
-      "fileSizeBytes": 890400,
-      "pageCount": 1,
-      "copies": 2,
-      "colorMode": "color",
-      "duplexMode": "single",
-      "paperSize": "A4",
-      "orderType": "id_card",
-      "unitPrice": 15,
-      "totalAmount": 30,
-      "status": "queued",
-      "paymentStatus": "collected",
-      "paymentCollectedAt": "2026-10-10T06:52:21.443Z",
-      "paymentCollectorName": "Rajesh Sharma",
-      "paymentMethod": "counter_upi",
-      "approvedAt": "2026-10-10T06:52:21.443Z",
-      "approvedBy": "usr-owner-001",
-      "createdAt": "2026-10-10T06:52:21.443Z",
-      "updatedAt": "2026-10-10T06:52:21.443Z"
-    },
-    {
-      "id": "ord-003",
-      "orderNumber": "ORD-920420",
-      "shopId": "shp-apex-001",
-      "customerName": "Sunil Mehta",
-      "customerPhone": "+919911882233",
-      "documentName": "Indigo_Boarding_Pass.pdf",
-      "documentType": "application/pdf",
-      "filePath": "sample_ticket.pdf",
-      "fileSizeBytes": 420000,
-      "pageCount": 2,
-      "copies": 1,
-      "colorMode": "color",
-      "duplexMode": "single",
-      "paperSize": "A4",
-      "orderType": "document",
-      "unitPrice": 10,
-      "totalAmount": 20,
-      "status": "completed",
-      "paymentStatus": "collected",
-      "paymentCollectedAt": "2026-10-10T06:02:21.443Z",
-      "paymentCollectorName": "Rajesh Sharma",
-      "paymentMethod": "counter_cash",
-      "approvedAt": "2026-10-10T06:02:21.443Z",
-      "approvedBy": "usr-owner-001",
-      "printedAt": "2026-10-10T06:02:21.443Z",
-      "createdAt": "2026-10-10T06:02:21.443Z",
-      "updatedAt": "2026-10-10T06:02:21.443Z",
-      "isDocumentPurged": true,
-      "purgedAt": "2026-10-13T17:09:53.866Z"
-    },
-    {
-      "id": "ord-004",
-      "orderNumber": "ORD-920428",
-      "shopId": "shp-apex-001",
-      "customerName": "Deepak Yadav",
-      "customerPhone": "+919811009988",
-      "documentName": "Tender_Document_Vol_2.pdf",
-      "documentType": "application/pdf",
-      "filePath": "sample_tender.pdf",
-      "fileSizeBytes": 4890000,
-      "pageCount": 45,
-      "copies": 2,
-      "colorMode": "bw",
-      "duplexMode": "single",
-      "paperSize": "A4",
-      "orderType": "document",
-      "unitPrice": 2,
-      "totalAmount": 180,
-      "status": "payment_pending",
-      "paymentStatus": "unpaid",
-      "createdAt": "2026-10-10T07:02:21.443Z",
-      "updatedAt": "2026-10-10T07:09:24.080Z"
-    },
-    {
-      "shopId": "shp-apex-001",
-      "customerName": "Test Customer",
-      "customerPhone": "+919999988888",
-      "documentName": "TestDoc.pdf",
-      "documentType": "application/pdf",
-      "filePath": "sample_test.pdf",
-      "fileSizeBytes": 50000,
-      "pageCount": 1,
-      "copies": 1,
-      "colorMode": "bw",
-      "duplexMode": "single",
-      "paperSize": "A4",
-      "orderType": "document",
-      "unitPrice": 2,
-      "totalAmount": 2,
-      "status": "completed",
-      "paymentStatus": "collected",
-      "id": "ord-88128368",
-      "orderNumber": "ORD-591055",
-      "createdAt": "2026-10-10T07:02:21.447Z",
-      "updatedAt": "2026-10-10T07:02:21.448Z",
-      "printedAt": "2026-10-10T07:02:21.448Z",
-      "isDocumentPurged": true,
-      "purgedAt": "2026-10-13T17:09:53.866Z"
-    },
     {
       "shopId": "shp-00ff309e",
       "customerName": "ram",
@@ -411,86 +138,48 @@
       "purgedAt": "2026-10-13T17:09:53.866Z"
     },
     {
-      "shopId": "shp-apex-001",
-      "customerName": "Test Customer",
-      "customerPhone": "+919999988888",
-      "documentName": "TestDoc.pdf",
-      "documentType": "application/pdf",
-      "filePath": "sample_test.pdf",
-      "fileSizeBytes": 50000,
+      "shopId": "shp-00ff309e",
+      "customerName": "Counter Customer",
+      "customerPhone": "",
+      "documentName": "image_9dda9c47.jpeg",
+      "documentType": "image/jpeg",
+      "filePath": "d4211af7-8440-41a9-a28a-ada2ca4b7b49.jpeg",
+      "fileSizeBytes": 377851,
       "pageCount": 1,
       "copies": 1,
       "colorMode": "bw",
       "duplexMode": "single",
       "paperSize": "A4",
       "orderType": "document",
+      "pageRange": "all",
+      "customNotes": "",
       "unitPrice": 2,
       "totalAmount": 2,
       "status": "completed",
       "paymentStatus": "collected",
-      "id": "ord-228b2979",
-      "orderNumber": "ORD-373396",
-      "createdAt": "2026-10-10T07:33:17.482Z",
-      "updatedAt": "2026-10-10T07:33:17.483Z",
-      "printedAt": "2026-10-10T07:33:17.484Z",
+      "files": [
+        {
+          "id": "d4211af7-8440-41a9-a28a-ada2ca4b7b49",
+          "name": "image_9dda9c47.jpeg",
+          "type": "image/jpeg",
+          "sizeBytes": 377851,
+          "filePath": "d4211af7-8440-41a9-a28a-ada2ca4b7b49.jpeg",
+          "pageCount": 1,
+          "previewUrl": "blob:https://ais-dev-j4wzxf4ek3yadrvyzajprv-973482974092.asia-southeast1.run.app/b1c042ea-e6b9-40de-b84e-070d5f654726",
+          "edited": true
+        }
+      ],
+      "id": "ord-0cc53f41",
+      "orderNumber": "ORD-976954",
+      "createdAt": "2026-10-15T05:50:03.583Z",
+      "updatedAt": "2026-10-15T05:50:25.752Z",
+      "paymentCollectedAt": "2026-10-15T05:50:09.463Z",
+      "paymentCollectorName": "Online UPI Gateway",
+      "paymentMethod": "online_upi",
+      "printedAt": "2026-10-15T05:50:25.752Z",
+      "purgeDueAt": "2026-10-15T05:55:25.752Z",
       "isDocumentPurged": true,
-      "purgedAt": "2026-10-13T17:09:53.867Z"
-    },
-    {
-      "shopId": "shp-00ff309e",
-      "customerName": "Counter Customer",
-      "customerPhone": "",
-      "documentName": "ragistrysathi.pdf",
-      "documentType": "application/pdf",
-      "filePath": "48d592e2-b0a5-4598-9345-9cf8fc9e9c67.pdf",
-      "fileSizeBytes": 1118364,
-      "pageCount": 10,
-      "copies": 1,
-      "colorMode": "bw",
-      "duplexMode": "single",
-      "paperSize": "A4",
-      "orderType": "document",
-      "pageRange": "all",
-      "customNotes": "",
-      "unitPrice": 2,
-      "totalAmount": 20,
-      "status": "queued",
-      "paymentStatus": "collected",
-      "id": "ord-34021bf9",
-      "orderNumber": "ORD-421011",
-      "createdAt": "2026-10-10T07:37:48.353Z",
-      "updatedAt": "2026-10-10T07:44:38.713Z",
-      "paymentCollectedAt": "2026-10-10T07:40:14.368Z",
-      "paymentCollectorName": "surya",
-      "paymentMethod": "counter_cash"
-    },
-    {
-      "shopId": "shp-00ff309e",
-      "customerName": "Counter Customer",
-      "customerPhone": "",
-      "documentName": "ragistrysathi.pdf",
-      "documentType": "application/pdf",
-      "filePath": "d18367b3-b06a-46d2-b84c-83ce4f0a1ebb.pdf",
-      "fileSizeBytes": 1118364,
-      "pageCount": 10,
-      "copies": 1,
-      "colorMode": "bw",
-      "duplexMode": "single",
-      "paperSize": "A4",
-      "orderType": "document",
-      "pageRange": "all",
-      "customNotes": "",
-      "unitPrice": 2,
-      "totalAmount": 20,
-      "status": "queued",
-      "paymentStatus": "collected",
-      "id": "ord-be4d4eaf",
-      "orderNumber": "ORD-365565",
-      "createdAt": "2026-10-10T07:43:45.903Z",
-      "updatedAt": "2026-10-10T07:45:41.132Z",
-      "paymentCollectedAt": "2026-10-10T07:44:16.084Z",
-      "paymentCollectorName": "surya",
-      "paymentMethod": "counter_cash"
+      "purgedAt": "2026-10-15T05:55:33.280Z"
     }
   ],
   "orderHistory": [
@@ -589,142 +278,6 @@
       "createdAt": "2026-10-10T07:33:17.482Z"
     },
     {
-      "id": "hst-19ba9c20",
-      "orderId": "ord-34021bf9",
-      "newStatus": "payment_pending",
-      "changedByName": "Customer Submission",
-      "comment": "Order placed by customer via Shop QR Portal",
-      "createdAt": "2026-10-10T07:37:48.353Z"
-    },
-    {
-      "id": "hst-1d78afb0",
-      "orderId": "ord-34021bf9",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:40:20.948Z"
-    },
-    {
-      "id": "hst-fc6357af",
-      "orderId": "ord-34021bf9",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:40:22.276Z"
-    },
-    {
-      "id": "hst-cf5a1db1",
-      "orderId": "ord-34021bf9",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:40:22.501Z"
-    },
-    {
-      "id": "hst-1868d3c1",
-      "orderId": "ord-34021bf9",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:40:22.697Z"
-    },
-    {
-      "id": "hst-2221fa4f",
-      "orderId": "ord-34021bf9",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:40:23.627Z"
-    },
-    {
-      "id": "hst-6b3b84c0",
-      "orderId": "ord-34021bf9",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:40:23.831Z"
-    },
-    {
-      "id": "hst-a6baf4f2",
-      "orderId": "ord-be4d4eaf",
-      "newStatus": "queued",
-      "changedByName": "Customer Submission",
-      "comment": "Order placed by customer via Shop QR Portal",
-      "createdAt": "2026-10-10T07:43:45.903Z"
-    },
-    {
-      "id": "hst-5ee8c230",
-      "orderId": "ord-34021bf9",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:44:10.449Z"
-    },
-    {
-      "id": "hst-7a202c83",
-      "orderId": "ord-be4d4eaf",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:44:17.436Z"
-    },
-    {
-      "id": "hst-3d03db43",
-      "orderId": "ord-be4d4eaf",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:44:18.294Z"
-    },
-    {
-      "id": "hst-0cd2db40",
-      "orderId": "ord-be4d4eaf",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:44:18.494Z"
-    },
-    {
-      "id": "hst-8e602580",
-      "orderId": "ord-be4d4eaf",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:44:18.692Z"
-    },
-    {
-      "id": "hst-0384a150",
-      "orderId": "ord-be4d4eaf",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:44:18.889Z"
-    },
-    {
       "id": "hst-9d829020",
       "orderId": "ord-10f046cc",
       "previousStatus": "completed",
@@ -733,96 +286,6 @@
       "changedById": "usr-3129a8fa",
       "comment": "Archived by shopkeeper",
       "createdAt": "2026-10-10T07:44:34.649Z"
-    },
-    {
-      "id": "hst-f78b50fb",
-      "orderId": "ord-34021bf9",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:44:37.814Z"
-    },
-    {
-      "id": "hst-89fa0119",
-      "orderId": "ord-34021bf9",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:44:38.027Z"
-    },
-    {
-      "id": "hst-4e75c845",
-      "orderId": "ord-34021bf9",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:44:38.216Z"
-    },
-    {
-      "id": "hst-ff05cd7f",
-      "orderId": "ord-34021bf9",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:44:38.433Z"
-    },
-    {
-      "id": "hst-befc2465",
-      "orderId": "ord-34021bf9",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:44:38.713Z"
-    },
-    {
-      "id": "hst-4aab2778",
-      "orderId": "ord-be4d4eaf",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:44:40.864Z"
-    },
-    {
-      "id": "hst-7e2850e5",
-      "orderId": "ord-be4d4eaf",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:44:41.076Z"
-    },
-    {
-      "id": "hst-dfe4818d",
-      "orderId": "ord-be4d4eaf",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:44:41.293Z"
-    },
-    {
-      "id": "hst-057544fb",
-      "orderId": "ord-be4d4eaf",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"HP LaserJet Pro M404dn\"",
-      "createdAt": "2026-10-10T07:45:41.132Z"
     },
     {
       "id": "hst-0b2266c3",
@@ -859,6 +322,42 @@
       "changedByName": "printx Privacy Engine",
       "comment": "Customer files automatically & permanently deleted 5 minutes after completion for privacy protection.",
       "createdAt": "2026-10-13T17:09:53.867Z"
+    },
+    {
+      "id": "hst-67ed1b8e",
+      "orderId": "ord-0cc53f41",
+      "newStatus": "queued",
+      "changedByName": "Customer Submission",
+      "comment": "Order placed by customer via Shop QR Portal",
+      "createdAt": "2026-10-15T05:50:03.583Z"
+    },
+    {
+      "id": "hst-de37b93a",
+      "orderId": "ord-0cc53f41",
+      "previousStatus": "queued",
+      "newStatus": "printing",
+      "changedByName": "Auto-Print Spooler",
+      "comment": "Online payment received (₹2). Automatically spooled to \"HP LaserJet Pro M404dn\".",
+      "createdAt": "2026-10-15T05:50:09.464Z"
+    },
+    {
+      "id": "hst-2a9c5324",
+      "orderId": "ord-0cc53f41",
+      "previousStatus": "printing",
+      "newStatus": "completed",
+      "changedByName": "surya",
+      "changedById": "usr-3129a8fa",
+      "comment": "Marked completed",
+      "createdAt": "2026-10-15T05:50:25.752Z"
+    },
+    {
+      "id": "hst-bf04b0b8",
+      "orderId": "ord-0cc53f41",
+      "previousStatus": "completed",
+      "newStatus": "completed",
+      "changedByName": "printx Privacy Engine",
+      "comment": "Customer files automatically & permanently deleted 5 minutes after completion for privacy protection.",
+      "createdAt": "2026-10-15T05:55:33.280Z"
     }
   ],
   "payments": [
@@ -895,24 +394,15 @@
       "collectedAt": "2026-10-10T07:10:07.550Z"
     },
     {
-      "id": "pay-ab81a804",
-      "orderId": "ord-34021bf9",
+      "id": "pay-5c112da0",
+      "orderId": "ord-0cc53f41",
       "shopId": "shp-00ff309e",
-      "amount": 20,
-      "method": "counter_cash",
+      "amount": 2,
+      "method": "online_upi",
       "status": "collected",
-      "collectedBy": "surya",
-      "collectedAt": "2026-10-10T07:40:14.368Z"
-    },
-    {
-      "id": "pay-405b0c25",
-      "orderId": "ord-be4d4eaf",
-      "shopId": "shp-00ff309e",
-      "amount": 20,
-      "method": "counter_cash",
-      "status": "collected",
-      "collectedBy": "surya",
-      "collectedAt": "2026-10-10T07:44:16.084Z"
+      "collectedBy": "Online UPI Gateway",
+      "notes": "Online payment verified. Ref: UPI-1792043409463",
+      "collectedAt": "2026-10-15T05:50:09.463Z"
     }
   ],
   "printJobs": [
@@ -998,211 +488,81 @@
       "completedAt": "2026-10-10T07:33:17.484Z"
     },
     {
-      "id": "job-fef5c2bf",
-      "orderId": "ord-34021bf9",
+      "id": "job-96aa88bf",
+      "orderId": "ord-0cc53f41",
       "shopId": "shp-00ff309e",
       "printerName": "HP LaserJet Pro M404dn",
       "status": "pending",
       "retryCount": 0,
-      "createdAt": "2026-10-10T07:40:20.948Z"
-    },
-    {
-      "id": "job-202286e7",
-      "orderId": "ord-34021bf9",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:40:22.276Z"
-    },
-    {
-      "id": "job-806d8a29",
-      "orderId": "ord-34021bf9",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:40:22.501Z"
-    },
-    {
-      "id": "job-b0bd4e5e",
-      "orderId": "ord-34021bf9",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:40:22.696Z"
-    },
-    {
-      "id": "job-96c4ef31",
-      "orderId": "ord-34021bf9",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:40:23.627Z"
-    },
-    {
-      "id": "job-01684d5e",
-      "orderId": "ord-34021bf9",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:40:23.830Z"
-    },
-    {
-      "id": "job-0c2e8f1b",
-      "orderId": "ord-34021bf9",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:44:10.449Z"
-    },
-    {
-      "id": "job-9d010c56",
-      "orderId": "ord-be4d4eaf",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:44:17.435Z"
-    },
-    {
-      "id": "job-5ad80a52",
-      "orderId": "ord-be4d4eaf",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:44:18.293Z"
-    },
-    {
-      "id": "job-0e0bb855",
-      "orderId": "ord-be4d4eaf",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:44:18.494Z"
-    },
-    {
-      "id": "job-3f37e24b",
-      "orderId": "ord-be4d4eaf",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:44:18.691Z"
-    },
-    {
-      "id": "job-7032d46e",
-      "orderId": "ord-be4d4eaf",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:44:18.889Z"
-    },
-    {
-      "id": "job-66f13c77",
-      "orderId": "ord-34021bf9",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:44:37.813Z"
-    },
-    {
-      "id": "job-d7ac2d06",
-      "orderId": "ord-34021bf9",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:44:38.027Z"
-    },
-    {
-      "id": "job-68887b31",
-      "orderId": "ord-34021bf9",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:44:38.216Z"
-    },
-    {
-      "id": "job-5423a1f8",
-      "orderId": "ord-34021bf9",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:44:38.432Z"
-    },
-    {
-      "id": "job-c250e7db",
-      "orderId": "ord-34021bf9",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:44:38.712Z"
-    },
-    {
-      "id": "job-f6e92889",
-      "orderId": "ord-be4d4eaf",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:44:40.863Z"
-    },
-    {
-      "id": "job-98e34726",
-      "orderId": "ord-be4d4eaf",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:44:41.076Z"
-    },
-    {
-      "id": "job-297cac45",
-      "orderId": "ord-be4d4eaf",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:44:41.292Z"
-    },
-    {
-      "id": "job-8711b6ad",
-      "orderId": "ord-be4d4eaf",
-      "shopId": "shp-00ff309e",
-      "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
-      "retryCount": 0,
-      "createdAt": "2026-10-10T07:45:41.131Z"
+      "createdAt": "2026-10-15T05:50:09.464Z"
     }
   ],
   "activityLogs": [
     {
-      "shopId": "shp-apex-001",
-      "userId": "usr-owner-001",
-      "actionType": "shop_profile_updated",
-      "description": "Shop profile updated by owner (Apex Print & Copy Hub).",
-      "id": "log-4ce9cb27",
-      "createdAt": "2026-10-13T18:16:27.315Z"
+      "shopId": "shp-00ff309e",
+      "actionType": "payment_collected",
+      "description": "Order ORD-976954 paid ₹2 online. Instantly sent to printer.",
+      "id": "log-0be6731f",
+      "createdAt": "2026-10-15T05:50:09.465Z"
     },
     {
-      "shopId": "shp-apex-001",
-      "userId": "usr-owner-001",
-      "actionType": "pricing_updated",
-      "description": "Updated printing rates: B&W ₹3.5/₹5, Color ₹12/₹20",
-      "id": "log-e295aad6",
-      "createdAt": "2026-10-13T18:16:15.255Z"
+      "shopId": "shp-00ff309e",
+      "actionType": "order_submitted",
+      "description": "Order ORD-976954 placed by Counter Customer (image_9dda9c47.jpeg, ₹2). Status: queued",
+      "metadata": {
+        "orderNumber": "ORD-976954",
+        "amount": 2
+      },
+      "id": "log-26ce182a",
+      "createdAt": "2026-10-15T05:50:03.584Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "rules_updated",
+      "description": "Approval mode updated to AUTO (Payment before print: No)",
+      "id": "log-f7d82d42",
+      "createdAt": "2026-10-15T05:39:07.608Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "rules_updated",
+      "description": "Approval mode updated to AUTO (Payment before print: No)",
+      "id": "log-ecf2d14f",
+      "createdAt": "2026-10-15T05:39:06.396Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "rules_updated",
+      "description": "Approval mode updated to AUTO (Payment before print: Yes)",
+      "id": "log-7b338179",
+      "createdAt": "2026-10-15T05:39:01.288Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "pairing_code_generated",
+      "description": "Generated 6-digit Windows Agent pairing code: 293843 (Expires in 15 min)",
+      "id": "log-4438ffbd",
+      "createdAt": "2026-10-15T05:37:06.202Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "order_deleted",
+      "description": "Order ORD-421011 permanently deleted by Shopkeeper.",
+      "id": "log-77115b59",
+      "createdAt": "2026-10-15T05:37:02.249Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "order_deleted",
+      "description": "Order ORD-365565 permanently deleted by Shopkeeper.",
+      "id": "log-e3a47e13",
+      "createdAt": "2026-10-15T05:37:00.700Z"
     },
     {
       "shopId": "shp-00ff309e",
@@ -1499,22 +859,6 @@
       "createdAt": "2026-10-10T07:10:07.551Z"
     },
     {
-      "shopId": "shp-apex-001",
-      "userId": "usr-owner-001",
-      "actionType": "order_approved",
-      "description": "Order ORD-920428 approved. Moved to payment_pending.",
-      "id": "log-9e181e2e",
-      "createdAt": "2026-10-10T07:09:24.081Z"
-    },
-    {
-      "shopId": "shp-apex-001",
-      "userId": "usr-admin-001",
-      "actionType": "shop_rejected",
-      "description": "Shop \"Apex Print & Copy Hub\" rejected by Administrator: Incomplete documentation / verification",
-      "id": "log-35268f6e",
-      "createdAt": "2026-10-10T07:08:31.188Z"
-    },
-    {
       "shopId": "shp-00ff309e",
       "actionType": "order_submitted",
       "description": "Order ORD-368618 placed by ram (qr.pdf, ₹6). Status: payment_pending",
@@ -1534,14 +878,6 @@
       "createdAt": "2026-10-10T07:06:39.519Z"
     },
     {
-      "shopId": "shp-sai-002",
-      "userId": "usr-admin-001",
-      "actionType": "shop_activated",
-      "description": "Shop \"Sai Digital Xerox & Cyber Cafe\" approved and activated by Administrator. Customer orders are now live.",
-      "id": "log-62f07026",
-      "createdAt": "2026-10-10T07:06:35.911Z"
-    },
-    {
       "shopId": "shp-00ff309e",
       "userId": "usr-3129a8fa",
       "actionType": "whatsapp_verified",
@@ -1556,29 +892,6 @@
       "description": "Shop \"ekta communication\" registered by surya. Awaiting WhatsApp verification and Admin review.",
       "id": "log-4cb25252",
       "createdAt": "2026-10-10T07:04:19.861Z"
-    },
-    {
-      "id": "log-001",
-      "shopId": "shp-apex-001",
-      "userId": "usr-owner-001",
-      "actionType": "pricing_updated",
-      "description": "Updated A4 Colour duplex pricing to ₹18.00",
-      "createdAt": "2026-10-09T07:02:21.443Z"
-    },
-    {
-      "id": "log-002",
-      "shopId": "shp-apex-001",
-      "actionType": "order_submitted",
-      "description": "New customer order ORD-920428 submitted for Tender_Document_Vol_2.pdf (45 pages, 2 copies)",
-      "createdAt": "2026-10-10T07:02:21.443Z"
-    },
-    {
-      "id": "log-003",
-      "shopId": "shp-apex-001",
-      "userId": "usr-owner-001",
-      "actionType": "payment_collected",
-      "description": "Collected ₹30.00 via UPI for order ORD-920415",
-      "createdAt": "2026-10-10T06:52:21.443Z"
     }
   ]
 }

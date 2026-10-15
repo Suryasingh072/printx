@@ -223,26 +223,26 @@ export const PhotoIdCardTool: React.FC<PhotoIdCardToolProps> = ({ onReadyToPrint
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+    <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
         <div>
           <div className="flex items-center gap-2">
             <span className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
               <Layers className="w-5 h-5" />
             </span>
-            <h3 className="text-xl font-bold text-slate-900">ID Card & Photo Print Arranger</h3>
+            <h3 className="text-lg font-black text-slate-900 tracking-tight">🪪 ID Card 2-in-1 Sheet Arranger (A4 Paper)</h3>
           </div>
-          <p className="text-sm text-slate-500 mt-1">
-            Auto-format Aadhaar, Voter ID, Student Cards, or Photos onto a standard A4 sheet with cutting guidelines.
+          <p className="text-xs text-slate-500 mt-1">
+            Aadhaar, Voter ID, PAN ya Driving License ke Front aur Back side ko A4 sheet par center align karein.
           </p>
         </div>
 
         <button
           type="button"
           onClick={loadDemoCard}
-          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition"
+          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition cursor-pointer border border-indigo-100"
         >
-          <Sparkles className="w-4 h-4" /> Load Sample ID Card
+          <Sparkles className="w-3.5 h-3.5" /> Sample Card
         </button>
       </div>
 
@@ -422,14 +422,14 @@ export const PhotoIdCardTool: React.FC<PhotoIdCardToolProps> = ({ onReadyToPrint
             type="button"
             disabled={!frontImage || isProcessing}
             onClick={handleSendToPrint}
-            className={`w-full py-3.5 px-4 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 shadow-sm transition ${
+            className={`w-full py-4 px-4 rounded-2xl font-black text-sm text-white flex items-center justify-center gap-2 shadow-lg transition ${
               frontImage && !isProcessing
-                ? 'bg-indigo-600 hover:bg-indigo-700 cursor-pointer'
-                : 'bg-slate-300 cursor-not-allowed'
+                ? 'bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 shadow-indigo-500/25 cursor-pointer'
+                : 'bg-slate-300 cursor-not-allowed shadow-none'
             }`}
           >
             <Printer className="w-4 h-4" />
-            {isProcessing ? 'Generating High-Res Sheet...' : 'Use This Arranged Sheet for Print'}
+            {isProcessing ? 'Generating High-Res A4 Sheet...' : 'Done! Add ID Card Sheet to Print Queue (A4)'}
           </button>
         </div>
 

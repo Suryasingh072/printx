@@ -169,7 +169,7 @@ app.post('/api/auth/register', (req, res) => {
     role: 'shop_owner',
   });
 
-  // Create Shop in pending_review status
+  // Create Shop in active status immediately so shop owner can instantly receive prints
   const newShop = db.createShop({
     slug: generatedSlug,
     name: shopName,
@@ -177,7 +177,7 @@ app.post('/api/auth/register', (req, res) => {
     phone: phone || whatsappNumber,
     address: address || 'Main Road Counter',
     city: city || 'City Center',
-    status: 'pending_review',
+    status: 'active',
   });
 
   // Activity Log
@@ -247,7 +247,10 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
   const user = db.getUserById(session.userId);
   if (!user) return res.status(404).json({ error: 'User not found' });
 
-  const shop = user.role === 'admin' ? undefined : db.getShopByOwnerId(user.id);
+  let shop = user.role === 'admin' ? undefined : (session.shopId ? db.getShopById(session.shopId) : undefined);
+  if (!shop && user.role !== 'admin') {
+    shop = db.getShopByOwnerId(user.id);
+  }
   res.json({
     user: {
       id: user.id,
@@ -589,41 +592,50 @@ app.get(['/api/shops/:slug', '/api/s/:slug'], (req, res) => {
   });
 });
 
-// Customer File Upload
-app.post('/api/orders/upload', upload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file was uploaded.' });
-  }
+// Customer File Upload with safe multer handling
+app.post('/api/orders/upload', (req, res) => {
+  upload.single('file')(req, res, (uploadErr: any) => {
+    if (uploadErr) {
+      console.error('Multer file upload error:', uploadErr);
+      return res.status(400).json({
+        error: uploadErr.message || 'File upload failed. Ensure file size is under 50MB.',
+      });
+    }
 
-  const validation = storageService.validateFile(
-    req.file.originalname,
-    req.file.mimetype,
-    req.file.size
-  );
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file was uploaded. Please choose a PDF or image file.' });
+    }
 
-  if (!validation.valid) {
-    return res.status(400).json({ error: validation.error });
-  }
-
-  try {
-    const saved = storageService.saveFileBuffer(
-      req.file.buffer,
+    const validation = storageService.validateFile(
       req.file.originalname,
-      req.file.mimetype
+      req.file.mimetype,
+      req.file.size
     );
 
-    res.json({
-      fileId: saved.id,
-      fileName: saved.originalName,
-      mimeType: saved.mimeType,
-      sizeBytes: saved.sizeBytes,
-      filePath: saved.filePath,
-      pageCount: saved.pageCount,
-    });
-  } catch (err: any) {
-    console.error('File storage error:', err);
-    res.status(500).json({ error: 'Failed to securely store uploaded file.' });
-  }
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    try {
+      const saved = storageService.saveFileBuffer(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype
+      );
+
+      res.json({
+        fileId: saved.id,
+        fileName: saved.originalName,
+        mimeType: saved.mimeType,
+        sizeBytes: saved.sizeBytes,
+        filePath: saved.filePath,
+        pageCount: saved.pageCount,
+      });
+    } catch (err: any) {
+      console.error('File storage error:', err);
+      res.status(500).json({ error: 'Failed to securely store uploaded file.' });
+    }
+  });
 });
 
 // Customer Order Submission
@@ -1465,32 +1477,33 @@ app.get('/api/agent/download-ps1', (req, res) => {
   }
 });
 
-// Shop generates pairing code for Windows desktop app
+// Shop generates pairing code for Windows desktop app (Fixed & Permanent per shop)
 app.post('/api/shop/agent/pairing-code', requireAuth, (req, res) => {
   const session = (req as any).user;
   const shop = session.shopId ? db.getShopById(session.shopId) : db.getShopByOwnerId(session.userId);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
-  const pairing = db.generatePairingCode(shop.id);
+  const forceReset = Boolean(req.query.reset === 'true' || req.body?.reset);
+  const pairing = db.generatePairingCode(shop.id, forceReset);
 
   db.logActivity({
     shopId: shop.id,
     userId: session.userId,
     actionType: 'pairing_code_generated',
-    description: `Generated 6-digit Windows Agent pairing code: ${pairing.code} (Expires in 15 min)`,
+    description: `Fixed 6-digit Windows Agent pairing code: ${pairing.code}`,
   });
 
   res.json(pairing);
 });
 
-// Shop gets agent status and detected printers
+// Shop gets agent status and detected printers (ensures permanent pairing code exists)
 app.get('/api/shop/agent/status', requireAuth, (req, res) => {
   const session = (req as any).user;
   const shop = session.shopId ? db.getShopById(session.shopId) : db.getShopByOwnerId(session.userId);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
-  const agent = db.getAgentByShopId(shop.id);
-  res.json(agent || null);
+  const agent = db.getOrCreateAgent(shop.id);
+  res.json(agent);
 });
 
 // Update configured printers (default, bw, color)

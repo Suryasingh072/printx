@@ -34,17 +34,20 @@ interface DatabaseSchema {
 }
 
 const isVercel = Boolean(process.env.VERCEL);
-const DB_DIR = isVercel ? '/tmp/qrprint-data' : path.resolve(process.cwd(), './data');
-const DB_FILE = path.join(DB_DIR, 'qrprint.db.json');
+const PRIMARY_DIR = path.resolve(process.cwd(), './data');
+const TMP_DIR = '/tmp/qrprint-data';
+const DB_FILE = isVercel ? path.join(TMP_DIR, 'qrprint.db.json') : path.join(PRIMARY_DIR, 'qrprint.db.json');
+const BACKUP_FILE = path.join(PRIMARY_DIR, 'qrprint.db.backup.json');
+const TMP_FILE = path.join(TMP_DIR, 'qrprint.db.json');
 
-// Ensure DB directory exists safely without crashing
-try {
-  if (!fs.existsSync(DB_DIR)) {
-    fs.mkdirSync(DB_DIR, { recursive: true });
+// Ensure DB directories exist safely
+[PRIMARY_DIR, TMP_DIR].forEach((dir) => {
+  try {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  } catch (err) {
+    // Ignore in read-only environments
   }
-} catch (err) {
-  console.warn('Could not create DB_DIR, running with in-memory persistence:', err);
-}
+});
 
 export class Database {
   private data: DatabaseSchema;
@@ -75,6 +78,7 @@ export class Database {
     if (!remote) return;
     if (Array.isArray(remote.shops) && remote.shops.length > 0) {
       for (const s of remote.shops) {
+        if (s.id === 'shp-apex-001' || s.id === 'shp-sai-002') continue;
         const existingIdx = this.data.shops.findIndex((item) => item.id === s.id);
         if (existingIdx !== -1) {
           this.data.shops[existingIdx] = { ...this.data.shops[existingIdx], ...s };
@@ -136,9 +140,21 @@ export class Database {
 
   private saveDiskOnly(): void {
     try {
+      const content = JSON.stringify(this.data, null, 2);
+      // Write to DB_FILE
       const tempPath = `${DB_FILE}.tmp`;
-      fs.writeFileSync(tempPath, JSON.stringify(this.data, null, 2), 'utf-8');
+      fs.writeFileSync(tempPath, content, 'utf-8');
       fs.renameSync(tempPath, DB_FILE);
+
+      // Also maintain backup copy so container restarts on Vercel or cloud never lose data
+      try {
+        fs.writeFileSync(BACKUP_FILE, content, 'utf-8');
+      } catch (err) {}
+      if (DB_FILE !== TMP_FILE) {
+        try {
+          fs.writeFileSync(TMP_FILE, content, 'utf-8');
+        } catch (err) {}
+      }
     } catch (e) {
       console.error('Failed to persist database to disk:', e);
     }
@@ -153,7 +169,7 @@ export class Database {
   }
 
   public save(): void {
-    // 1. Immediately persist to local disk
+    // 1. Immediately persist to local disk and backup
     this.saveDiskOnly();
 
     // 2. Automatically sync to Supabase Cloud
@@ -166,39 +182,55 @@ export class Database {
   }
 
   private loadOrCreateDatabase(): DatabaseSchema {
-    if (fs.existsSync(DB_FILE)) {
-      try {
-        const raw = fs.readFileSync(DB_FILE, 'utf-8');
-        const parsed = JSON.parse(raw);
-        // Ensure the fixed admin account printx286351@gmail.com / Ekma#1234 exists and is active
-        let admin = parsed.users?.find((u: any) => u.email?.toLowerCase() === 'printx286351@gmail.com' || u.role === 'admin');
-        if (admin) {
-          admin.email = 'printx286351@gmail.com';
-          admin.passwordHash = this.hashPassword('Ekma#1234');
-          admin.role = 'admin';
-          admin.fullName = 'printx System Administrator';
-        } else if (parsed.users) {
-          parsed.users.push({
-            id: 'usr-admin-001',
-            email: 'printx286351@gmail.com',
-            passwordHash: this.hashPassword('Ekma#1234'),
-            fullName: 'printx System Administrator',
-            whatsappNumber: '+919876543210',
-            whatsappVerified: true,
-            role: 'admin',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          });
+    const candidateFiles = [DB_FILE, BACKUP_FILE, TMP_FILE];
+    for (const filePath of candidateFiles) {
+      if (fs.existsSync(filePath)) {
+        try {
+          const raw = fs.readFileSync(filePath, 'utf-8');
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.users)) {
+            // Ensure the fixed admin account printx286351@gmail.com / Ekma#1234 exists and is active
+            let admin = parsed.users.find((u: any) => u.email?.toLowerCase() === 'printx286351@gmail.com' || u.role === 'admin');
+            if (admin) {
+              admin.email = 'printx286351@gmail.com';
+              admin.passwordHash = this.hashPassword('Ekma#1234');
+              admin.role = 'admin';
+              admin.fullName = 'printx System Administrator';
+            } else {
+              parsed.users.push({
+                id: 'usr-admin-001',
+                email: 'printx286351@gmail.com',
+                passwordHash: this.hashPassword('Ekma#1234'),
+                fullName: 'printx System Administrator',
+                whatsappNumber: '+919876543210',
+                whatsappVerified: true,
+                role: 'admin',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              });
+            }
+
+            // Clean out legacy demo shops so only genuine shops remain
+            parsed.shops = (parsed.shops || []).filter((s: any) => s.id !== 'shp-apex-001' && s.id !== 'shp-sai-002');
+            parsed.users = (parsed.users || []).filter((u: any) => u.id !== 'usr-owner-001' && u.id !== 'usr-owner-002');
+            parsed.pricing = (parsed.pricing || []).filter((p: any) => p.shopId !== 'shp-apex-001' && p.shopId !== 'shp-sai-002');
+            parsed.approvalRules = (parsed.approvalRules || []).filter((r: any) => r.shopId !== 'shp-apex-001' && r.shopId !== 'shp-sai-002');
+            parsed.agents = (parsed.agents || []).filter((a: any) => a.shopId !== 'shp-apex-001' && a.shopId !== 'shp-sai-002');
+            parsed.orders = (parsed.orders || []).filter((o: any) => o.shopId !== 'shp-apex-001' && o.shopId !== 'shp-sai-002');
+            parsed.activityLogs = (parsed.activityLogs || []).filter((l: any) => l.shopId !== 'shp-apex-001' && l.shopId !== 'shp-sai-002');
+
+            return parsed;
+          }
+        } catch (e) {
+          console.error(`Error reading candidate DB file ${filePath}:`, e);
         }
-        return parsed;
-      } catch (e) {
-        console.error('Error reading database file, loading default seed data:', e);
       }
     }
 
     const initial = this.generateSeedData();
     try {
       fs.writeFileSync(DB_FILE, JSON.stringify(initial, null, 2), 'utf-8');
+      fs.writeFileSync(BACKUP_FILE, JSON.stringify(initial, null, 2), 'utf-8');
     } catch (e) {
       console.error('Error writing initial database file:', e);
     }
@@ -206,11 +238,6 @@ export class Database {
   }
 
   private generateSeedData(): DatabaseSchema {
-    const now = new Date().toISOString();
-    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
     const adminUser: User = {
       id: 'usr-admin-001',
       email: 'printx286351@gmail.com',
@@ -219,337 +246,21 @@ export class Database {
       whatsappNumber: '+919876543210',
       whatsappVerified: true,
       role: 'admin',
-      createdAt: yesterday,
-      updatedAt: yesterday,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
-
-    const owner1: User = {
-      id: 'usr-owner-001',
-      email: 'rajesh@apexprint.in',
-      passwordHash: this.hashPassword('Apex@1234'),
-      fullName: 'Rajesh Sharma',
-      whatsappNumber: '+919812345678',
-      whatsappVerified: true,
-      role: 'shop_owner',
-      createdAt: yesterday,
-      updatedAt: yesterday,
-    };
-
-    const owner2: User = {
-      id: 'usr-owner-002',
-      email: 'kavita@saidigital.com',
-      passwordHash: this.hashPassword('Sai@1234'),
-      fullName: 'Kavita Verma',
-      whatsappNumber: '+919711223344',
-      whatsappVerified: true,
-      role: 'shop_owner',
-      createdAt: yesterday,
-      updatedAt: yesterday,
-    };
-
-    const shop1: Shop = {
-      id: 'shp-apex-001',
-      slug: 'apex-print',
-      name: 'Apex Print & Copy Hub',
-      ownerId: owner1.id,
-      phone: '+919812345678',
-      address: 'Shop 14, Commercial Complex, Sector 18',
-      city: 'Noida',
-      status: 'active',
-      activatedAt: yesterday,
-      activatedBy: adminUser.id,
-      createdAt: yesterday,
-      updatedAt: yesterday,
-    };
-
-    const shop2: Shop = {
-      id: 'shp-sai-002',
-      slug: 'sai-digital',
-      name: 'Sai Digital Xerox & Cyber Cafe',
-      ownerId: owner2.id,
-      phone: '+919711223344',
-      address: 'Near Metro Gate 2, Main Market, Laxmi Nagar',
-      city: 'Delhi',
-      status: 'pending_review',
-      createdAt: yesterday,
-      updatedAt: yesterday,
-    };
-
-    const pricing1: ShopPricing = {
-      id: 'prc-apex-001',
-      shopId: shop1.id,
-      bwSinglePrice: 2.00,
-      bwDuplexPrice: 3.00,
-      colorSinglePrice: 10.00,
-      colorDuplexPrice: 18.00,
-      legalExtra: 1.00,
-      photo4x6Price: 20.00,
-      idCardSinglePrice: 15.00,
-      currency: 'INR',
-      updatedAt: yesterday,
-    };
-
-    const pricing2: ShopPricing = {
-      id: 'prc-sai-002',
-      shopId: shop2.id,
-      bwSinglePrice: 2.50,
-      bwDuplexPrice: 4.00,
-      colorSinglePrice: 12.00,
-      colorDuplexPrice: 20.00,
-      legalExtra: 1.50,
-      photo4x6Price: 25.00,
-      idCardSinglePrice: 15.00,
-      currency: 'INR',
-      updatedAt: yesterday,
-    };
-
-    const rules1: ShopApprovalRules = {
-      id: 'rul-apex-001',
-      shopId: shop1.id,
-      mode: 'smart',
-      maxAutoPages: 10,
-      maxAutoAmount: 50.00,
-      requirePaymentBeforePrint: true,
-      notifyWhatsapp: true,
-      updatedAt: yesterday,
-    };
-
-    const rules2: ShopApprovalRules = {
-      id: 'rul-sai-002',
-      shopId: shop2.id,
-      mode: 'manual',
-      maxAutoPages: 5,
-      maxAutoAmount: 30.00,
-      requirePaymentBeforePrint: true,
-      notifyWhatsapp: false,
-      updatedAt: yesterday,
-    };
-
-    const agent1: WindowsAgent = {
-      id: 'agt-apex-001',
-      shopId: shop1.id,
-      deviceName: 'DESKTOP-PRINT-01 (Shop Front Counter)',
-      pairingCode: '749102',
-      authTokenHash: crypto.createHash('sha256').update('token_agent_apex_2026').digest('hex'),
-      status: 'online',
-      lastSeenAt: now,
-      defaultPrinter: 'HP LaserJet Pro M404dn',
-      bwPrinter: 'HP LaserJet Pro M404dn',
-      colorPrinter: 'Canon PIXMA G3010',
-      installedPrinters: [
-        {
-          name: 'HP LaserJet Pro M404dn',
-          isDefault: true,
-          status: 'Ready',
-          supportsColor: false,
-          driverName: 'HP PCL 6 Driver',
-        },
-        {
-          name: 'Canon PIXMA G3010',
-          isDefault: false,
-          status: 'Ready',
-          supportsColor: true,
-          driverName: 'Canon G3000 Series',
-        },
-        {
-          name: 'Epson L3150 Series',
-          isDefault: false,
-          status: 'Ready',
-          supportsColor: true,
-          driverName: 'Epson ESC/P-R',
-        },
-      ],
-      ipAddress: '192.168.1.104',
-      appVersion: '1.2.0',
-      dryRunMode: false,
-      createdAt: yesterday,
-    };
-
-    const sampleOrders: Order[] = [
-      {
-        id: 'ord-001',
-        orderNumber: 'ORD-920412',
-        shopId: shop1.id,
-        customerName: 'Anil Gupta',
-        customerPhone: '+919899123456',
-        documentName: 'Project_Report_Semester_6.pdf',
-        documentType: 'application/pdf',
-        filePath: 'sample_report.pdf',
-        fileSizeBytes: 1420500,
-        pageCount: 12,
-        copies: 1,
-        colorMode: 'bw',
-        duplexMode: 'duplex',
-        paperSize: 'A4',
-        orderType: 'document',
-        pageRange: 'all',
-        customNotes: 'Please staple top-left corner',
-        unitPrice: 1.50,
-        totalAmount: 18.00,
-        status: 'payment_pending',
-        paymentStatus: 'unpaid',
-        approvedAt: tenMinAgo,
-        approvedBy: owner1.id,
-        createdAt: tenMinAgo,
-        updatedAt: tenMinAgo,
-      },
-      {
-        id: 'ord-002',
-        orderNumber: 'ORD-920415',
-        shopId: shop1.id,
-        customerName: 'Priya Sharma',
-        customerPhone: '+919877445566',
-        documentName: 'Aadhaar_Front_Back_Sheet.png',
-        documentType: 'image/png',
-        filePath: 'sample_idcard.png',
-        fileSizeBytes: 890400,
-        pageCount: 1,
-        copies: 2,
-        colorMode: 'color',
-        duplexMode: 'single',
-        paperSize: 'A4',
-        orderType: 'id_card',
-        unitPrice: 15.00,
-        totalAmount: 30.00,
-        status: 'queued',
-        paymentStatus: 'collected',
-        paymentCollectedAt: tenMinAgo,
-        paymentCollectorName: 'Rajesh Sharma',
-        paymentMethod: 'counter_upi',
-        approvedAt: tenMinAgo,
-        approvedBy: owner1.id,
-        createdAt: tenMinAgo,
-        updatedAt: tenMinAgo,
-      },
-      {
-        id: 'ord-003',
-        orderNumber: 'ORD-920420',
-        shopId: shop1.id,
-        customerName: 'Sunil Mehta',
-        customerPhone: '+919911882233',
-        documentName: 'Indigo_Boarding_Pass.pdf',
-        documentType: 'application/pdf',
-        filePath: 'sample_ticket.pdf',
-        fileSizeBytes: 420000,
-        pageCount: 2,
-        copies: 1,
-        colorMode: 'color',
-        duplexMode: 'single',
-        paperSize: 'A4',
-        orderType: 'document',
-        unitPrice: 10.00,
-        totalAmount: 20.00,
-        status: 'completed',
-        paymentStatus: 'collected',
-        paymentCollectedAt: oneHourAgo,
-        paymentCollectorName: 'Rajesh Sharma',
-        paymentMethod: 'online_upi',
-        approvedAt: oneHourAgo,
-        approvedBy: owner1.id,
-        printedAt: oneHourAgo,
-        createdAt: oneHourAgo,
-        updatedAt: oneHourAgo,
-      },
-      {
-        id: 'ord-004',
-        orderNumber: 'ORD-920428',
-        shopId: shop1.id,
-        customerName: 'Deepak Yadav',
-        customerPhone: '+919811009988',
-        documentName: 'Tender_Document_Vol_2.pdf',
-        documentType: 'application/pdf',
-        filePath: 'sample_tender.pdf',
-        fileSizeBytes: 4890000,
-        pageCount: 45,
-        copies: 2,
-        colorMode: 'bw',
-        duplexMode: 'single',
-        paperSize: 'A4',
-        orderType: 'document',
-        unitPrice: 2.00,
-        totalAmount: 180.00,
-        status: 'pending_approval',
-        paymentStatus: 'unpaid',
-        createdAt: now,
-        updatedAt: now,
-      },
-    ];
-
-    const samplePayments: PaymentRecord[] = [
-      {
-        id: 'pay-001',
-        orderId: 'ord-002',
-        shopId: shop1.id,
-        amount: 30.00,
-        method: 'counter_upi',
-        status: 'collected',
-        collectedBy: 'Rajesh Sharma',
-        notes: 'Paid via GPay counter QR',
-        collectedAt: tenMinAgo,
-      },
-      {
-        id: 'pay-002',
-        orderId: 'ord-003',
-        shopId: shop1.id,
-        amount: 20.00,
-        method: 'online_upi',
-        status: 'collected',
-        collectedBy: 'Rajesh Sharma',
-        notes: 'Online UPI payment verified',
-        collectedAt: oneHourAgo,
-      },
-    ];
-
-    const sampleJobs: PrintJob[] = [
-      {
-        id: 'job-001',
-        orderId: 'ord-002',
-        shopId: shop1.id,
-        agentId: agent1.id,
-        printerName: 'Canon PIXMA G3010',
-        status: 'pending',
-        retryCount: 0,
-        createdAt: tenMinAgo,
-      },
-    ];
-
-    const sampleLogs: ActivityLog[] = [
-      {
-        id: 'log-001',
-        shopId: shop1.id,
-        userId: owner1.id,
-        actionType: 'pricing_updated',
-        description: 'Updated A4 Colour duplex pricing to ₹18.00',
-        createdAt: yesterday,
-      },
-      {
-        id: 'log-002',
-        shopId: shop1.id,
-        actionType: 'order_submitted',
-        description: 'New customer order ORD-920428 submitted for Tender_Document_Vol_2.pdf (45 pages, 2 copies)',
-        createdAt: now,
-      },
-      {
-        id: 'log-003',
-        shopId: shop1.id,
-        userId: owner1.id,
-        actionType: 'payment_collected',
-        description: 'Collected ₹30.00 via UPI for order ORD-920415',
-        createdAt: tenMinAgo,
-      },
-    ];
 
     return {
-      users: [adminUser, owner1, owner2],
-      shops: [shop1, shop2],
-      pricing: [pricing1, pricing2],
-      approvalRules: [rules1, rules2],
-      agents: [agent1],
-      orders: sampleOrders,
+      users: [adminUser],
+      shops: [],
+      pricing: [],
+      approvalRules: [],
+      agents: [],
+      orders: [],
       orderHistory: [],
-      payments: samplePayments,
-      printJobs: sampleJobs,
-      activityLogs: sampleLogs,
+      payments: [],
+      printJobs: [],
+      activityLogs: [],
     };
   }
 
@@ -1080,19 +791,26 @@ export class Database {
     return { key: rawKey, agent };
   }
 
-  public generatePairingCode(shopId: string): { code: string; expiresAt: string } {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    // Valid for 24 hours so shopkeepers never get locked out
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-
+  public generatePairingCode(shopId: string, forceReset = false): { code: string; isFixed: boolean } {
     let agent = this.getAgentByShopId(shopId);
+
+    // If shop already has a pairing code and not forced reset, KEEP the fixed code!
+    if (agent && agent.pairingCode && !forceReset) {
+      delete agent.pairingCodeExpiresAt;
+      this.save();
+      return { code: agent.pairingCode, isFixed: true };
+    }
+
+    const code = (agent && agent.pairingCode && !forceReset)
+      ? agent.pairingCode
+      : Math.floor(100000 + Math.random() * 900000).toString();
+
     if (!agent) {
       agent = {
         id: `agt-${crypto.randomUUID().slice(0, 8)}`,
         shopId,
         deviceName: 'Shop Windows PC',
         pairingCode: code,
-        pairingCodeExpiresAt: expiresAt,
         status: 'offline',
         installedPrinters: [],
         appVersion: '2.4.0',
@@ -1102,31 +820,52 @@ export class Database {
       this.data.agents.push(agent);
     } else {
       agent.pairingCode = code;
-      agent.pairingCodeExpiresAt = expiresAt;
+      delete agent.pairingCodeExpiresAt; // Permanent code - never expires!
     }
 
     this.save();
-    return { code, expiresAt };
+    return { code, isFixed: true };
+  }
+
+  public getOrCreateAgent(shopId: string): WindowsAgent {
+    let agent = this.getAgentByShopId(shopId);
+    if (!agent) {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      agent = {
+        id: `agt-${crypto.randomUUID().slice(0, 8)}`,
+        shopId,
+        deviceName: 'Shop Windows PC',
+        pairingCode: code,
+        status: 'offline',
+        installedPrinters: [],
+        appVersion: '2.4.0',
+        dryRunMode: false,
+        createdAt: new Date().toISOString(),
+      };
+      this.data.agents.push(agent);
+      this.save();
+    } else if (!agent.pairingCode) {
+      agent.pairingCode = Math.floor(100000 + Math.random() * 900000).toString();
+      delete agent.pairingCodeExpiresAt;
+      this.save();
+    }
+    return agent;
   }
 
   public pairAgent(pairingCode: string, deviceName: string, ipAddress?: string): { agent: WindowsAgent; token: string } | null {
     if (!pairingCode) return null;
     const cleanCode = pairingCode.replace(/[\s\-]/g, '').trim();
-    const now = Date.now();
 
-    // 1. Direct match on 6-digit pairingCode or utilityApiKey
+    // 1. Direct match on 6-digit pairingCode or utilityApiKey (Fixed permanent pairing, no expiry lockout!)
     let agent = this.data.agents.find((a) => {
       const codeMatch =
         a.pairingCode &&
         a.pairingCode.replace(/[\s\-]/g, '').toLowerCase() === cleanCode.toLowerCase();
-      const notExpired =
-        !a.pairingCodeExpiresAt ||
-        new Date(a.pairingCodeExpiresAt).getTime() > now;
       const keyMatch =
         a.utilityApiKey &&
         (a.utilityApiKey.trim() === cleanCode ||
           a.utilityApiKey.replace(/[\s\-]/g, '') === cleanCode);
-      return (codeMatch && notExpired) || Boolean(keyMatch);
+      return Boolean(codeMatch || keyMatch);
     });
 
     // 2. Fallback: match by shop slug or shop phone if user entered their shop ID

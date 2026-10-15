@@ -1,0 +1,897 @@
+{
+  "users": [
+    {
+      "id": "usr-admin-001",
+      "email": "printx286351@gmail.com",
+      "passwordHash": "8bbda22312cc5a13036290a21500876d62bfe54c6e8d6d2f397bc438ebf7e8de",
+      "fullName": "printx System Administrator",
+      "whatsappNumber": "+919876543210",
+      "whatsappVerified": true,
+      "role": "admin",
+      "createdAt": "2026-10-09T07:02:21.443Z",
+      "updatedAt": "2026-10-09T07:02:21.443Z"
+    },
+    {
+      "email": "surya286351@gmail.com",
+      "passwordHash": "199dbec4be35a155d7fc826a6757d4dac404899667cfa6bf7aa09bf048e35270",
+      "fullName": "surya",
+      "whatsappNumber": "9431683881",
+      "whatsappVerified": true,
+      "role": "shop_owner",
+      "id": "usr-3129a8fa",
+      "createdAt": "2026-10-10T07:04:19.860Z",
+      "updatedAt": "2026-10-10T07:05:25.026Z"
+    }
+  ],
+  "shops": [
+    {
+      "slug": "ekta-communication",
+      "name": "ekta communication",
+      "ownerId": "usr-3129a8fa",
+      "phone": "9431683881",
+      "address": "ekma ",
+      "city": "ekma",
+      "status": "active",
+      "id": "shp-00ff309e",
+      "createdAt": "2026-10-10T07:04:19.860Z",
+      "updatedAt": "2026-10-10T07:06:39.518Z",
+      "activatedAt": "2026-10-10T07:06:39.518Z",
+      "activatedBy": "usr-admin-001"
+    }
+  ],
+  "pricing": [
+    {
+      "id": "prc-fb1d86f8",
+      "shopId": "shp-00ff309e",
+      "bwSinglePrice": 2,
+      "bwDuplexPrice": 3,
+      "colorSinglePrice": 10,
+      "colorDuplexPrice": 18,
+      "legalExtra": 1,
+      "photo4x6Price": 20,
+      "idCardSinglePrice": 15,
+      "currency": "INR",
+      "updatedAt": "2026-10-10T07:04:19.861Z"
+    }
+  ],
+  "approvalRules": [
+    {
+      "id": "rul-bdfc2cfb",
+      "shopId": "shp-00ff309e",
+      "mode": "auto",
+      "maxAutoPages": 10,
+      "maxAutoAmount": 50,
+      "requirePaymentBeforePrint": false,
+      "notifyWhatsapp": true,
+      "updatedAt": "2026-10-15T05:39:07.606Z"
+    }
+  ],
+  "agents": [
+    {
+      "id": "agt-cf0f2f85",
+      "shopId": "shp-00ff309e",
+      "deviceName": "Windows Shop Workstation",
+      "status": "online",
+      "authTokenHash": "e94721b789a32f79653abfc8d20014a6c9e20f07dfd40611a36b4d65c2fde8a1",
+      "utilityApiKey": "adr_util_live_db74742faaf0ea766249170ef3f11a8c",
+      "installedPrinters": [
+        {
+          "name": "HP LaserJet Pro M404dn",
+          "isDefault": true,
+          "status": "Ready",
+          "supportsColor": false
+        },
+        {
+          "name": "Canon PIXMA G3010",
+          "isDefault": false,
+          "status": "Ready",
+          "supportsColor": true
+        },
+        {
+          "name": "Epson L3150 Series",
+          "isDefault": false,
+          "status": "Ready",
+          "supportsColor": true
+        }
+      ],
+      "defaultPrinter": "Canon PIXMA G3010",
+      "bwPrinter": "HP LaserJet Pro M404dn",
+      "colorPrinter": "Canon PIXMA G3010",
+      "appVersion": "1.2.0",
+      "dryRunMode": false,
+      "createdAt": "2026-10-10T07:37:02.466Z",
+      "pairingCode": "293843",
+      "pairingCodeExpiresAt": "2026-10-16T05:37:06.202Z"
+    }
+  ],
+  "orders": [
+    {
+      "shopId": "shp-00ff309e",
+      "customerName": "ram",
+      "customerPhone": "9431683881",
+      "documentName": "qr.pdf",
+      "documentType": "application/pdf",
+      "filePath": "f7025415-3bb7-49f3-94af-66c67ea0bdfa.pdf",
+      "fileSizeBytes": 419469,
+      "pageCount": 3,
+      "copies": 1,
+      "colorMode": "bw",
+      "duplexMode": "single",
+      "paperSize": "A4",
+      "orderType": "document",
+      "pageRange": "all",
+      "customNotes": "",
+      "unitPrice": 2,
+      "totalAmount": 6,
+      "status": "archived",
+      "paymentStatus": "collected",
+      "id": "ord-10f046cc",
+      "orderNumber": "ORD-368618",
+      "createdAt": "2026-10-10T07:07:11.127Z",
+      "updatedAt": "2026-10-10T07:44:34.648Z",
+      "paymentCollectedAt": "2026-10-10T07:10:07.550Z",
+      "paymentCollectorName": "surya",
+      "paymentMethod": "counter_upi",
+      "printedAt": "2026-10-10T07:11:20.405Z",
+      "archivedAt": "2026-10-10T07:44:34.649Z",
+      "isDocumentPurged": true,
+      "purgedAt": "2026-10-13T17:09:53.866Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "customerName": "Counter Customer",
+      "customerPhone": "",
+      "documentName": "image_9dda9c47.jpeg",
+      "documentType": "image/jpeg",
+      "filePath": "d4211af7-8440-41a9-a28a-ada2ca4b7b49.jpeg",
+      "fileSizeBytes": 377851,
+      "pageCount": 1,
+      "copies": 1,
+      "colorMode": "bw",
+      "duplexMode": "single",
+      "paperSize": "A4",
+      "orderType": "document",
+      "pageRange": "all",
+      "customNotes": "",
+      "unitPrice": 2,
+      "totalAmount": 2,
+      "status": "completed",
+      "paymentStatus": "collected",
+      "files": [
+        {
+          "id": "d4211af7-8440-41a9-a28a-ada2ca4b7b49",
+          "name": "image_9dda9c47.jpeg",
+          "type": "image/jpeg",
+          "sizeBytes": 377851,
+          "filePath": "d4211af7-8440-41a9-a28a-ada2ca4b7b49.jpeg",
+          "pageCount": 1,
+          "previewUrl": "blob:https://ais-dev-j4wzxf4ek3yadrvyzajprv-973482974092.asia-southeast1.run.app/b1c042ea-e6b9-40de-b84e-070d5f654726",
+          "edited": true
+        }
+      ],
+      "id": "ord-0cc53f41",
+      "orderNumber": "ORD-976954",
+      "createdAt": "2026-10-15T05:50:03.583Z",
+      "updatedAt": "2026-10-15T05:50:25.752Z",
+      "paymentCollectedAt": "2026-10-15T05:50:09.463Z",
+      "paymentCollectorName": "Online UPI Gateway",
+      "paymentMethod": "online_upi",
+      "printedAt": "2026-10-15T05:50:25.752Z",
+      "purgeDueAt": "2026-10-15T05:55:25.752Z",
+      "isDocumentPurged": true,
+      "purgedAt": "2026-10-15T05:55:33.280Z"
+    }
+  ],
+  "orderHistory": [
+    {
+      "id": "hst-0e6ac11e",
+      "orderId": "ord-88128368",
+      "newStatus": "queued",
+      "changedByName": "Customer Submission",
+      "comment": "Order placed by customer via Shop QR Portal",
+      "createdAt": "2026-10-10T07:02:21.447Z"
+    },
+    {
+      "id": "hst-b3462da5",
+      "orderId": "ord-10f046cc",
+      "newStatus": "payment_pending",
+      "changedByName": "Customer Submission",
+      "comment": "Order placed by customer via Shop QR Portal",
+      "createdAt": "2026-10-10T07:07:11.127Z"
+    },
+    {
+      "id": "hst-5a98fd48",
+      "orderId": "ord-004",
+      "previousStatus": "pending_approval",
+      "newStatus": "payment_pending",
+      "changedByName": "Rajesh Sharma",
+      "changedById": "usr-owner-001",
+      "comment": "Order approved by shopkeeper",
+      "createdAt": "2026-10-10T07:09:24.080Z"
+    },
+    {
+      "id": "hst-8eb38762",
+      "orderId": "ord-10f046cc",
+      "previousStatus": "queued",
+      "newStatus": "queued",
+      "changedByName": "Print Dispatcher",
+      "changedById": "usr-3129a8fa",
+      "comment": "Sent to print job queue for \"Default Windows Printer\"",
+      "createdAt": "2026-10-10T07:10:10.677Z"
+    },
+    {
+      "id": "hst-77fb5769",
+      "orderId": "ord-10f046cc",
+      "previousStatus": "queued",
+      "newStatus": "queued",
+      "changedByName": "Print Dispatcher",
+      "changedById": "usr-3129a8fa",
+      "comment": "Sent to print job queue for \"Default Windows Printer\"",
+      "createdAt": "2026-10-10T07:10:13.404Z"
+    },
+    {
+      "id": "hst-0f27c557",
+      "orderId": "ord-10f046cc",
+      "previousStatus": "queued",
+      "newStatus": "queued",
+      "changedByName": "Print Dispatcher",
+      "changedById": "usr-3129a8fa",
+      "comment": "Sent to print job queue for \"Default Windows Printer\"",
+      "createdAt": "2026-10-10T07:10:14.131Z"
+    },
+    {
+      "id": "hst-36f1f676",
+      "orderId": "ord-10f046cc",
+      "previousStatus": "queued",
+      "newStatus": "queued",
+      "changedByName": "Print Dispatcher",
+      "changedById": "usr-3129a8fa",
+      "comment": "Sent to print job queue for \"Default Windows Printer\"",
+      "createdAt": "2026-10-10T07:10:15.430Z"
+    },
+    {
+      "id": "hst-b66507e9",
+      "orderId": "ord-10f046cc",
+      "previousStatus": "queued",
+      "newStatus": "queued",
+      "changedByName": "Print Dispatcher",
+      "changedById": "usr-3129a8fa",
+      "comment": "Sent to print job queue for \"Default Windows Printer\"",
+      "createdAt": "2026-10-10T07:10:15.643Z"
+    },
+    {
+      "id": "hst-f0133c52",
+      "orderId": "ord-10f046cc",
+      "previousStatus": "queued",
+      "newStatus": "completed",
+      "changedByName": "surya",
+      "changedById": "usr-3129a8fa",
+      "comment": "Marked completed",
+      "createdAt": "2026-10-10T07:11:20.405Z"
+    },
+    {
+      "id": "hst-48ac0479",
+      "orderId": "ord-228b2979",
+      "newStatus": "queued",
+      "changedByName": "Customer Submission",
+      "comment": "Order placed by customer via Shop QR Portal",
+      "createdAt": "2026-10-10T07:33:17.482Z"
+    },
+    {
+      "id": "hst-9d829020",
+      "orderId": "ord-10f046cc",
+      "previousStatus": "completed",
+      "newStatus": "archived",
+      "changedByName": "surya",
+      "changedById": "usr-3129a8fa",
+      "comment": "Archived by shopkeeper",
+      "createdAt": "2026-10-10T07:44:34.649Z"
+    },
+    {
+      "id": "hst-0b2266c3",
+      "orderId": "ord-003",
+      "previousStatus": "completed",
+      "newStatus": "completed",
+      "changedByName": "printx Privacy Engine",
+      "comment": "Customer files automatically & permanently deleted 5 minutes after completion for privacy protection.",
+      "createdAt": "2026-10-13T17:09:53.866Z"
+    },
+    {
+      "id": "hst-c201f6f4",
+      "orderId": "ord-88128368",
+      "previousStatus": "completed",
+      "newStatus": "completed",
+      "changedByName": "printx Privacy Engine",
+      "comment": "Customer files automatically & permanently deleted 5 minutes after completion for privacy protection.",
+      "createdAt": "2026-10-13T17:09:53.866Z"
+    },
+    {
+      "id": "hst-5e624234",
+      "orderId": "ord-10f046cc",
+      "previousStatus": "archived",
+      "newStatus": "archived",
+      "changedByName": "printx Privacy Engine",
+      "comment": "Customer files automatically & permanently deleted 5 minutes after completion for privacy protection.",
+      "createdAt": "2026-10-13T17:09:53.866Z"
+    },
+    {
+      "id": "hst-22a53f13",
+      "orderId": "ord-228b2979",
+      "previousStatus": "completed",
+      "newStatus": "completed",
+      "changedByName": "printx Privacy Engine",
+      "comment": "Customer files automatically & permanently deleted 5 minutes after completion for privacy protection.",
+      "createdAt": "2026-10-13T17:09:53.867Z"
+    },
+    {
+      "id": "hst-67ed1b8e",
+      "orderId": "ord-0cc53f41",
+      "newStatus": "queued",
+      "changedByName": "Customer Submission",
+      "comment": "Order placed by customer via Shop QR Portal",
+      "createdAt": "2026-10-15T05:50:03.583Z"
+    },
+    {
+      "id": "hst-de37b93a",
+      "orderId": "ord-0cc53f41",
+      "previousStatus": "queued",
+      "newStatus": "printing",
+      "changedByName": "Auto-Print Spooler",
+      "comment": "Online payment received (₹2). Automatically spooled to \"HP LaserJet Pro M404dn\".",
+      "createdAt": "2026-10-15T05:50:09.464Z"
+    },
+    {
+      "id": "hst-2a9c5324",
+      "orderId": "ord-0cc53f41",
+      "previousStatus": "printing",
+      "newStatus": "completed",
+      "changedByName": "surya",
+      "changedById": "usr-3129a8fa",
+      "comment": "Marked completed",
+      "createdAt": "2026-10-15T05:50:25.752Z"
+    },
+    {
+      "id": "hst-bf04b0b8",
+      "orderId": "ord-0cc53f41",
+      "previousStatus": "completed",
+      "newStatus": "completed",
+      "changedByName": "printx Privacy Engine",
+      "comment": "Customer files automatically & permanently deleted 5 minutes after completion for privacy protection.",
+      "createdAt": "2026-10-15T05:55:33.280Z"
+    }
+  ],
+  "payments": [
+    {
+      "id": "pay-001",
+      "orderId": "ord-002",
+      "shopId": "shp-apex-001",
+      "amount": 30,
+      "method": "counter_upi",
+      "status": "collected",
+      "collectedBy": "Rajesh Sharma",
+      "notes": "Paid via GPay counter QR",
+      "collectedAt": "2026-10-10T06:52:21.443Z"
+    },
+    {
+      "id": "pay-002",
+      "orderId": "ord-003",
+      "shopId": "shp-apex-001",
+      "amount": 20,
+      "method": "counter_cash",
+      "status": "collected",
+      "collectedBy": "Rajesh Sharma",
+      "notes": "Counter cash received",
+      "collectedAt": "2026-10-10T06:02:21.443Z"
+    },
+    {
+      "id": "pay-f94ef77c",
+      "orderId": "ord-10f046cc",
+      "shopId": "shp-00ff309e",
+      "amount": 6,
+      "method": "counter_upi",
+      "status": "collected",
+      "collectedBy": "surya",
+      "collectedAt": "2026-10-10T07:10:07.550Z"
+    },
+    {
+      "id": "pay-5c112da0",
+      "orderId": "ord-0cc53f41",
+      "shopId": "shp-00ff309e",
+      "amount": 2,
+      "method": "online_upi",
+      "status": "collected",
+      "collectedBy": "Online UPI Gateway",
+      "notes": "Online payment verified. Ref: UPI-1792043409463",
+      "collectedAt": "2026-10-15T05:50:09.463Z"
+    }
+  ],
+  "printJobs": [
+    {
+      "id": "job-001",
+      "orderId": "ord-002",
+      "shopId": "shp-apex-001",
+      "agentId": "agt-apex-001",
+      "printerName": "Canon PIXMA G3010",
+      "status": "pending",
+      "retryCount": 0,
+      "createdAt": "2026-10-10T06:52:21.443Z"
+    },
+    {
+      "id": "job-2a3e836d",
+      "orderId": "ord-88128368",
+      "shopId": "shp-apex-001",
+      "printerName": "HP LaserJet Pro M404dn",
+      "status": "printed",
+      "retryCount": 0,
+      "createdAt": "2026-10-10T07:02:21.448Z",
+      "agentId": "agt-apex-001",
+      "claimToken": "claim_8033c10d-cc5a-4fdf-851b-77af4ab2f45a",
+      "claimedAt": "2026-10-10T07:02:21.448Z",
+      "completedAt": "2026-10-10T07:02:21.448Z"
+    },
+    {
+      "id": "job-ea5d3b9e",
+      "orderId": "ord-10f046cc",
+      "shopId": "shp-00ff309e",
+      "printerName": "Default Windows Printer",
+      "status": "pending",
+      "retryCount": 0,
+      "createdAt": "2026-10-10T07:10:10.676Z"
+    },
+    {
+      "id": "job-1fddec7e",
+      "orderId": "ord-10f046cc",
+      "shopId": "shp-00ff309e",
+      "printerName": "Default Windows Printer",
+      "status": "pending",
+      "retryCount": 0,
+      "createdAt": "2026-10-10T07:10:13.403Z"
+    },
+    {
+      "id": "job-4565efc2",
+      "orderId": "ord-10f046cc",
+      "shopId": "shp-00ff309e",
+      "printerName": "Default Windows Printer",
+      "status": "pending",
+      "retryCount": 0,
+      "createdAt": "2026-10-10T07:10:14.131Z"
+    },
+    {
+      "id": "job-23d0d993",
+      "orderId": "ord-10f046cc",
+      "shopId": "shp-00ff309e",
+      "printerName": "Default Windows Printer",
+      "status": "pending",
+      "retryCount": 0,
+      "createdAt": "2026-10-10T07:10:15.430Z"
+    },
+    {
+      "id": "job-e99a4684",
+      "orderId": "ord-10f046cc",
+      "shopId": "shp-00ff309e",
+      "printerName": "Default Windows Printer",
+      "status": "pending",
+      "retryCount": 0,
+      "createdAt": "2026-10-10T07:10:15.642Z"
+    },
+    {
+      "id": "job-396c9f6f",
+      "orderId": "ord-228b2979",
+      "shopId": "shp-apex-001",
+      "printerName": "HP LaserJet Pro M404dn",
+      "status": "printed",
+      "retryCount": 0,
+      "createdAt": "2026-10-10T07:33:17.483Z",
+      "agentId": "agt-apex-001",
+      "claimToken": "claim_48a031f8-4d94-4a33-9f5a-d19edc80cf34",
+      "claimedAt": "2026-10-10T07:33:17.483Z",
+      "completedAt": "2026-10-10T07:33:17.484Z"
+    },
+    {
+      "id": "job-96aa88bf",
+      "orderId": "ord-0cc53f41",
+      "shopId": "shp-00ff309e",
+      "printerName": "HP LaserJet Pro M404dn",
+      "status": "pending",
+      "retryCount": 0,
+      "createdAt": "2026-10-15T05:50:09.464Z"
+    }
+  ],
+  "activityLogs": [
+    {
+      "shopId": "shp-00ff309e",
+      "actionType": "payment_collected",
+      "description": "Order ORD-976954 paid ₹2 online. Instantly sent to printer.",
+      "id": "log-0be6731f",
+      "createdAt": "2026-10-15T05:50:09.465Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "actionType": "order_submitted",
+      "description": "Order ORD-976954 placed by Counter Customer (image_9dda9c47.jpeg, ₹2). Status: queued",
+      "metadata": {
+        "orderNumber": "ORD-976954",
+        "amount": 2
+      },
+      "id": "log-26ce182a",
+      "createdAt": "2026-10-15T05:50:03.584Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "rules_updated",
+      "description": "Approval mode updated to AUTO (Payment before print: No)",
+      "id": "log-f7d82d42",
+      "createdAt": "2026-10-15T05:39:07.608Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "rules_updated",
+      "description": "Approval mode updated to AUTO (Payment before print: No)",
+      "id": "log-ecf2d14f",
+      "createdAt": "2026-10-15T05:39:06.396Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "rules_updated",
+      "description": "Approval mode updated to AUTO (Payment before print: Yes)",
+      "id": "log-7b338179",
+      "createdAt": "2026-10-15T05:39:01.288Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "pairing_code_generated",
+      "description": "Generated 6-digit Windows Agent pairing code: 293843 (Expires in 15 min)",
+      "id": "log-4438ffbd",
+      "createdAt": "2026-10-15T05:37:06.202Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "order_deleted",
+      "description": "Order ORD-421011 permanently deleted by Shopkeeper.",
+      "id": "log-77115b59",
+      "createdAt": "2026-10-15T05:37:02.249Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "order_deleted",
+      "description": "Order ORD-365565 permanently deleted by Shopkeeper.",
+      "id": "log-e3a47e13",
+      "createdAt": "2026-10-15T05:37:00.700Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "printer_config_updated",
+      "description": "Updated printer routing: B&W -> HP LaserJet Pro M404dn, Color -> Canon PIXMA G3010",
+      "id": "log-3335e1bf",
+      "createdAt": "2026-10-13T17:22:35.025Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "pairing_code_generated",
+      "description": "Generated 6-digit Windows Agent pairing code: 903029 (Expires in 15 min)",
+      "id": "log-b2c9f08e",
+      "createdAt": "2026-10-13T17:10:02.626Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-365565 to printer HP LaserJet Pro M404dn",
+      "id": "log-4212cedb",
+      "createdAt": "2026-10-10T07:45:41.132Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-365565 to printer HP LaserJet Pro M404dn",
+      "id": "log-d2b9b3f9",
+      "createdAt": "2026-10-10T07:44:41.293Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-365565 to printer HP LaserJet Pro M404dn",
+      "id": "log-8da89ded",
+      "createdAt": "2026-10-10T07:44:41.077Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-365565 to printer HP LaserJet Pro M404dn",
+      "id": "log-6e58e26f",
+      "createdAt": "2026-10-10T07:44:40.864Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-421011 to printer HP LaserJet Pro M404dn",
+      "id": "log-e671f98d",
+      "createdAt": "2026-10-10T07:44:38.713Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-421011 to printer HP LaserJet Pro M404dn",
+      "id": "log-74a55277",
+      "createdAt": "2026-10-10T07:44:38.434Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-421011 to printer HP LaserJet Pro M404dn",
+      "id": "log-cd3bcaac",
+      "createdAt": "2026-10-10T07:44:38.217Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-421011 to printer HP LaserJet Pro M404dn",
+      "id": "log-02f58c4d",
+      "createdAt": "2026-10-10T07:44:38.027Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-421011 to printer HP LaserJet Pro M404dn",
+      "id": "log-b16ab942",
+      "createdAt": "2026-10-10T07:44:37.814Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-365565 to printer HP LaserJet Pro M404dn",
+      "id": "log-b6ae0442",
+      "createdAt": "2026-10-10T07:44:18.889Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-365565 to printer HP LaserJet Pro M404dn",
+      "id": "log-9778ad8a",
+      "createdAt": "2026-10-10T07:44:18.692Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-365565 to printer HP LaserJet Pro M404dn",
+      "id": "log-b8e3c1cd",
+      "createdAt": "2026-10-10T07:44:18.495Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-365565 to printer HP LaserJet Pro M404dn",
+      "id": "log-e560b2ec",
+      "createdAt": "2026-10-10T07:44:18.295Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-365565 to printer HP LaserJet Pro M404dn",
+      "id": "log-684ab22c",
+      "createdAt": "2026-10-10T07:44:17.437Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "payment_collected",
+      "description": "Collected ₹20 via Cash for order ORD-365565",
+      "id": "log-523b28e9",
+      "createdAt": "2026-10-10T07:44:16.085Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-421011 to printer HP LaserJet Pro M404dn",
+      "id": "log-95e60148",
+      "createdAt": "2026-10-10T07:44:10.450Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "actionType": "order_submitted",
+      "description": "Order ORD-365565 placed by Counter Customer (ragistrysathi.pdf, ₹20). Status: queued",
+      "metadata": {
+        "orderNumber": "ORD-365565",
+        "amount": 20
+      },
+      "id": "log-ed4948d0",
+      "createdAt": "2026-10-10T07:43:45.903Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "rules_updated",
+      "description": "Approval mode updated to AUTO (Payment before print: No)",
+      "id": "log-1cc7509b",
+      "createdAt": "2026-10-10T07:42:10.642Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "rules_updated",
+      "description": "Approval mode updated to AUTO (Payment before print: Yes)",
+      "id": "log-029154e7",
+      "createdAt": "2026-10-10T07:41:55.924Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-421011 to printer HP LaserJet Pro M404dn",
+      "id": "log-b72adb64",
+      "createdAt": "2026-10-10T07:40:23.831Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-421011 to printer HP LaserJet Pro M404dn",
+      "id": "log-29797ba3",
+      "createdAt": "2026-10-10T07:40:23.628Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-421011 to printer HP LaserJet Pro M404dn",
+      "id": "log-64483acb",
+      "createdAt": "2026-10-10T07:40:22.697Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-421011 to printer HP LaserJet Pro M404dn",
+      "id": "log-153abca1",
+      "createdAt": "2026-10-10T07:40:22.502Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-421011 to printer HP LaserJet Pro M404dn",
+      "id": "log-8d941b87",
+      "createdAt": "2026-10-10T07:40:22.276Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-421011 to printer HP LaserJet Pro M404dn",
+      "id": "log-e0a86b10",
+      "createdAt": "2026-10-10T07:40:20.949Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "payment_collected",
+      "description": "Collected ₹20 via Cash for order ORD-421011",
+      "id": "log-b1232f95",
+      "createdAt": "2026-10-10T07:40:14.369Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "actionType": "order_submitted",
+      "description": "Order ORD-421011 placed by Counter Customer (ragistrysathi.pdf, ₹20). Status: payment_pending",
+      "metadata": {
+        "orderNumber": "ORD-421011",
+        "amount": 20
+      },
+      "id": "log-70f60da0",
+      "createdAt": "2026-10-10T07:37:48.353Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "utility_key_created",
+      "description": "Utility API Key created for Windows Desktop application.",
+      "id": "log-91b41b16",
+      "createdAt": "2026-10-10T07:37:02.466Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-368618 to printer Default Windows Printer",
+      "id": "log-5823f270",
+      "createdAt": "2026-10-10T07:10:15.643Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-368618 to printer Default Windows Printer",
+      "id": "log-56a721f7",
+      "createdAt": "2026-10-10T07:10:15.431Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-368618 to printer Default Windows Printer",
+      "id": "log-26900d0e",
+      "createdAt": "2026-10-10T07:10:14.132Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-368618 to printer Default Windows Printer",
+      "id": "log-7ae0ddbc",
+      "createdAt": "2026-10-10T07:10:13.404Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "job_dispatched",
+      "description": "Job created for order ORD-368618 to printer Default Windows Printer",
+      "id": "log-945ad817",
+      "createdAt": "2026-10-10T07:10:10.677Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "payment_collected",
+      "description": "Collected ₹6 via UPI for order ORD-368618",
+      "id": "log-99106326",
+      "createdAt": "2026-10-10T07:10:07.551Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "actionType": "order_submitted",
+      "description": "Order ORD-368618 placed by ram (qr.pdf, ₹6). Status: payment_pending",
+      "metadata": {
+        "orderNumber": "ORD-368618",
+        "amount": 6
+      },
+      "id": "log-3d06a8ec",
+      "createdAt": "2026-10-10T07:07:11.128Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-admin-001",
+      "actionType": "shop_activated",
+      "description": "Shop \"ekta communication\" approved and activated by Administrator. Customer orders are now live.",
+      "id": "log-5afa3ccc",
+      "createdAt": "2026-10-10T07:06:39.519Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "whatsapp_verified",
+      "description": "WhatsApp number 9431683881 verified successfully.",
+      "id": "log-43eaf077",
+      "createdAt": "2026-10-10T07:05:25.027Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "shop_registered",
+      "description": "Shop \"ekta communication\" registered by surya. Awaiting WhatsApp verification and Admin review.",
+      "id": "log-4cb25252",
+      "createdAt": "2026-10-10T07:04:19.861Z"
+    }
+  ]
+}

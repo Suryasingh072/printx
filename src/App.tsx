@@ -41,6 +41,14 @@ export default function App() {
         setCurrentUser(data.user);
         if (data.shop) {
           setCurrentShop(data.shop);
+        } else if (data.user && data.user.role === 'shop_owner') {
+          // Fallback: restore shop directly
+          try {
+            const directShop = await api.getCurrentShop();
+            if (directShop) setCurrentShop(directShop);
+          } catch (shopErr) {
+            console.warn('Could not restore shop profile:', shopErr);
+          }
         }
       } catch (e) {
         api.clearToken();

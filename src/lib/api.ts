@@ -85,11 +85,15 @@ export const api = {
     });
   },
 
-  async resetPasswordRequest(email: string): Promise<{ message: string; resetToken?: string }> {
+  async resetPasswordRequest(email: string): Promise<{ message: string; resetToken?: string; devHint?: string }> {
     return this.request('/api/auth/reset-password-request', {
       method: 'POST',
       body: JSON.stringify({ email }),
     });
+  },
+
+  async requestPasswordReset(email: string): Promise<{ message: string; resetToken?: string; devHint?: string }> {
+    return this.resetPasswordRequest(email);
   },
 
   async resetPasswordConfirm(resetToken: string, newPassword: string): Promise<{ message: string }> {
@@ -97,6 +101,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ resetToken, newPassword }),
     });
+  },
+
+  async confirmPasswordReset(resetToken: string, newPassword: string): Promise<{ message: string }> {
+    return this.resetPasswordConfirm(resetToken, newPassword);
   },
 
   // Admin
@@ -280,8 +288,8 @@ export const api = {
     return this.request('/api/shop/agent/utility-key', { method: 'POST' });
   },
 
-  async generatePairingCode(): Promise<{ code: string; expiresAt: string }> {
-    return this.request('/api/shop/agent/pairing-code', { method: 'POST' });
+  async generatePairingCode(reset = false): Promise<{ code: string; isFixed?: boolean }> {
+    return this.request(`/api/shop/agent/pairing-code${reset ? '?reset=true' : ''}`, { method: 'POST' });
   },
 
   async getAgentStatus(): Promise<WindowsAgent | null> {

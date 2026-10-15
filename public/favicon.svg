@@ -1,19 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
   <defs>
-    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#2563eb" />
-      <stop offset="100%" stop-color="#7c3aed" />
+    <linearGradient id="printx-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff2e63" />
+      <stop offset="60%" stop-color="#c13cff" />
+      <stop offset="100%" stop-color="#7c5cff" />
     </linearGradient>
   </defs>
-  <!-- Background Rounded Squircle -->
-  <rect width="64" height="64" rx="16" fill="url(#grad)" />
-  
-  <!-- Stylized PrintX Logo: Printer Paper + Stylized 'X' in vibrant cyan/white -->
-  <path d="M18 16 h28 v10 h-28 z" fill="#ffffff" opacity="0.85" rx="3" />
-  <rect x="14" y="24" width="36" height="22" rx="4" fill="#0f172a" />
-  <circle cx="20" cy="30" r="2" fill="#10b981" />
-  
-  <!-- Radiant 'X' mark emerging from printer tray -->
-  <path d="M22 36 L42 54" stroke="#38bdf8" stroke-width="5" stroke-linecap="round" />
-  <path d="M42 36 L22 54" stroke="#ffffff" stroke-width="5" stroke-linecap="round" />
+  <rect width="64" height="64" rx="16" fill="url(#printx-grad)" />
+  <g transform="translate(10, 10) scale(1.83)" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="6 9 6 2 18 2 18 9" />
+    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+    <rect x="6" y="14" width="12" height="8" />
+  </g>
 </svg>

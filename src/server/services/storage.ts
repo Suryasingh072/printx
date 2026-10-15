@@ -30,21 +30,30 @@ export interface StoredFile {
 
 export class StorageService {
   /**
-   * Validate file mime type and size
+   * Validate file mime type, extension, and size
    */
   public validateFile(originalName: string, mimeType: string, sizeBytes: number): { valid: boolean; error?: string } {
-    const allowedMimes = [
-      'application/pdf',
-      'image/jpeg',
-      'image/jpg',
-      'image/png',
-      'image/webp',
-    ];
+    const ext = path.extname(originalName).toLowerCase();
+    const cleanMime = (mimeType || '').toLowerCase();
 
-    if (!allowedMimes.includes(mimeType.toLowerCase())) {
+    // Check if it's Office doc
+    if (['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx'].includes(ext)) {
       return {
         valid: false,
-        error: `Unsupported file type: ${mimeType}. Please upload PDF, JPG, or PNG. For Word or Excel files, export to PDF first.`,
+        error: `"${originalName}" is a Word/Excel document. Please open it on your phone and tap Print -> Save as PDF before uploading.`,
+      };
+    }
+
+    const isPdf = ext === '.pdf' || cleanMime.includes('pdf');
+    const isImage =
+      ['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tiff', '.heic', '.heif'].includes(ext) ||
+      cleanMime.startsWith('image/') ||
+      cleanMime === 'application/octet-stream';
+
+    if (!isPdf && !isImage) {
+      return {
+        valid: false,
+        error: `Unsupported file format (${ext || cleanMime}). Please upload PDF documents or photos (JPG, PNG, WebP).`,
       };
     }
 
@@ -60,26 +69,49 @@ export class StorageService {
   }
 
   /**
-   * Saves buffer into private storage
+   * Saves buffer into private storage with auto format detection
    */
   public saveFileBuffer(buffer: Buffer, originalName: string, mimeType: string): StoredFile {
     const fileId = crypto.randomUUID();
-    const extension = path.extname(originalName) || (mimeType === 'application/pdf' ? '.pdf' : '.png');
-    const safeFilename = `${fileId}${extension}`;
+    const ext = path.extname(originalName).toLowerCase();
+    
+    // Auto-detect format from magic bytes or extension
+    const isPdfMagic = buffer.slice(0, 5).toString('ascii') === '%PDF-';
+    const isJpegMagic = buffer[0] === 0xff && buffer[1] === 0xd8;
+    const isPngMagic = buffer.slice(0, 4).toString('hex') === '89504e47';
+
+    let finalMime = mimeType;
+    let finalExt = ext;
+
+    if (isPdfMagic || ext === '.pdf') {
+      finalMime = 'application/pdf';
+      finalExt = '.pdf';
+    } else if (isJpegMagic || ext === '.jpg' || ext === '.jpeg') {
+      finalMime = 'image/jpeg';
+      finalExt = '.jpg';
+    } else if (isPngMagic || ext === '.png') {
+      finalMime = 'image/png';
+      finalExt = '.png';
+    } else if (ext === '.webp') {
+      finalMime = 'image/webp';
+      finalExt = '.webp';
+    }
+
+    const safeFilename = `${fileId}${finalExt || '.bin'}`;
     const destinationPath = path.join(DOCS_DIR, safeFilename);
 
     fs.writeFileSync(destinationPath, buffer);
 
-    // Rough page count estimation for PDF if not parsed
+    // Calculate pages
     let pageCount = 1;
-    if (mimeType === 'application/pdf') {
+    if (finalMime === 'application/pdf') {
       pageCount = this.estimatePdfPages(buffer);
     }
 
     return {
       id: fileId,
       originalName: path.basename(originalName),
-      mimeType,
+      mimeType: finalMime,
       sizeBytes: buffer.length,
       filePath: safeFilename,
       pageCount,
@@ -93,16 +125,20 @@ export class StorageService {
   public estimatePdfPages(buffer: Buffer): number {
     try {
       const content = buffer.toString('latin1');
-      // Count /Type /Page (excluding /Pages)
-      const matches = content.match(/\/Type[\s]*\/Page[^s]/g);
-      if (matches && matches.length > 0) {
-        return matches.length;
+      // Count /Type /Page (excluding /Pages) with case insensitivity and whitespace tolerance
+      const pageMatches = content.match(/\/Type\s*\/Page(?![a-zA-Z])/gi);
+      if (pageMatches && pageMatches.length > 0) {
+        return pageMatches.length;
       }
-      // Alternate check: /Count inside /Pages
-      const countMatch = content.match(/\/Count[\s]+(\d+)/);
-      if (countMatch && countMatch[1]) {
-        const count = parseInt(countMatch[1], 10);
-        if (!isNaN(count) && count > 0) return count;
+
+      // Check /Count inside /Pages objects
+      const countMatches = Array.from(content.matchAll(/\/Count\s+(\d+)/gi));
+      if (countMatches.length > 0) {
+        // The root catalog /Pages tree usually has the highest count
+        const counts = countMatches.map((m) => parseInt(m[1], 10)).filter((n) => !isNaN(n) && n > 0);
+        if (counts.length > 0) {
+          return Math.max(...counts);
+        }
       }
     } catch (e) {
       console.warn('Could not estimate PDF pages, defaulting to 1');

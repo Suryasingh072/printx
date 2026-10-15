@@ -109,7 +109,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           city: formCity,
           status: formStatus,
         });
-        alert('Shop details updated successfully!');
+        showToast('Shop details updated successfully!', 'success');
       } else {
         // Register new shop by Admin
         await api.createShop({
@@ -122,37 +122,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           ownerEmail: formOwnerEmail,
           ownerPassword: formOwnerPassword || 'Ekma#1234',
         });
-        alert('New shop registered and activated successfully!');
+        showToast('New shop registered and activated successfully!', 'success');
       }
       setShowEditModal(false);
       fetchShops();
     } catch (e: any) {
-      alert(e.message || 'Operation failed');
+      showToast(e.message || 'Operation failed', 'error');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDeleteShop = async (shop: any) => {
-    if (!window.confirm(`Are you sure you want to permanently delete shop "${shop.name}"? This removes all printer configurations, queued orders, and records.`)) {
-      return;
-    }
     try {
       await api.deleteShop(shop.id);
-      alert(`Shop "${shop.name}" deleted successfully.`);
+      showToast(`Shop "${shop.name}" deleted successfully.`, 'success');
       fetchShops();
     } catch (e: any) {
-      alert(e.message || 'Failed to delete shop.');
+      showToast(e.message || 'Failed to delete shop.', 'error');
     }
   };
 
   const handleActivate = async (shopId: string) => {
     try {
       await api.activateShop(shopId, 'activate');
-      alert('Shop approved and activated successfully! Customer orders are live.');
+      showToast('Shop approved and activated successfully! Customer orders are live.', 'success');
       fetchShops();
     } catch (e: any) {
-      alert(e.message);
+      showToast(e.message || 'Failed to activate shop', 'error');
     }
   };
 
@@ -476,6 +473,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* In-App Notification Toast */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <div
+            className={`px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 border text-sm font-bold backdrop-blur-md transition-all ${
+              toast.type === 'success'
+                ? 'bg-emerald-950/95 text-emerald-200 border-emerald-600'
+                : toast.type === 'error'
+                ? 'bg-rose-950/95 text-rose-200 border-rose-600'
+                : 'bg-slate-900/95 text-sky-200 border-sky-600'
+            }`}
+          >
+            <span className="text-base">{toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}</span>
+            <span>{toast.message}</span>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="ml-3 text-xs opacity-60 hover:opacity-100 cursor-pointer"
+            >
+              ✕
+            </button>
           </div>
         </div>
       )}

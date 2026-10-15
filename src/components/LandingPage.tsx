@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Printer,
   QrCode,
@@ -24,6 +24,15 @@ import {
   Camera,
   Zap,
   Check,
+  ExternalLink,
+  Mail,
+  X,
+  MessageSquare,
+  Globe,
+  Terminal,
+  Moon,
+  Sun,
+  Menu,
 } from 'lucide-react';
 import { api } from '../lib/api.js';
 
@@ -33,26 +42,105 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, onLoginSuccess }) => {
-  // Modal states
+  // Theme state
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('px-theme') as 'dark' | 'light';
+      if (saved) {
+        setTheme(saved);
+        document.documentElement.dataset.theme = saved;
+      } else {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    } catch {}
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    document.documentElement.dataset.theme = next;
+    try {
+      localStorage.setItem('px-theme', next);
+    } catch {}
+  };
+
+  // Active section scroll / tab
+  const [activeSection, setActiveSection] = useState<'home' | 'how-it-works' | 'features' | 'for-shops' | 'faq' | 'contact'>('home');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Legal Modal States
+  const [legalModal, setLegalModal] = useState<'privacy' | 'terms' | 'refund' | null>(null);
+
+  // Interactive Hero Preview Stage
+  const [stageStep, setStageStep] = useState<number>(0);
+  const [userInteractedStage, setUserInteractedStage] = useState(false);
+  const [paperEmerge, setPaperEmerge] = useState(false);
+  const [demoLogs, setDemoLogs] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (userInteractedStage) return;
+    const interval = setInterval(() => {
+      setStageStep((prev) => (prev + 1) % 4);
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [userInteractedStage]);
+
+  useEffect(() => {
+    if (stageStep === 3) {
+      setPaperEmerge(false);
+      setDemoLogs([]);
+      setTimeout(() => setPaperEmerge(true), 200);
+      const lines = [
+        'Order picked up by agent',
+        'File type verified: PDF ✓ (A4 Standard)',
+        'Spooling silent print to HP LaserJet...',
+        'Printed ✓ — file auto-purge scheduled in 5m',
+      ];
+      lines.forEach((l, i) => {
+        setTimeout(() => {
+          setDemoLogs((prev) => [...prev, l]);
+        }, 500 + i * 800);
+      });
+    }
+  }, [stageStep]);
+
+  // Auth Modals
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
 
-  // Form states
+  // Login Form
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   // Register Form
   const [regShopName, setRegShopName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regPhone, setRegPhone] = useState('');
+  const [regCity, setRegCity] = useState('');
+  const [regAddress, setRegAddress] = useState('');
   const [regOtp, setRegOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
   const [otpDevHint, setOtpDevHint] = useState<string | null>(null);
   const [regLoading, setRegLoading] = useState(false);
+  const [regError, setRegError] = useState<string | null>(null);
+
+  // Reset Password State
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [resetStep, setResetStep] = useState<'request' | 'confirm'>('request');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMsg, setResetMsg] = useState<string | null>(null);
+
+  // Interactive FAQ Accordion
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   const handleSendOtp = async () => {
     if (!regPhone || regPhone.replace(/[^0-9]/g, '').length < 10) {
@@ -60,42 +148,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
       return;
     }
     setOtpSending(true);
+    setRegError(null);
     try {
       const res = await api.sendRegistrationOtp(regPhone, regShopName);
       setOtpSent(true);
       if (res.devHint) setOtpDevHint(res.devHint);
-      alert(`Verification code sent to WhatsApp: ${regPhone}`);
     } catch (e: any) {
-      alert(e.message || 'Failed to send WhatsApp OTP');
+      setRegError(e.message || 'Failed to send WhatsApp OTP');
     } finally {
       setOtpSending(false);
     }
   };
 
-  // Reset Password State
-  const [resetEmail, setResetEmail] = useState('');
-  const [resetToken, setResetToken] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [resetStep, setResetStep] = useState<'request' | 'confirm'>('request');
-
-  // Interactive Live Price Estimator State
-  const [calcPages, setCalcPages] = useState<number>(10);
-  const [calcCopies, setCalcCopies] = useState<number>(1);
-  const [calcColor, setCalcColor] = useState<'bw' | 'color'>('bw');
-  const [calcDuplex, setCalcDuplex] = useState<'single' | 'duplex'>('single');
-
-  // Interactive FAQ Open State
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
-
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginLoading(true);
+    setLoginError(null);
     try {
       const res = await api.login(loginEmail, loginPassword);
       setShowLoginModal(false);
       onLoginSuccess(res.user, res.shop);
     } catch (err: any) {
-      alert(err.message || 'Login failed');
+      setLoginError(err.message || 'Invalid email or password');
     } finally {
       setLoginLoading(false);
     }
@@ -103,24 +177,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (regPassword.length < 6) {
-      alert('Password must be at least 6 characters.');
-      return;
-    }
     setRegLoading(true);
+    setRegError(null);
     try {
       const res = await api.register({
-        shopName: regShopName,
         email: regEmail,
         password: regPassword,
+        fullName: regShopName,
         whatsappNumber: regPhone,
+        shopName: regShopName,
+        phone: regPhone,
+        address: regAddress || 'Main Road Counter',
+        city: regCity || 'City Center',
         otpCode: regOtp,
         verified: Boolean(regOtp),
       });
       setShowRegisterModal(false);
       onLoginSuccess(res.user, res.shop);
     } catch (err: any) {
-      alert(err.message || 'Registration failed');
+      setRegError(err.message || 'Registration failed');
     } finally {
       setRegLoading(false);
     }
@@ -128,178 +203,372 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
 
   const handleResetRequest = async (e: React.FormEvent) => {
     e.preventDefault();
+    setResetLoading(true);
     try {
-      const res = await api.resetPasswordRequest(resetEmail);
-      if (res.resetToken) {
-        setResetToken(res.resetToken);
-        setResetStep('confirm');
-      } else {
-        alert(res.message);
+      const res = await api.requestPasswordReset(resetEmail);
+      setResetMsg(res.message);
+      if (res.devHint) {
+        const match = res.devHint.match(/token=([a-f0-9]+)/);
+        if (match) setResetToken(match[1]);
       }
+      setResetStep('confirm');
     } catch (e: any) {
-      alert(e.message);
+      setResetMsg(e.message || 'Failed to request reset');
+    } finally {
+      setResetLoading(false);
     }
   };
 
   const handleResetConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
+    setResetLoading(true);
     try {
-      const res = await api.resetPasswordConfirm(resetToken, newPassword);
-      alert(res.message);
+      const res = await api.confirmPasswordReset(resetToken, newPassword);
+      alert(res.message || 'Password reset successfully! Please sign in.');
       setShowForgotModal(false);
       setShowLoginModal(true);
+      setResetStep('request');
     } catch (e: any) {
-      alert(e.message);
+      setResetMsg(e.message || 'Failed to reset password');
+    } finally {
+      setResetLoading(false);
     }
   };
 
-  // Calculator price formula
-  const getCalculatedPrice = () => {
-    let rate = 2.0;
-    if (calcColor === 'bw') {
-      rate = calcDuplex === 'duplex' ? 1.5 : 2.0;
-    } else {
-      rate = calcDuplex === 'duplex' ? 9.0 : 10.0;
+  const handleOpenPrintPortal = () => {
+    const slug = prompt('Apni Shop ka QR Code Name / Slug enter karein (e.g. ekta-communication):', 'ekta-communication');
+    if (slug && slug.trim()) {
+      onOpenCustomerPortal(slug.trim().toLowerCase());
     }
-    return (rate * calcPages * calcCopies).toFixed(2);
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans">
+    <div className={`min-h-screen text-slate-100 ${theme === 'light' ? 'bg-[#f6f7fb] text-slate-900' : 'bg-[#080b14]'}`}>
       {/* ========================================================
-          NAVBAR
+          1. TOP NAVIGATION BAR (Exact design from prompt)
          ======================================================== */}
-      <nav className="bg-white/95 backdrop-blur-md sticky top-0 z-40 border-b border-slate-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-md shadow-blue-500/25">
-              <Printer className="w-6 h-6" />
-            </div>
-            <div>
-              <span className="text-2xl font-black tracking-tight text-slate-900">
-                print<span className="text-blue-600">x</span>
-              </span>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                Smart QR Self-Service Xerox & Print
-              </p>
-            </div>
+      <nav className="fixed inset-x-0 top-0 z-50 backdrop-blur-xl border-b border-white/10 bg-[#080b14]/85 transition-colors">
+        <div className="max-w-6xl mx-auto px-5 flex items-center justify-between h-[68px]">
+          {/* Brand Logo */}
+          <button
+            onClick={() => { setActiveSection('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            className="flex items-center gap-2.5 font-['Sora'] font-extrabold text-xl tracking-tight text-white cursor-pointer"
+          >
+            <span className="w-9 h-9 rounded-xl bg-grad flex items-center justify-center shadow-lg shadow-rose-500/30">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                <polyline points="6 9 6 2 18 2 18 9" />
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                <rect x="6" y="14" width="12" height="8" />
+              </svg>
+            </span>
+            <span>printx</span>
+          </button>
+
+          {/* Desktop Nav Links */}
+          <div className="hidden md:flex items-center gap-7 text-[14.5px] font-medium text-slate-400">
+            {[
+              { id: 'home', label: 'Home' },
+              { id: 'how-it-works', label: 'How it works' },
+              { id: 'features', label: 'Features' },
+              { id: 'for-shops', label: 'For shops' },
+              { id: 'faq', label: 'FAQ' },
+              { id: 'contact', label: 'Contact' },
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveSection(item.id as any);
+                  const el = document.getElementById(item.id);
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className={`transition hover:text-white cursor-pointer py-1 relative ${
+                  activeSection === item.id ? 'text-white font-semibold after:content-[""] after:absolute after:bottom-[-4px] after:inset-x-0 after:h-[2px] after:bg-grad after:rounded-full' : ''
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
 
-          {/* Nav Links */}
-          <div className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-600">
-            <a href="#how-it-works" className="hover:text-blue-600 transition">How It Works</a>
-            <a href="#features" className="hover:text-blue-600 transition">Features</a>
-            <a href="#calculator" className="hover:text-blue-600 transition">Price Calculator</a>
-            <a href="#faq" className="hover:text-blue-600 transition">FAQ</a>
-          </div>
-
-          {/* Action CTAs */}
+          {/* Nav Right CTA */}
           <div className="flex items-center gap-3">
             <button
-              onClick={() => onOpenCustomerPortal('apex-print')}
-              className="px-4 py-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition"
+              onClick={toggleTheme}
+              className="w-10 h-10 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 flex items-center justify-center text-sm cursor-pointer transition"
+              title="Toggle theme"
             >
-              Customer QR Portal
+              {theme === 'dark' ? '🌓' : '☀️'}
             </button>
 
             <button
               onClick={() => setShowLoginModal(true)}
-              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-md shadow-blue-600/20 hover:shadow-lg transition flex items-center gap-1.5"
+              className="px-4 py-2 text-sm font-semibold text-slate-200 border border-white/15 bg-white/5 hover:bg-white/10 rounded-xl transition cursor-pointer hidden sm:inline-flex"
             >
-              Sign In <ArrowRight className="w-4 h-4" />
+              Sign in
+            </button>
+
+            <button
+              onClick={() => setShowRegisterModal(true)}
+              className="px-4 py-2 text-sm font-bold btn-grad rounded-xl cursor-pointer"
+            >
+              Register your shop
+            </button>
+
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden w-10 h-10 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center text-slate-200 cursor-pointer"
+            >
+              <Menu className="w-5 h-5" />
             </button>
           </div>
         </div>
+
+        {/* Mobile Dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-[#0d1220] border-b border-white/10 px-6 py-4 space-y-3">
+            {[
+              { id: 'home', label: 'Home' },
+              { id: 'how-it-works', label: 'How it works' },
+              { id: 'features', label: 'Features' },
+              { id: 'for-shops', label: 'For shops' },
+              { id: 'faq', label: 'FAQ' },
+              { id: 'contact', label: 'Contact' },
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveSection(item.id as any);
+                  setMobileMenuOpen(false);
+                  const el = document.getElementById(item.id);
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="block w-full text-left py-2 text-sm text-slate-300 font-medium hover:text-white"
+              >
+                {item.label}
+              </button>
+            ))}
+            <div className="pt-3 border-t border-white/10 flex gap-2">
+              <button
+                onClick={() => { setMobileMenuOpen(false); setShowLoginModal(true); }}
+                className="flex-1 py-2 text-center text-xs font-bold border border-white/15 rounded-xl text-slate-200"
+              >
+                Sign in
+              </button>
+              <button
+                onClick={() => { setMobileMenuOpen(false); setShowRegisterModal(true); }}
+                className="flex-1 py-2 text-center text-xs font-bold btn-grad rounded-xl"
+              >
+                Register
+              </button>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* ========================================================
-          3. HERO SECTION
+          2. HERO SECTION WITH 4-STEP LIVE PREVIEW STAGE
          ======================================================== */}
-      <section className="relative overflow-hidden pt-12 pb-20 lg:pt-20 lg:pb-28 bg-gradient-to-b from-blue-50/40 via-white to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            {/* Left Hero Copy */}
-            <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-100/80 text-blue-800 text-xs font-bold">
-                <Sparkles className="w-4 h-4 text-blue-600" />
-                Direct QR & Online Payment Printing for Local Xerox & Print Shops
-              </div>
+      <section id="home" className="pt-36 pb-20 relative overflow-hidden">
+        {/* Ambient Glowing Orbs */}
+        <div className="absolute top-[-100px] left-[-120px] w-[520px] h-[520px] bg-rose-500/15 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-24 right-[-100px] w-[460px] h-[460px] bg-purple-600/15 rounded-full blur-[100px] pointer-events-none" />
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.12]">
-                Customers Scan, Pay Online & Print.{' '}
-                <span className="text-blue-600">Your Machine Prints Instantly.</span>
-              </h1>
+        <div className="max-w-6xl mx-auto px-5 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
+          {/* Left Hero Content */}
+          <div className="lg:col-span-7 space-y-6">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-white/15 bg-white/5 text-xs text-slate-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse" />
+              For cyber cafes, copy shops and CSC centres
+            </div>
 
-              <p className="text-lg text-slate-600 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-                Transform your Xerox center, cyber cafe, or digital studio into an automated self-service hub. Customers pay online via UPI, and prints dispatch directly to your Windows desktop printer.
-              </p>
+            <h1 className="text-4xl sm:text-5xl lg:text-[58px] font-extrabold font-['Sora'] leading-[1.12] tracking-tight">
+              Customers scan.{' '}
+              <span className="text-grad block mt-1">Your printer does the rest.</span>
+            </h1>
 
-              {/* Hero Action Buttons */}
-              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
-                <button
-                  onClick={() => onOpenCustomerPortal('apex-print')}
-                  className="w-full sm:w-auto px-7 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-2xl text-base shadow-lg shadow-blue-600/25 transition flex items-center justify-center gap-2 cursor-pointer"
+            <p className="text-slate-400 text-base sm:text-lg max-w-xl leading-relaxed">
+              Customers scan your QR code, upload files from their phone and send them straight to your printer. No WhatsApp, no pen drives, no app to install.
+            </p>
+
+            <div className="flex flex-wrap gap-3.5 pt-2">
+              <button
+                onClick={() => setShowRegisterModal(true)}
+                className="px-6 py-3.5 rounded-xl font-bold text-sm btn-grad flex items-center gap-2 cursor-pointer shadow-lg shadow-rose-500/20"
+              >
+                Register your shop →
+              </button>
+              <button
+                onClick={handleOpenPrintPortal}
+                className="px-6 py-3.5 rounded-xl font-semibold text-sm border border-white/15 bg-white/5 hover:bg-white/10 text-white transition flex items-center gap-2 cursor-pointer"
+              >
+                Customer Print Portal
+              </button>
+            </div>
+
+            {/* Chips */}
+            <div className="flex flex-wrap gap-2.5 pt-4">
+              {[
+                'Any Windows printer',
+                'Wi-Fi printer not required',
+                'B&W and colour',
+                'Files auto-deleted',
+              ].map((chip) => (
+                <div
+                  key={chip}
+                  className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs text-slate-300 font-medium"
                 >
-                  <QrCode className="w-5 h-5 text-white" /> Open Customer Print Portal <ChevronRight className="w-5 h-5" />
-                </button>
-
-                <button
-                  onClick={() => setShowLoginModal(true)}
-                  className="w-full sm:w-auto px-6 py-3.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold rounded-2xl text-base shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Printer className="w-5 h-5 text-blue-600" /> Shop Owner / Admin Login
-                </button>
-              </div>
-
-              {/* Trust Badges */}
-              <div className="pt-6 grid grid-cols-3 gap-4 border-t border-slate-200/80 max-w-xl mx-auto lg:mx-0 text-left">
-                <div>
-                  <p className="text-xs font-semibold text-slate-500">⚡ Fast Workflow</p>
-                  <p className="text-sm font-bold text-slate-800 mt-0.5">5-Sec Customer Upload</p>
+                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span>{chip}</span>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold text-slate-500">🔒 100% Secure</p>
-                  <p className="text-sm font-bold text-slate-800 mt-0.5">Private File Storage</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-slate-500">🖨️ Windows Native</p>
-                  <p className="text-sm font-bold text-slate-800 mt-0.5">Direct Spooler Queue</p>
-                </div>
-              </div>
+              ))}
             </div>
+          </div>
 
-            {/* Right Hero Visual Card */}
-            <div className="lg:col-span-5">
-              <div className="relative mx-auto max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-slate-200/80">
-                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-emerald-500" />
-                    <span className="text-xs font-bold text-slate-800">Live Counter Standee Simulation</span>
-                  </div>
-                  <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                    No App Needed
-                  </span>
+          {/* Right Hero Stage: Interactive 4-step Phone & Printer Preview */}
+          <div className="lg:col-span-5">
+            <div className="relative border border-white/15 rounded-3xl bg-gradient-to-b from-white/[0.08] to-white/[0.02] p-6 shadow-2xl backdrop-blur-md">
+              {/* Header */}
+              <div className="flex items-center justify-between text-xs text-slate-400 pb-4 mb-4 border-b border-white/10">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
                 </div>
+                <span className="text-[11px] font-mono text-slate-400">
+                  {userInteractedStage ? 'Interactive preview' : 'Auto-playing preview'}
+                </span>
+              </div>
 
-                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 my-4 text-center">
-                  <div className="w-44 h-44 bg-white p-3 rounded-2xl shadow-sm border border-slate-200 mx-auto mb-3 flex items-center justify-center">
-                    <QrCode className="w-36 h-36 text-slate-900" />
-                  </div>
-                  <p className="text-xs font-bold text-slate-900">Scan with Phone Camera to Print</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Supports PDF, JPG, PNG & ID Cards</p>
-                </div>
+              {/* Step Buttons */}
+              <div className="grid grid-cols-4 gap-2 mb-6">
+                {[
+                  { icon: '📱', label: 'Scan' },
+                  { icon: '📄', label: 'Upload' },
+                  { icon: '💳', label: 'Pay' },
+                  { icon: '🖨️', label: 'Print' },
+                ].map((s, idx) => (
+                  <button
+                    key={s.label}
+                    onClick={() => {
+                      setUserInteractedStage(true);
+                      setStageStep(idx);
+                    }}
+                    className={`py-2 px-1 text-center rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                      stageStep === idx
+                        ? 'bg-grad text-white border-transparent shadow-md shadow-rose-500/30 font-bold'
+                        : stageStep > idx
+                        ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10'
+                        : 'border-white/10 text-slate-400 hover:bg-white/5'
+                    }`}
+                  >
+                    <span className="block text-base">{s.icon}</span>
+                    <span className="text-[11px]">{s.label}</span>
+                  </button>
+                ))}
+              </div>
 
-                <div className="space-y-2 text-xs">
-                  <div className="p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between text-emerald-900 font-medium">
-                    <span>ORD-920412 (12 Pages, B&W)</span>
-                    <span className="font-bold">₹18.00 • Paid at Counter</span>
+              {/* Stage Viewport */}
+              <div className="min-h-[290px] flex items-center justify-center">
+                {/* Step 0: Scan QR */}
+                {stageStep === 0 && (
+                  <div className="w-[220px] border-2 border-white/20 rounded-[28px] p-4 bg-[#0d1220] shadow-xl text-center space-y-3">
+                    <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-2" />
+                    <div className="w-32 h-32 mx-auto bg-white rounded-xl p-2 relative overflow-hidden shadow-inner flex items-center justify-center">
+                      <QrCode className="w-28 h-28 text-slate-900" />
+                      <div className="absolute inset-x-0 h-1 bg-rose-500 shadow-[0_0_12px_#ff2e63] animate-scanline" />
+                    </div>
+                    <p className="text-xs text-slate-300 font-semibold">Scanning shop counter QR…</p>
+                    <div className="text-[10px] text-slate-400 font-mono py-1 border border-dashed border-white/20 rounded-lg">
+                      printx.shop/counter
+                    </div>
                   </div>
-                  <div className="p-2.5 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between text-blue-900 font-medium">
-                    <span>ORD-920415 (Aadhaar Front/Back)</span>
-                    <span className="font-bold">₹30.00 • Spooling to HP</span>
+                )}
+
+                {/* Step 1: Upload */}
+                {stageStep === 1 && (
+                  <div className="w-[230px] border-2 border-white/20 rounded-[28px] p-4 bg-[#0d1220] shadow-xl space-y-2.5">
+                    <div className="w-12 h-1 bg-white/20 rounded-full mx-auto" />
+                    <p className="text-xs font-bold text-center text-slate-200">Select Files to Print</p>
+                    <div className="p-2 border border-white/10 rounded-xl bg-white/5 flex items-center justify-between text-xs">
+                      <span>📄 Resume_2026.pdf</span>
+                      <span className="text-[10px] text-emerald-400 font-bold">2 pgs ✓</span>
+                    </div>
+                    <div className="p-2 border border-white/10 rounded-xl bg-white/5 flex items-center justify-between text-xs">
+                      <span>🖼️ ID_Proof.jpg</span>
+                      <span className="text-[10px] text-emerald-400 font-bold">1 pg ✓</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5 pt-1">
+                      <div className="text-center py-1 text-[11px] font-bold rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                        B&W (₹2)
+                      </div>
+                      <div className="text-center py-1 text-[11px] rounded-lg border border-white/10 text-slate-400">
+                        Colour (₹10)
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* Step 2: Pay */}
+                {stageStep === 2 && (
+                  <div className="w-[230px] border-2 border-white/20 rounded-[28px] p-4 bg-[#0d1220] shadow-xl space-y-3">
+                    <div className="w-12 h-1 bg-white/20 rounded-full mx-auto" />
+                    <p className="text-xs font-bold text-center text-slate-200">Order Summary</p>
+                    <div className="p-2.5 border border-white/10 rounded-xl bg-white/5 text-xs space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Total Pages:</span>
+                        <span className="font-bold">3 Pages (A4)</span>
+                      </div>
+                      <div className="flex justify-between text-emerald-400 font-bold">
+                        <span>Amount Due:</span>
+                        <span>₹6.00</span>
+                      </div>
+                    </div>
+                    <div className="w-full py-2 bg-grad rounded-xl text-center text-xs font-bold text-white shadow-md shadow-rose-500/30">
+                      Place Order → ORD-920412
+                    </div>
+                    <p className="text-[10px] text-slate-400 text-center">
+                      Confirm cash or UPI at counter, then auto-prints!
+                    </p>
+                  </div>
+                )}
+
+                {/* Step 3: Print */}
+                {stageStep === 3 && (
+                  <div className="w-full max-w-[280px] text-center space-y-3">
+                    {/* Printer graphic */}
+                    <div className="relative w-44 mx-auto pt-4">
+                      <div className="h-16 rounded-2xl bg-slate-800 border-2 border-white/20 flex items-center justify-center text-3xl shadow-xl relative z-10">
+                        🖨️
+                      </div>
+                      {/* Evolving Paper */}
+                      <div
+                        className={`absolute left-6 right-6 top-10 bg-white rounded-b-md shadow-md transition-all duration-1000 overflow-hidden ${
+                          paperEmerge ? 'h-20' : 'h-0'
+                        }`}
+                      >
+                        <div className="p-2 space-y-1">
+                          <div className="h-1 bg-slate-300 rounded" />
+                          <div className="h-1 bg-slate-300 rounded w-3/4" />
+                          <div className="h-1 bg-slate-200 rounded w-1/2" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Console log */}
+                    <div className="mt-8 p-3 rounded-xl bg-black/60 border border-white/10 text-[11px] font-mono text-left space-y-1 min-h-[90px]">
+                      {demoLogs.map((log, i) => (
+                        <div key={i} className="text-slate-300">
+                          <span className="text-emerald-400">› </span>
+                          {log}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="text-center text-[11px] text-slate-500 mt-2">
+                Tap any step above to explore the workflow
               </div>
             </div>
           </div>
@@ -307,372 +576,320 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
       </section>
 
       {/* ========================================================
-          3.5 FEATURE SPOTLIGHT: MULTI-FILE, PHONE EDITING, PASSPORT
+          3. HOW IT WORKS (01 Scan, 02 Upload, 03 Pay, 04 Print)
          ======================================================== */}
-      <section className="py-16 bg-gradient-to-b from-white via-blue-50/20 to-white border-t border-slate-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-blue-100 text-blue-700 uppercase tracking-wider">
-              <Zap className="w-3.5 h-3.5" /> High Customer Delight • Zero App Download
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mt-3">
-              Kyu Customers Aur Shop Owners printx Ko Pasand Karte Hain
-            </h2>
-            <p className="text-slate-600 text-sm mt-2">
-              WhatsApp par files lene ka jhanjhat khatam. Fast, transparent aur professional self-service experience.
-            </p>
+      <section id="how-it-works" className="py-24 border-t border-white/5 relative">
+        <div className="max-w-6xl mx-auto px-5">
+          <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-rose-400 mb-3">
+            <span className="w-5 h-0.5 bg-grad rounded-full" />
+            How it works
           </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold font-['Sora'] tracking-tight max-w-2xl">
+            Your job: stick up the QR.{' '}
+            <span className="text-grad">That's it.</span>
+          </h2>
+          <p className="text-slate-400 text-base max-w-xl mt-3">
+            Set up once. After that, every order reaches your counter without you touching a single file.
+          </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* 1. Multi-file Print */}
-            <div className="bg-white rounded-3xl p-7 border-2 border-blue-100/80 hover:border-blue-400 shadow-md hover:shadow-xl transition-all flex flex-col justify-between group">
-              <div>
-                <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-5 group-hover:scale-105 transition-transform">
-                  <FileText className="w-7 h-7" />
-                </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full">Feature 01</span>
-                  <h3 className="text-xl font-black text-slate-900">📄 Multi-File Print</h3>
-                </div>
-                <p className="text-sm font-bold text-slate-700 mb-2">
-                  Customer ek saath 5–10 files bheje (PDF + photo mix)
-                </p>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Single upload queue me multiple documents, ID photos aur college assignments ek saath select karein. Ek hi bar payment calculation aur sahi order me seamless print spooling.
-                </p>
-              </div>
-              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600">
-                <span>Batch Upload & Single Pay</span>
-                <Check className="w-4 h-4 text-emerald-500 stroke-[3]" />
-              </div>
-            </div>
-
-            {/* 2. Phone Se Hi Editing */}
-            <div className="bg-white rounded-3xl p-7 border-2 border-indigo-100/80 hover:border-indigo-400 shadow-md hover:shadow-xl transition-all flex flex-col justify-between group">
-              <div>
-                <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mb-5 group-hover:scale-105 transition-transform">
-                  <Scissors className="w-7 h-7" />
-                </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full">Feature 02</span>
-                  <h3 className="text-xl font-black text-slate-900">✂️ Phone Se Hi Editing</h3>
-                </div>
-                <p className="text-sm font-bold text-slate-700 mb-2">
-                  Customer khud crop, rotate aur brightness theek karta hai
-                </p>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Photoshop ya extra computer ki jarurat nahi. Document dark hai ya tedha hai? Customer upload se pehle live preview ke saath crop, rotate aur brightness adjust kar leta hai.
-                </p>
-              </div>
-              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-600">
-                <span>Live In-Browser Editor</span>
-                <Check className="w-4 h-4 text-emerald-500 stroke-[3]" />
-              </div>
-            </div>
-
-            {/* 3. 4x6 Passport Photos */}
-            <div className="bg-white rounded-3xl p-7 border-2 border-emerald-100/80 hover:border-emerald-400 shadow-md hover:shadow-xl transition-all flex flex-col justify-between group">
-              <div>
-                <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 mb-5 group-hover:scale-105 transition-transform">
-                  <Camera className="w-7 h-7" />
-                </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full">Feature 03</span>
-                  <h3 className="text-xl font-black text-slate-900">📷 4×6 Passport Photos</h3>
-                </div>
-                <p className="text-sm font-bold text-slate-700 mb-2">
-                  Photo bhejo, 4 ya 6 ki sheet khud ban ke nikle
-                </p>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Studio style passport photos direct phone se ready! Standard 35mm×45mm size, automatic sheet layout aur scissors cutting lines ke saath direct photo printer se nikalta hai.
-                </p>
-              </div>
-              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-600">
-                <span>Auto Sheet & Cutting Lines</span>
-                <Check className="w-4 h-4 text-emerald-500 stroke-[3]" />
-              </div>
-            </div>
-          </div>
-
-          {/* Quick CTA to try Customer Portal */}
-          <div className="mt-12 text-center">
-            <button
-              onClick={() => onOpenCustomerPortal('apex-print')}
-              className="inline-flex items-center gap-2 px-6 py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-sm font-bold shadow-lg transition cursor-pointer"
-            >
-              <span>Test Live Customer Demo (Apex Print)</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================================
-          4. HOW IT WORKS SECTION
-         ======================================================== */}
-      <section id="how-it-works" className="py-20 bg-slate-50 border-t border-b border-slate-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="text-xs uppercase font-extrabold text-blue-600 tracking-wider">Simple 3-Step Process</span>
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mt-2">
-              How QR Printing Works For Your Customers
-            </h2>
-            <p className="text-slate-600 text-sm mt-3">
-              No registration or software installation required for customers. Works smoothly in any mobile browser.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Step 1 */}
-            <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm hover:shadow-md transition">
-              <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-2xl flex items-center justify-center font-black text-lg mb-6">
-                1
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Scan & Upload</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Customer scans the shop counter QR code with their phone camera and selects their PDF or photo files. Built-in ID Card Arranger formats front and back onto A4.
-              </p>
-            </div>
-
-            {/* Step 2 */}
-            <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm hover:shadow-md transition">
-              <div className="w-12 h-12 bg-indigo-100 text-indigo-700 rounded-2xl flex items-center justify-center font-black text-lg mb-6">
-                2
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Review & Approve</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                The platform computes the exact price based on your shop's per-page rates. Small orders can auto-approve, while large batches queue for counter review.
-              </p>
-            </div>
-
-            {/* Step 3 */}
-            <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm hover:shadow-md transition">
-              <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-2xl flex items-center justify-center font-black text-lg mb-6">
-                3
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Print & Collect</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Customer shows their Order Number at the counter and pays cash/UPI. Your paired Windows Desktop Agent spools the print job directly to your laser or inkjet machine.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================================
-          5. CORE PLATFORM FEATURES
-         ======================================================== */}
-      <section id="features" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="text-xs uppercase font-extrabold text-blue-600 tracking-wider">Engineered For Print Shops</span>
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mt-2">
-              Everything Your Xerox & Print Center Needs
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="p-8 rounded-3xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition">
-              <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-4">
-                <QrCode className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">Printable Shop QR Standees</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Download a clean, ready-to-print A4 counter poster PDF featuring your shop name, contact, instructions, and unique QR code.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-3xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition">
-              <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center mb-4">
-                <Layers className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">Photo & ID-Card Tools</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Customers can snap front and back of Aadhaar, Voter, or Student cards and arrange them on an A4 sheet with brightness and cutting guides.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-3xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition">
-              <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-4">
-                <Laptop className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">Windows Desktop Agent</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Native Python/PySide6 desktop app connects to your shop queue. Features atomic claims, dry-run mode, and automatic spooling.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-3xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition">
-              <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center mb-4">
-                <Sliders className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">Smart Approval Rules</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Switch between Manual Review, Automatic, or Smart rules (&lt; 10 pages auto-approved) with mandatory counter payment enforcement.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-3xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition">
-              <div className="w-10 h-10 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center mb-4">
-                <DollarSign className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">Custom Price Snapshots</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Define B&W single/duplex, Color single/duplex, Legal, and Photo rates. Order prices are calculated server-side and preserved indefinitely.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-3xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition">
-              <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mb-4">
-                <BarChart3 className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">Sales Reports & Audit Logs</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Track today's, weekly, and monthly collected revenue, page impression counts, and inspect timestamped activity trails.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================================
-          6. INTERACTIVE PRICE CALCULATOR
-         ======================================================== */}
-      <section id="calculator" className="py-20 bg-slate-50 border-t border-b border-slate-200/80">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <span className="text-xs uppercase font-extrabold text-blue-600 tracking-wider">Live Simulator</span>
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight mt-1">
-              Interactive Print Cost Estimator
-            </h2>
-            <p className="text-slate-600 text-xs mt-2">
-              See how transparent pricing works for customers based on page count and paper settings.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-              <div className="space-y-6">
-                <div>
-                  <div className="flex justify-between text-xs font-bold text-slate-700 mb-2">
-                    <span>Number of Pages:</span>
-                    <span className="text-blue-600 font-extrabold">{calcPages} Pages</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="100"
-                    value={calcPages}
-                    onChange={(e) => setCalcPages(parseInt(e.target.value))}
-                    className="w-full accent-blue-600"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-xs font-bold text-slate-700 mb-2">
-                    <span>Copies:</span>
-                    <span className="text-blue-600 font-extrabold">{calcCopies} {calcCopies === 1 ? 'Copy' : 'Copies'}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="10"
-                    value={calcCopies}
-                    onChange={(e) => setCalcCopies(parseInt(e.target.value))}
-                    className="w-full accent-blue-600"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Color Mode</label>
-                    <select
-                      value={calcColor}
-                      onChange={(e) => setCalcColor(e.target.value as any)}
-                      className="w-full py-2 px-3 border border-slate-200 rounded-xl text-xs font-semibold bg-white"
-                    >
-                      <option value="bw">Black & White (B&W)</option>
-                      <option value="color">Full Colour</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Duplex Sides</label>
-                    <select
-                      value={calcDuplex}
-                      onChange={(e) => setCalcDuplex(e.target.value as any)}
-                      className="w-full py-2 px-3 border border-slate-200 rounded-xl text-xs font-semibold bg-white"
-                    >
-                      <option value="single">Single-Sided</option>
-                      <option value="duplex">Double-Sided (Duplex)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Price Output Box */}
-              <div className="bg-slate-900 text-white p-8 rounded-2xl text-center flex flex-col justify-center">
-                <p className="text-xs uppercase font-bold text-slate-400 tracking-wider">Estimated Total Price</p>
-                <p className="text-5xl font-black text-emerald-400 tracking-tight my-3">₹{getCalculatedPrice()}</p>
-                <p className="text-xs text-slate-400">
-                  {calcPages} pages × {calcCopies} {calcCopies === 1 ? 'copy' : 'copies'} ({calcColor.toUpperCase()}, {calcDuplex})
-                </p>
-                <div className="mt-6 pt-4 border-t border-slate-800 text-[11px] text-slate-400">
-                  Paid at shop counter via Cash or UPI QR.
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========================================================
-          7. FAQ SECTION
-         ======================================================== */}
-      <section id="faq" className="py-20 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <span className="text-xs uppercase font-extrabold text-blue-600 tracking-wider">Got Questions?</span>
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight mt-1">Frequently Asked Questions</h2>
-          </div>
-
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-12">
             {[
               {
-                q: 'How does payment collection work?',
-                a: 'Customers do not pay online. They pay directly at your shop counter using cash or your counter UPI QR code. The shopkeeper confirms payment in the dashboard before prints are released.',
+                num: '01',
+                icon: '🔲',
+                title: 'Scan',
+                desc: 'Customers scan your unique shop QR code. The print page opens in their phone browser without installing any app.',
               },
               {
-                q: 'Do customers need to download an app or register?',
-                a: 'No. Customers simply scan your counter QR code with any smartphone camera. It opens directly in their browser without login or app installation.',
+                num: '02',
+                icon: '📤',
+                title: 'Upload',
+                desc: 'They add PDFs or photos, crop/rotate on phone, choose colour or B&W, copies and single/double-sided on A4.',
               },
               {
-                q: 'What file formats are supported?',
-                a: 'PDF, JPG, PNG, and WebP files up to 50MB. Word (.docx) and Excel (.xlsx) files must be exported to PDF before uploading.',
+                num: '03',
+                icon: '💳',
+                title: 'Pay',
+                desc: 'The server works out the exact price from your rates. You confirm cash or UPI payment at the counter.',
               },
               {
-                q: 'How does the Windows desktop printing application work?',
-                a: 'The Windows Agent is a lightweight PySide6 application that runs in your shop PC background. It polls your shop queue, securely claims authorized paid jobs, and sends them directly to your Windows print spooler.',
+                num: '04',
+                icon: '🖨️',
+                title: 'Print',
+                desc: 'Your Windows agent automatically claims the approved job, sends it to the printer silently, and reports success.',
+              },
+            ].map((step) => (
+              <div
+                key={step.num}
+                className="p-6 rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition relative group"
+              >
+                <span className="absolute top-4 right-5 text-4xl font-extrabold font-['Sora'] text-white/5 group-hover:text-white/10 transition">
+                  {step.num}
+                </span>
+                <div className="w-11 h-11 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-xl mb-4">
+                  {step.icon}
+                </div>
+                <h3 className="text-lg font-bold font-['Sora'] mb-2">{step.title}</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Privacy Box: Files purged in 5 min */}
+          <div className="mt-16 p-8 rounded-3xl border border-white/15 bg-gradient-to-r from-rose-500/[0.08] via-purple-600/[0.08] to-transparent grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+            <div className="md:col-span-7 space-y-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-rose-400">Privacy by design</span>
+              <h3 className="text-2xl font-bold font-['Sora']">Customer files don't stick around</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Customers print Aadhaar cards, admit cards, marksheet and certificates. printx permanently purges uploaded files exactly 5 minutes after print completion.
+              </p>
+            </div>
+            <div className="md:col-span-5 bg-black/80 border border-white/15 rounded-2xl p-4 font-mono text-xs text-slate-300 space-y-1.5 shadow-xl">
+              <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-white/10 text-[10px] text-slate-500">
+                <span className="w-2 h-2 rounded-full bg-red-400" />
+                <span className="w-2 h-2 rounded-full bg-yellow-400" />
+                <span className="w-2 h-2 rounded-full bg-green-400" />
+                <span>TERMINAL SPARK / AUDIT TRAIL</span>
+              </div>
+              <div>12:04:11 Order ORD-920412 approved</div>
+              <div>12:04:11 job claimed by Windows agent</div>
+              <div className="text-emerald-400">12:04:12 file verified: PDF ✓ (A4)</div>
+              <div>12:04:13 printing → HP LaserJet (1 copy)</div>
+              <div className="text-emerald-400 font-bold">12:04:19 report: printed</div>
+              <div className="text-rose-400 font-bold">12:09:19 file purged from storage</div>
+              <div className="text-slate-500">12:09:19 order record kept, file gone</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================
+          4. FEATURES SECTION (Customer & Shopkeeper)
+         ======================================================== */}
+      <section id="features" className="py-24 border-t border-white/5 relative">
+        <div className="max-w-6xl mx-auto px-5">
+          <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-rose-400 mb-3">
+            <span className="w-5 h-0.5 bg-grad rounded-full" />
+            Counter System Features
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold font-['Sora'] tracking-tight">
+            More than printing — <span className="text-grad">a complete counter system</span>
+          </h2>
+
+          {/* Subhead: For Customers */}
+          <h3 className="text-xl font-bold font-['Sora'] mt-12 mb-6 text-slate-200">For customers</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[
+              { icon: '📱', title: 'No app, no login', desc: 'Works in any mobile browser straight from the counter QR code.' },
+              { icon: '📑', title: 'Multi-file orders', desc: 'Up to 15 PDFs and photos in a single order with one consolidated counter payment.' },
+              { icon: '✂️', title: 'Edit on the phone', desc: 'Crop, rotate, and adjust brightness with live preview right inside the browser.' },
+              { icon: '🪪', title: 'ID-card arranger', desc: 'Front and back of Aadhaar / PAN card placed together on one clean A4 sheet.' },
+              { icon: '🎛️', title: 'Print options', desc: 'B&W or Colour, number of copies, single or double-sided back-to-back on A4.' },
+              { icon: '⚡', title: 'Instant order number', desc: 'Customer shows their 6-digit order number at the counter for 5-second pickup.' },
+            ].map((f) => (
+              <div key={f.title} className="p-6 rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-xl mb-4">
+                  {f.icon}
+                </div>
+                <h4 className="text-base font-bold font-['Sora'] mb-1.5">{f.title}</h4>
+                <p className="text-xs text-slate-400 leading-relaxed">{f.desc}</p>
+                <span className="inline-block mt-3 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400">
+                  Available
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Subhead: For Shop Owners */}
+          <h3 className="text-xl font-bold font-['Sora'] mt-16 mb-6 text-slate-200">For shop owners</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[
+              { icon: '🔲', title: 'Your own QR & poster', desc: 'Unique shop link and QR code, plus a 1-click downloadable A4 counter standee.' },
+              { icon: '💰', title: 'Your rates & pricing', desc: 'Set per-page rates for B&W, colour, duplex, and ID cards. Auto-calculated on server.' },
+              { icon: '✅', title: 'Approval rules', desc: 'Manual review, automatic release, or smart threshold auto-approving small jobs.' },
+              { icon: '📊', title: 'Sales reports & analytics', desc: 'Daily, weekly and monthly revenue, print volume, and paper page counts.' },
+              { icon: '🧾', title: 'Activity log', desc: 'Timestamped audit trail of what happened to every order and print spool.' },
+              { icon: '🛡️', title: 'Supabase cloud persistence', desc: 'Shop data and orders stay safe and auto-synchronized across sessions.' },
+            ].map((f) => (
+              <div key={f.title} className="p-6 rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-xl mb-4">
+                  {f.icon}
+                </div>
+                <h4 className="text-base font-bold font-['Sora'] mb-1.5">{f.title}</h4>
+                <p className="text-xs text-slate-400 leading-relaxed">{f.desc}</p>
+                <span className="inline-block mt-3 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400">
+                  Available
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Comparison Table: WhatsApp / Pen Drive vs printx */}
+          <div className="mt-16 rounded-3xl border border-white/10 bg-white/[0.02] overflow-hidden">
+            <div className="p-6 border-b border-white/10">
+              <h4 className="text-lg font-bold font-['Sora']">WhatsApp / Pen Drive vs printx</h4>
+              <p className="text-xs text-slate-400 mt-1">See why shops switch to printx counter automation.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-white/10 bg-white/[0.02] text-slate-400 uppercase tracking-wider text-[11px]">
+                    <th className="py-3 px-5">Scenario</th>
+                    <th className="py-3 px-5 text-rose-400">WhatsApp / Pen Drive</th>
+                    <th className="py-3 px-5 text-emerald-400 font-bold">printx Solution</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5 text-slate-300">
+                  <tr>
+                    <td className="py-3.5 px-5 font-bold">Receiving files</td>
+                    <td className="py-3.5 px-5 text-slate-400">Share personal number, search through chats</td>
+                    <td className="py-3.5 px-5 text-white font-semibold">Customer scans QR — your number stays private</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3.5 px-5 font-bold">Your time & labor</td>
+                    <td className="py-3.5 px-5 text-slate-400">Open WhatsApp Web, download file, open print dialog</td>
+                    <td className="py-3.5 px-5 text-white font-semibold">Approved jobs print automatically without opening files</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3.5 px-5 font-bold">Order tracking</td>
+                    <td className="py-3.5 px-5 text-slate-400">Rely on memory of who paid and what they ordered</td>
+                    <td className="py-3.5 px-5 text-white font-semibold">Every order has an ID, exact amount, and paid status</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3.5 px-5 font-bold">Computer security</td>
+                    <td className="py-3.5 px-5 text-slate-400">Customer pen drives can carry shortcuts & viruses</td>
+                    <td className="py-3.5 px-5 text-white font-semibold">Cloud uploads only — nothing plugged into your PC</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3.5 px-5 font-bold">Rush hours</td>
+                    <td className="py-3.5 px-5 text-slate-400">One customer at a time causes long counter queues</td>
+                    <td className="py-3.5 px-5 text-white font-semibold">Everyone uploads at once from their phones</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================
+          5. FOR SHOPS (5-Minute Onboarding)
+         ======================================================== */}
+      <section id="for-shops" className="py-24 border-t border-white/5">
+        <div className="max-w-6xl mx-auto px-5">
+          <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-rose-400 mb-3">
+            <span className="w-5 h-0.5 bg-grad rounded-full" />
+            Quick Setup
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold font-['Sora'] tracking-tight">
+            Set up your shop in <span className="text-grad">a few minutes</span>
+          </h2>
+          <p className="text-slate-400 text-base max-w-xl mt-3">
+            If your printer already works from your Windows PC, it works with printx.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-12">
+            {[
+              { step: '1', title: 'Register shop', desc: 'Create your account and enter your WhatsApp number.' },
+              { step: '2', title: 'Install agent', desc: 'Download printx Windows Desktop package from dashboard.' },
+              { step: '3', title: '6-digit pairing', desc: 'Enter the 6-digit code shown in your dashboard to connect.' },
+              { step: '4', title: 'Set your rates', desc: 'Configure your per-page Xerox & colour rates for A4 sheets.' },
+              { step: '5', title: 'Put up QR', desc: 'Download and print the ready A4 poster for your counter.' },
+            ].map((s) => (
+              <div key={s.step} className="p-5 rounded-2xl border border-white/10 bg-white/[0.03] space-y-2">
+                <span className="w-8 h-8 rounded-lg bg-grad flex items-center justify-center font-['Sora'] font-extrabold text-sm text-white">
+                  {s.step}
+                </span>
+                <h4 className="text-sm font-bold font-['Sora'] text-slate-100">{s.title}</h4>
+                <p className="text-xs text-slate-400 leading-relaxed">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-8">
+            <div className="p-6 rounded-2xl border border-white/10 bg-white/[0.02]">
+              <span className="text-2xl mb-2 block">💻</span>
+              <h4 className="text-sm font-bold font-['Sora'] mb-1">A Windows PC</h4>
+              <p className="text-xs text-slate-400">Windows 10 or 11 at the counter, running during shop hours.</p>
+            </div>
+            <div className="p-6 rounded-2xl border border-white/10 bg-white/[0.02]">
+              <span className="text-2xl mb-2 block">🖨️</span>
+              <h4 className="text-sm font-bold font-['Sora'] mb-1">A working printer</h4>
+              <p className="text-xs text-slate-400">Any inkjet or laser printer installed on that PC. Wi-Fi not required.</p>
+            </div>
+            <div className="p-6 rounded-2xl border border-white/10 bg-white/[0.02]">
+              <span className="text-2xl mb-2 block">🌐</span>
+              <h4 className="text-sm font-bold font-['Sora'] mb-1">Standard Internet</h4>
+              <p className="text-xs text-slate-400">Broadband or mobile hotspot. Jobs queue safely if connection drops.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================
+          6. FAQ ACCORDION
+         ======================================================== */}
+      <section id="faq" className="py-24 border-t border-white/5">
+        <div className="max-w-4xl mx-auto px-5">
+          <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-rose-400 mb-3">
+            <span className="w-5 h-0.5 bg-grad rounded-full" />
+            Frequently Asked Questions
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold font-['Sora'] tracking-tight mb-8">
+            Got questions? <span className="text-grad">We've got answers.</span>
+          </h2>
+
+          <div className="space-y-3">
+            {[
+              {
+                q: 'Do customers need to install an app or register?',
+                a: 'No. Customers scan your shop counter QR code with their phone camera and the upload page opens immediately in the mobile browser. There is no app to download and no account required.',
               },
               {
-                q: 'Why does my shop status say "Pending Review"?',
-                a: 'To maintain platform trust and prevent fraudulent shops, new registrations are reviewed by an administrator before customer orders go live.',
+                q: 'How do customers pay?',
+                a: 'Customers pay you directly at your shop counter in cash or through your own UPI QR code. You click "Confirm Payment" in your shop dashboard to release the print job to the spooler.',
+              },
+              {
+                q: 'Which file formats are supported?',
+                a: 'PDF, JPG, PNG and WebP can be uploaded directly on the website. For Word or Excel files, customers can simply tap Share -> Print -> Save as PDF on their phone before uploading.',
+              },
+              {
+                q: 'Which printers work with printx?',
+                a: 'Any printer already installed on your shop Windows PC (HP, Canon, Epson, Brother, TVS, etc.), USB or network. A Wi-Fi printer is not required because the Windows PC sends the job.',
+              },
+              {
+                q: 'How does the Windows agent work?',
+                a: 'The desktop agent runs quietly in your Windows system tray. You pair it once using a 6-digit code from your dashboard. It monitors approved jobs and sends them silently to your selected printer.',
+              },
+              {
+                q: 'What happens to customer files?',
+                a: 'All uploaded files are stored in private storage and are permanently deleted exactly 5 minutes after print completion. Order statistics and financial totals remain for your accounting.',
+              },
+              {
+                q: 'What if the internet connection drops?',
+                a: 'All orders stay safely queued in the cloud. As soon as your Windows PC reconnects to the internet, pending approved jobs resume printing automatically.',
+              },
+              {
+                q: 'Can I route Colour and B&W to different printers?',
+                a: 'Yes. In your Windows Agent tab, you can select one default printer for black-and-white Xerox and a separate inkjet/colour printer for colour documents.',
               },
             ].map((faq, idx) => (
               <div
-                key={idx}
-                className="border border-slate-200 rounded-2xl overflow-hidden transition"
+                key={faq.q}
+                className="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden transition"
               >
                 <button
                   type="button"
                   onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                  className="w-full p-5 text-left font-bold text-sm text-slate-900 flex items-center justify-between hover:bg-slate-50"
+                  className="w-full text-left p-5 flex items-center justify-between gap-4 font-bold font-['Sora'] text-sm sm:text-base text-slate-100 cursor-pointer"
                 >
                   <span>{faq.q}</span>
-                  <span className="text-slate-400 text-lg">{openFaq === idx ? '−' : '+'}</span>
+                  <span className={`text-rose-400 text-lg transition-transform ${openFaq === idx ? 'rotate-45' : ''}`}>
+                    +
+                  </span>
                 </button>
                 {openFaq === idx && (
-                  <div className="px-5 pb-5 text-xs text-slate-600 leading-relaxed border-t border-slate-100 pt-3">
+                  <div className="px-5 pb-5 text-xs sm:text-sm text-slate-400 leading-relaxed border-t border-white/5 pt-3">
                     {faq.a}
                   </div>
                 )}
@@ -683,77 +900,167 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
       </section>
 
       {/* ========================================================
+          7. CONTACT SECTION (From user config.js)
+         ======================================================== */}
+      <section id="contact" className="py-24 border-t border-white/5">
+        <div className="max-w-4xl mx-auto px-5 text-center space-y-6">
+          <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-rose-400">
+            <span className="w-5 h-0.5 bg-grad rounded-full" />
+            Get In Touch
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold font-['Sora'] tracking-tight">
+            Let's <span className="text-grad">talk</span>
+          </h2>
+          <p className="text-slate-400 text-sm max-w-md mx-auto">
+            Questions about setup, your shop, or the platform? Reach out through any channel below.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto text-left pt-4">
+            <a
+              href="https://github.com/Suryasingh072"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-4 rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex items-center gap-3.5"
+            >
+              <span className="text-2xl">💻</span>
+              <div>
+                <h4 className="text-xs font-bold text-slate-200">GitHub</h4>
+                <p className="text-[11px] text-slate-400">github.com/Suryasingh072</p>
+              </div>
+            </a>
+
+            <a
+              href="https://www.linkedin.com/in/surya-pratap-singh-b82a0b367/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-4 rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex items-center gap-3.5"
+            >
+              <span className="text-2xl">🔗</span>
+              <div>
+                <h4 className="text-xs font-bold text-slate-200">LinkedIn</h4>
+                <p className="text-[11px] text-slate-400">Surya Pratap Singh</p>
+              </div>
+            </a>
+          </div>
+
+          <p className="text-xs text-slate-500 pt-4">
+            Already a shop owner?{' '}
+            <button
+              onClick={() => setShowLoginModal(true)}
+              className="text-rose-400 hover:underline font-bold cursor-pointer"
+            >
+              Sign in to your dashboard
+            </button>{' '}
+            for order and printer support.
+          </p>
+        </div>
+      </section>
+
+      {/* ========================================================
           8. FOOTER
          ======================================================== */}
-      <footer className="bg-slate-900 text-white py-12 border-t border-slate-800 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-800">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center font-bold text-white">
-                <Printer className="w-5 h-5" />
+      <footer className="border-t border-white/10 py-16 bg-[#05070d]">
+        <div className="max-w-6xl mx-auto px-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10">
+            {/* Col 1: Brand */}
+            <div className="lg:col-span-2 space-y-3">
+              <div className="flex items-center gap-2.5 font-['Sora'] font-extrabold text-xl text-white">
+                <span className="w-8 h-8 rounded-xl bg-grad flex items-center justify-center">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" className="w-4 h-4">
+                    <polyline points="6 9 6 2 18 2 18 9" />
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                    <rect x="6" y="14" width="12" height="8" />
+                  </svg>
+                </span>
+                <span>printx</span>
               </div>
-              <span className="text-xl font-black">print<span className="text-blue-500">x</span></span>
+              <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
+                QR-based self-service printing for cyber cafes, copy shops and CSC centres. Scan, upload, and auto-print.
+              </p>
             </div>
 
-            <div className="flex flex-wrap gap-6 text-xs text-slate-400">
-              <a href="#how-it-works" className="hover:text-white">How It Works</a>
-              <a href="#features" className="hover:text-white">Features</a>
-              <a href="#calculator" className="hover:text-white">Price Estimator</a>
-              <a href="#faq" className="hover:text-white">FAQ</a>
-              <button onClick={() => setShowLoginModal(true)} className="hover:text-white font-bold text-blue-400">
-                Shop & Admin Portal
-              </button>
+            {/* Col 2: Product */}
+            <div className="space-y-2 text-xs">
+              <h5 className="font-['Sora'] font-bold text-slate-300 uppercase tracking-wider text-[11px] mb-3">Product</h5>
+              <p><a href="#how-it-works" className="text-slate-400 hover:text-white transition">How it works</a></p>
+              <p><a href="#features" className="text-slate-400 hover:text-white transition">Features</a></p>
+              <p><a href="#for-shops" className="text-slate-400 hover:text-white transition">For shops</a></p>
+              <p><a href="#faq" className="text-slate-400 hover:text-white transition">FAQ</a></p>
+            </div>
+
+            {/* Col 3: Legal */}
+            <div className="space-y-2 text-xs">
+              <h5 className="font-['Sora'] font-bold text-slate-300 uppercase tracking-wider text-[11px] mb-3">Legal</h5>
+              <p><button onClick={() => setLegalModal('privacy')} className="text-slate-400 hover:text-white transition cursor-pointer">Privacy Policy</button></p>
+              <p><button onClick={() => setLegalModal('terms')} className="text-slate-400 hover:text-white transition cursor-pointer">Terms of Use</button></p>
+              <p><button onClick={() => setLegalModal('refund')} className="text-slate-400 hover:text-white transition cursor-pointer">Refund Policy</button></p>
+            </div>
+
+            {/* Col 4: Get Started */}
+            <div className="space-y-2 text-xs">
+              <h5 className="font-['Sora'] font-bold text-slate-300 uppercase tracking-wider text-[11px] mb-3">Get Started</h5>
+              <p><button onClick={() => setShowRegisterModal(true)} className="text-slate-400 hover:text-white transition cursor-pointer">Register your shop</button></p>
+              <p><button onClick={() => setShowLoginModal(true)} className="text-slate-400 hover:text-white transition cursor-pointer">Shop sign in</button></p>
+              <p><button onClick={handleOpenPrintPortal} className="text-slate-400 hover:text-white transition cursor-pointer">Customer QR Portal</button></p>
+              <p><a href="#contact" className="text-slate-400 hover:text-white transition">Contact</a></p>
             </div>
           </div>
 
-          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-            <p>© {new Date().getFullYear()} printx Smart Printing Platform. All rights reserved.</p>
-            <p>Direct QR Counter Printing • Zero WhatsApp Hassle • Auto-Spooler</p>
+          <div className="mt-12 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-3">
+            <span>© 2026 printx. All rights reserved.</span>
+            <span>Built in Lucknow, India</span>
           </div>
         </div>
       </footer>
 
       {/* ========================================================
-          LOGIN MODAL
+          9. MODALS: LOGIN, REGISTER, FORGOT, LEGAL
          ======================================================== */}
+
+      {/* Login Modal */}
       {showLoginModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
-              <h3 className="text-lg font-bold text-slate-900">Sign In to Shop Dashboard</h3>
-              <button
-                onClick={() => setShowLoginModal(false)}
-                className="text-slate-400 hover:text-slate-700 font-bold"
-              >
-                ✕
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#0f172a] border border-white/15 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative text-white">
+            <button
+              onClick={() => setShowLoginModal(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-white cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="mb-6">
+              <h3 className="text-xl font-bold font-['Sora']">Sign in to printx</h3>
+              <p className="text-xs text-slate-400 mt-1">Access your print queue, rates, and Windows agent.</p>
             </div>
+
+            {loginError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs">
+                {loginError}
+              </div>
+            )}
 
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Email Address</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Email Address</label>
                 <input
                   type="email"
                   required
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
-                  placeholder="e.g. printx286351@gmail.com"
-                  className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm"
+                  placeholder="e.g. shop@printx.com"
+                  className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
                 />
               </div>
 
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-semibold text-slate-700">Password</label>
+                  <label className="text-xs font-bold text-slate-300">Password</label>
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowLoginModal(false);
-                      setShowForgotModal(true);
-                    }}
-                    className="text-[11px] text-blue-600 hover:underline"
+                    onClick={() => { setShowLoginModal(false); setShowForgotModal(true); }}
+                    className="text-[11px] text-rose-400 hover:underline cursor-pointer"
                   >
-                    Forgot Password?
+                    Forgot?
                   </button>
                 </div>
                 <input
@@ -762,239 +1069,308 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm"
+                  className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={loginLoading}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition shadow-xs mt-2 cursor-pointer"
+                className="w-full py-3 rounded-xl font-bold text-sm btn-grad transition cursor-pointer mt-2"
               >
-                {loginLoading ? 'Signing In...' : 'Sign In'}
+                {loginLoading ? 'Signing in...' : 'Sign In to Dashboard'}
               </button>
             </form>
 
-            <div className="mt-6 pt-4 border-t border-slate-100 text-center">
-              <p className="text-xs text-slate-500">
-                Shop accounts are managed & approved exclusively by the System Administrator.
-              </p>
+            <div className="mt-5 text-center text-xs text-slate-400">
+              New shop owner?{' '}
+              <button
+                onClick={() => { setShowLoginModal(false); setShowRegisterModal(true); }}
+                className="text-rose-400 hover:underline font-bold cursor-pointer"
+              >
+                Register your shop
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ========================================================
-          SHOP REGISTRATION MODAL
-         ======================================================== */}
+      {/* Register Shop Modal */}
       {showRegisterModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl my-8">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
-              <div>
-                <h3 className="text-xl font-bold text-slate-900">Register your print shop</h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  Create your owner account and verify WhatsApp. Shop activation follows platform settings.
-                </p>
-              </div>
-              <button
-                onClick={() => setShowRegisterModal(false)}
-                className="text-slate-400 hover:text-slate-700 font-bold"
-              >
-                ✕
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-[#0f172a] border border-white/15 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative text-white my-8">
+            <button
+              onClick={() => setShowRegisterModal(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-white cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="mb-6">
+              <h3 className="text-xl font-bold font-['Sora']">Register Your Print Shop</h3>
+              <p className="text-xs text-slate-400 mt-1">Get your custom QR code, Windows print agent, and customer portal.</p>
             </div>
+
+            {regError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs">
+                {regError}
+              </div>
+            )}
 
             <form onSubmit={handleRegisterSubmit} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Shop name</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Shop Name *</label>
                 <input
                   type="text"
                   required
                   value={regShopName}
                   onChange={(e) => setRegShopName(e.target.value)}
-                  placeholder="The name customers will see"
-                  className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm"
+                  placeholder="e.g. Apex Print & Xerox Hub"
+                  className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
                 />
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Email address</label>
-                <input
-                  type="email"
-                  required
-                  value={regEmail}
-                  onChange={(e) => setRegEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">Email Address *</label>
+                  <input
+                    type="email"
+                    required
+                    value={regEmail}
+                    onChange={(e) => setRegEmail(e.target.value)}
+                    placeholder="shop@example.com"
+                    className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">Password *</label>
+                  <input
+                    type="password"
+                    required
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
               </div>
 
+              {/* WhatsApp OTP */}
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">WhatsApp number</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1">WhatsApp Mobile Number *</label>
                 <div className="flex gap-2">
                   <input
                     type="tel"
                     required
                     value={regPhone}
                     onChange={(e) => setRegPhone(e.target.value)}
-                    placeholder="10-digit Indian WhatsApp number"
-                    className="flex-1 py-2.5 px-3 border border-slate-200 rounded-xl text-sm"
+                    placeholder="+91 98123 45678"
+                    className="flex-1 py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
                   />
                   <button
                     type="button"
                     onClick={handleSendOtp}
                     disabled={otpSending}
-                    className="px-3 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 shrink-0 transition"
+                    className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold transition cursor-pointer"
                   >
-                    {otpSending ? 'Sending...' : 'Send WhatsApp OTP'}
+                    {otpSending ? 'Sending...' : otpSent ? 'Resend OTP' : 'Send OTP'}
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Send verification codes and enabled account updates to this WhatsApp number.
-                </p>
-
                 {otpDevHint && (
-                  <p className="text-[11px] text-blue-600 font-bold bg-blue-50 p-2 rounded-lg mt-2">
-                    {otpDevHint}
+                  <p className="text-[11px] text-emerald-400 mt-1 font-mono">
+                    ✓ {otpDevHint} (Autofilled or enter below)
                   </p>
-                )}
-
-                {otpSent && (
-                  <div className="mt-2">
-                    <input
-                      type="text"
-                      placeholder="Enter 6-digit WhatsApp OTP"
-                      maxLength={6}
-                      value={regOtp}
-                      onChange={(e) => setRegOtp(e.target.value)}
-                      className="w-full py-2 px-3 border border-emerald-300 bg-emerald-50/40 rounded-xl text-xs font-bold"
-                    />
-                  </div>
                 )}
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Password</label>
-                <input
-                  type="password"
-                  required
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                  placeholder="Use at least 6 characters."
-                  className="w-full py-2.5 px-3 border border-slate-200 rounded-xl text-sm"
-                />
-                <p className="text-[11px] text-slate-400 mt-0.5">Use at least 6 characters.</p>
+              {otpSent && (
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">Enter 6-Digit OTP</label>
+                  <input
+                    type="text"
+                    value={regOtp}
+                    onChange={(e) => setRegOtp(e.target.value)}
+                    placeholder="123456"
+                    className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white font-mono font-bold tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">City / Town</label>
+                  <input
+                    type="text"
+                    value={regCity}
+                    onChange={(e) => setRegCity(e.target.value)}
+                    placeholder="e.g. Lucknow, Noida, Delhi"
+                    className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">Counter Address</label>
+                  <input
+                    type="text"
+                    value={regAddress}
+                    onChange={(e) => setRegAddress(e.target.value)}
+                    placeholder="e.g. Shop 4, Main Market"
+                    className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
               </div>
 
               <button
                 type="submit"
                 disabled={regLoading}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition shadow-xs mt-3 cursor-pointer"
+                className="w-full py-3.5 rounded-xl font-bold text-sm btn-grad transition cursor-pointer mt-2"
               >
-                {regLoading ? 'Creating account...' : 'Create owner account'}
+                {regLoading ? 'Registering Shop...' : 'Complete Registration & Open Dashboard'}
               </button>
-
-              <div className="pt-3 border-t border-slate-100 text-center">
-                <p className="text-xs text-slate-500">
-                  Already registered?{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowRegisterModal(false);
-                      setShowLoginModal(true);
-                    }}
-                    className="font-bold text-blue-600 hover:underline"
-                  >
-                    Sign in
-                  </button>{' '}
-                  |{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowRegisterModal(false);
-                      setShowForgotModal(true);
-                    }}
-                    className="font-bold text-blue-600 hover:underline"
-                  >
-                    Forgot password?
-                  </button>
-                </p>
-              </div>
             </form>
+
+            <div className="mt-4 text-center text-xs text-slate-400">
+              Already have an account?{' '}
+              <button
+                onClick={() => { setShowRegisterModal(false); setShowLoginModal(true); }}
+                className="text-rose-400 hover:underline font-bold cursor-pointer"
+              >
+                Sign in
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* ========================================================
-          PASSWORD RESET MODAL
-         ======================================================== */}
+      {/* Forgot Password Modal */}
       {showForgotModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl">
-            <h3 className="text-base font-bold text-slate-900 mb-1">Reset Password</h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Enter your email to receive a password reset token.
-            </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#0f172a] border border-white/15 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative text-white">
+            <button
+              onClick={() => setShowForgotModal(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-white cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-xl font-bold font-['Sora'] mb-1">Reset Password</h3>
+            <p className="text-xs text-slate-400 mb-6">Enter your registered email to receive a recovery link.</p>
+
+            {resetMsg && (
+              <div className="mb-4 p-3 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs">
+                {resetMsg}
+              </div>
+            )}
 
             {resetStep === 'request' ? (
               <form onSubmit={handleResetRequest} className="space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Email</label>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">Email Address</label>
                   <input
                     type="email"
                     required
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
-                    className="w-full py-2 px-3 border border-slate-200 rounded-xl text-xs"
+                    placeholder="shop@example.com"
+                    className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
                   />
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowForgotModal(false)}
-                    className="flex-1 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold"
-                  >
-                    Request Token
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  disabled={resetLoading}
+                  className="w-full py-3 rounded-xl font-bold text-sm btn-grad transition cursor-pointer"
+                >
+                  {resetLoading ? 'Sending...' : 'Send Reset Link'}
+                </button>
               </form>
             ) : (
               <form onSubmit={handleResetConfirm} className="space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Reset Token</label>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">Reset Token</label>
                   <input
                     type="text"
                     required
                     value={resetToken}
                     onChange={(e) => setResetToken(e.target.value)}
-                    className="w-full py-2 px-3 border border-slate-200 rounded-xl text-xs font-mono"
+                    className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-xs text-white font-mono"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">New Password</label>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">New Password</label>
                   <input
                     type="password"
                     required
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full py-2 px-3 border border-slate-200 rounded-xl text-xs"
+                    placeholder="••••••••"
+                    className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="w-full py-2 bg-blue-600 text-white rounded-xl text-xs font-bold"
+                  disabled={resetLoading}
+                  className="w-full py-3 rounded-xl font-bold text-sm btn-grad transition cursor-pointer"
                 >
-                  Set New Password
+                  {resetLoading ? 'Resetting...' : 'Save New Password'}
                 </button>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Legal Policy Modal */}
+      {legalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#0f172a] border border-white/15 rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl relative text-white max-h-[85vh] overflow-y-auto">
+            <button
+              onClick={() => setLegalModal(null)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-white cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {legalModal === 'privacy' && (
+              <div className="space-y-4 text-xs sm:text-sm text-slate-300">
+                <h3 className="text-xl font-bold font-['Sora'] text-white">Privacy Policy</h3>
+                <p className="text-[11px] text-slate-400">Last updated: October 2026</p>
+                <h4 className="font-bold text-white text-sm">Customer Documents</h4>
+                <p>Files you upload are stored privately and used solely to complete your print order.</p>
+                <p>Shop staff open documents through short-lived signed links. All customer files are permanently erased approximately 5 minutes after print completion. Order statistics (number, pages, amount) remain for accounting.</p>
+                <h4 className="font-bold text-white text-sm">Information Handled</h4>
+                <p>Customers: Uploaded documents, copies, and optional name/phone on the order form.</p>
+                <p>Shop owners: Shop name, email, WhatsApp number, and printer configurations.</p>
+                <p>Windows Agent: Pairing token stored securely using Windows DPAPI protection.</p>
+              </div>
+            )}
+
+            {legalModal === 'terms' && (
+              <div className="space-y-4 text-xs sm:text-sm text-slate-300">
+                <h3 className="text-xl font-bold font-['Sora'] text-white">Terms of Use</h3>
+                <p className="text-[11px] text-slate-400">Last updated: October 2026</p>
+                <h4 className="font-bold text-white text-sm">The Platform</h4>
+                <p>printx is software that connects customers with local print shops. Each shop is an independent business responsible for paper, ink, printing quality, and payments.</p>
+                <h4 className="font-bold text-white text-sm">Acceptable Use</h4>
+                <p>Do not upload illegal, copyright-infringing, or harmful documents.</p>
+              </div>
+            )}
+
+            {legalModal === 'refund' && (
+              <div className="space-y-4 text-xs sm:text-sm text-slate-300">
+                <h3 className="text-xl font-bold font-['Sora'] text-white">Refund Policy</h3>
+                <p className="text-[11px] text-slate-400">Last updated: October 2026</p>
+                <h4 className="font-bold text-white text-sm">Payments at the Counter</h4>
+                <p>Customers pay the shop directly at the counter. Refunds or reprints for paper jams or printer defects are settled directly with the shopkeeper before leaving the counter.</p>
+              </div>
+            )}
+
+            <div className="mt-6 pt-4 border-t border-white/10 flex justify-end">
+              <button
+                onClick={() => setLegalModal(null)}
+                className="px-5 py-2 bg-white/10 hover:bg-white/15 rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
