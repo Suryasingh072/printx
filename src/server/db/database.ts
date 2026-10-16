@@ -141,19 +141,18 @@ export class Database {
   private saveDiskOnly(): void {
     try {
       const content = JSON.stringify(this.data, null, 2);
-      // Write to DB_FILE
-      const tempPath = `${DB_FILE}.tmp`;
-      fs.writeFileSync(tempPath, content, 'utf-8');
-      fs.renameSync(tempPath, DB_FILE);
-
-      // Also maintain backup copy so container restarts on Vercel or cloud never lose data
+      try {
+        fs.writeFileSync(DB_FILE, content, 'utf-8');
+      } catch (e1) {
+        console.error('Error writing to primary DB_FILE:', e1);
+      }
       try {
         fs.writeFileSync(BACKUP_FILE, content, 'utf-8');
-      } catch (err) {}
+      } catch (e2) {}
       if (DB_FILE !== TMP_FILE) {
         try {
           fs.writeFileSync(TMP_FILE, content, 'utf-8');
-        } catch (err) {}
+        } catch (e3) {}
       }
     } catch (e) {
       console.error('Failed to persist database to disk:', e);
@@ -172,59 +171,65 @@ export class Database {
     // 1. Immediately persist to local disk and backup
     this.saveDiskOnly();
 
-    // 2. Automatically sync to Supabase Cloud
+    // 2. Sync to Supabase Cloud if connected
     if (this.saveTimeout) clearTimeout(this.saveTimeout);
     this.saveTimeout = setTimeout(() => {
       supabaseService.saveRemoteState(this.data).catch((err) => {
-        console.warn('Supabase auto-sync notification:', err);
+        // Warning only
       });
     }, 1000);
   }
 
   private loadOrCreateDatabase(): DatabaseSchema {
     const candidateFiles = [DB_FILE, BACKUP_FILE, TMP_FILE];
+    let bestData: DatabaseSchema | null = null;
+    let maxRecords = -1;
+
     for (const filePath of candidateFiles) {
       if (fs.existsSync(filePath)) {
         try {
           const raw = fs.readFileSync(filePath, 'utf-8');
           const parsed = JSON.parse(raw);
           if (parsed && Array.isArray(parsed.users)) {
-            // Ensure the fixed admin account printx286351@gmail.com / Ekma#1234 exists and is active
-            let admin = parsed.users.find((u: any) => u.email?.toLowerCase() === 'printx286351@gmail.com' || u.role === 'admin');
-            if (admin) {
-              admin.email = 'printx286351@gmail.com';
-              admin.passwordHash = this.hashPassword('Ekma#1234');
-              admin.role = 'admin';
-              admin.fullName = 'printx System Administrator';
-            } else {
-              parsed.users.push({
-                id: 'usr-admin-001',
-                email: 'printx286351@gmail.com',
-                passwordHash: this.hashPassword('Ekma#1234'),
-                fullName: 'printx System Administrator',
-                whatsappNumber: '+919876543210',
-                whatsappVerified: true,
-                role: 'admin',
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              });
+            const count = (parsed.users?.length || 0) + (parsed.shops?.length || 0);
+            if (count > maxRecords) {
+              maxRecords = count;
+              bestData = parsed;
             }
-
-            // Clean out legacy demo shops so only genuine shops remain
-            parsed.shops = (parsed.shops || []).filter((s: any) => s.id !== 'shp-apex-001' && s.id !== 'shp-sai-002');
-            parsed.users = (parsed.users || []).filter((u: any) => u.id !== 'usr-owner-001' && u.id !== 'usr-owner-002');
-            parsed.pricing = (parsed.pricing || []).filter((p: any) => p.shopId !== 'shp-apex-001' && p.shopId !== 'shp-sai-002');
-            parsed.approvalRules = (parsed.approvalRules || []).filter((r: any) => r.shopId !== 'shp-apex-001' && r.shopId !== 'shp-sai-002');
-            parsed.agents = (parsed.agents || []).filter((a: any) => a.shopId !== 'shp-apex-001' && a.shopId !== 'shp-sai-002');
-            parsed.orders = (parsed.orders || []).filter((o: any) => o.shopId !== 'shp-apex-001' && o.shopId !== 'shp-sai-002');
-            parsed.activityLogs = (parsed.activityLogs || []).filter((l: any) => l.shopId !== 'shp-apex-001' && l.shopId !== 'shp-sai-002');
-
-            return parsed;
           }
         } catch (e) {
           console.error(`Error reading candidate DB file ${filePath}:`, e);
         }
       }
+    }
+
+    if (bestData && Array.isArray(bestData.users)) {
+      // Ensure the master system admin account printx286351@gmail.com exists
+      let admin = bestData.users.find((u: any) => u.email?.toLowerCase() === 'printx286351@gmail.com');
+      if (admin) {
+        admin.email = 'printx286351@gmail.com';
+        admin.passwordHash = this.hashPassword('Ekma#1234');
+        admin.role = 'admin';
+        admin.fullName = 'printx System Administrator';
+      } else {
+        bestData.users.unshift({
+          id: 'usr-admin-001',
+          email: 'printx286351@gmail.com',
+          passwordHash: this.hashPassword('Ekma#1234'),
+          fullName: 'printx System Administrator',
+          whatsappNumber: '+919876543210',
+          whatsappVerified: true,
+          role: 'admin',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      // Remove legacy mock placeholders only (preserve all genuine user-created shops & accounts)
+      bestData.shops = (bestData.shops || []).filter((s: any) => s.id !== 'shp-apex-001' && s.id !== 'shp-sai-002');
+      bestData.users = (bestData.users || []).filter((u: any) => u.id !== 'usr-owner-001' && u.id !== 'usr-owner-002');
+
+      return bestData;
     }
 
     const initial = this.generateSeedData();
@@ -301,6 +306,22 @@ export class Database {
     };
     this.save();
     return this.data.users[idx];
+  }
+
+  public getAllUsers(): User[] {
+    return this.data.users;
+  }
+
+  public deleteUser(id: string): boolean {
+    const idx = this.data.users.findIndex((u) => u.id === id);
+    if (idx === -1) return false;
+    // Disallow deleting root admin
+    if (this.data.users[idx].email?.toLowerCase() === 'printx286351@gmail.com') {
+      return false;
+    }
+    this.data.users.splice(idx, 1);
+    this.save();
+    return true;
   }
 
   // --- Shop Queries ---

@@ -139,6 +139,30 @@ export const api = {
     });
   },
 
+  async getAdminUsers(): Promise<any[]> {
+    return this.request('/api/admin/users');
+  },
+
+  async createAdminUser(userData: any): Promise<any> {
+    return this.request('/api/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  },
+
+  async editAdminUser(userId: string, userData: any): Promise<any> {
+    return this.request(`/api/admin/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(userData),
+    });
+  },
+
+  async deleteAdminUser(userId: string): Promise<any> {
+    return this.request(`/api/admin/users/${userId}`, {
+      method: 'DELETE',
+    });
+  },
+
   // Public Shop
   async getPublicShop(slug: string): Promise<{ shop: Shop; pricing: ShopPricing; requiresCounterPayment: boolean }> {
     return this.request(`/api/shops/${slug}`);

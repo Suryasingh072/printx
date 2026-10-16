@@ -220,7 +220,20 @@ app.post('/api/auth/login', (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
-    const shop = user.role === 'admin' ? undefined : db.getShopByOwnerId(user.id);
+    let shop = user.role === 'admin' ? undefined : db.getShopByOwnerId(user.id);
+    if (!shop && user.role !== 'admin') {
+      const allShops = db.getAllShops();
+      const match = allShops.find((s) => {
+        if (s.ownerId === user.id) return true;
+        const owner = db.getUserById(s.ownerId);
+        return owner?.email?.toLowerCase() === cleanEmail;
+      });
+      if (match) {
+        db.updateShop(match.id, { ownerId: user.id });
+        shop = match;
+      }
+    }
+
     const token = createSessionToken(user, shop);
 
     return res.json({
@@ -250,6 +263,11 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
   let shop = user.role === 'admin' ? undefined : (session.shopId ? db.getShopById(session.shopId) : undefined);
   if (!shop && user.role !== 'admin') {
     shop = db.getShopByOwnerId(user.id);
+    if (!shop) {
+      const allShops = db.getAllShops();
+      const match = allShops.find((s) => s.ownerId === user.id);
+      if (match) shop = match;
+    }
   }
   res.json({
     user: {
@@ -409,6 +427,154 @@ app.get('/api/admin/shops', requireAuth, (req, res) => {
   });
 
   res.json(detailedShops);
+});
+
+// ==========================================
+// ADMIN USER MANAGEMENT (CREATE, EDIT, LIST, DELETE)
+// ==========================================
+
+// List all registered users
+app.get('/api/admin/users', requireAuth, (req, res) => {
+  const session = (req as any).user;
+  if (session.role !== 'admin') {
+    return res.status(403).json({ error: 'Only system administrators can access user management.' });
+  }
+
+  const users = db.getAllUsers();
+  const allShops = db.getAllShops();
+
+  const userList = users.map((u) => {
+    const linkedShop = allShops.find((s) => s.ownerId === u.id);
+    return {
+      id: u.id,
+      email: u.email,
+      fullName: u.fullName,
+      whatsappNumber: u.whatsappNumber,
+      whatsappVerified: u.whatsappVerified,
+      role: u.role,
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt,
+      linkedShop: linkedShop ? { id: linkedShop.id, name: linkedShop.name, slug: linkedShop.slug } : null,
+    };
+  });
+
+  res.json(userList);
+});
+
+// Admin Create User directly
+app.post('/api/admin/users', requireAuth, (req, res) => {
+  const session = (req as any).user;
+  if (session.role !== 'admin') {
+    return res.status(403).json({ error: 'Only system administrators can create users.' });
+  }
+
+  const { email, password, fullName, whatsappNumber, role, shopId } = req.body;
+  if (!email || !email.trim()) {
+    return res.status(400).json({ error: 'Email address is required.' });
+  }
+  if (!password || password.trim().length < 6) {
+    return res.status(400).json({ error: 'Password is required (minimum 6 characters).' });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const existing = db.getUserByEmail(cleanEmail);
+  if (existing) {
+    return res.status(400).json({ error: `A user with email "${cleanEmail}" already exists.` });
+  }
+
+  const newUser = db.createUser({
+    email: cleanEmail,
+    passwordHash: crypto.createHash('sha256').update(password.trim()).digest('hex'),
+    fullName: (fullName && fullName.trim()) || cleanEmail.split('@')[0],
+    whatsappNumber: (whatsappNumber && whatsappNumber.trim()) || '+919876543210',
+    whatsappVerified: true,
+    role: role === 'admin' ? 'admin' : 'shop_owner',
+  });
+
+  if (shopId) {
+    const shop = db.getShopById(shopId);
+    if (shop) {
+      db.updateShop(shop.id, { ownerId: newUser.id });
+    }
+  }
+
+  db.save();
+
+  res.status(201).json({
+    message: 'User created successfully and permanently saved.',
+    user: {
+      id: newUser.id,
+      email: newUser.email,
+      fullName: newUser.fullName,
+      whatsappNumber: newUser.whatsappNumber,
+      role: newUser.role,
+    },
+  });
+});
+
+// Admin Update User
+app.put('/api/admin/users/:id', requireAuth, (req, res) => {
+  const session = (req as any).user;
+  if (session.role !== 'admin') {
+    return res.status(403).json({ error: 'Only system administrators can edit users.' });
+  }
+
+  const userId = req.params.id;
+  const user = db.getUserById(userId);
+  if (!user) return res.status(404).json({ error: 'User not found.' });
+
+  const { email, fullName, whatsappNumber, role, password, shopId } = req.body;
+  const updates: Partial<User> = {};
+
+  if (fullName && fullName.trim()) updates.fullName = fullName.trim();
+  if (whatsappNumber && whatsappNumber.trim()) updates.whatsappNumber = whatsappNumber.trim();
+  if (role && (role === 'admin' || role === 'shop_owner')) updates.role = role;
+  if (email && email.trim() && email.trim().toLowerCase() !== user.email.toLowerCase()) {
+    const cleanEmail = email.trim().toLowerCase();
+    const other = db.getUserByEmail(cleanEmail);
+    if (other && other.id !== userId) {
+      return res.status(400).json({ error: `Email "${cleanEmail}" is already used by another user.` });
+    }
+    updates.email = cleanEmail;
+  }
+
+  if (password && password.trim()) {
+    updates.passwordHash = crypto.createHash('sha256').update(password.trim()).digest('hex');
+  }
+
+  const updatedUser = db.updateUser(userId, updates);
+
+  if (shopId) {
+    const shop = db.getShopById(shopId);
+    if (shop) {
+      db.updateShop(shop.id, { ownerId: userId });
+    }
+  }
+
+  db.save();
+
+  res.json({ message: 'User updated successfully', user: updatedUser });
+});
+
+// Admin Delete User
+app.delete('/api/admin/users/:id', requireAuth, (req, res) => {
+  const session = (req as any).user;
+  if (session.role !== 'admin') {
+    return res.status(403).json({ error: 'Only system administrators can delete users.' });
+  }
+
+  const userId = req.params.id;
+  const user = db.getUserById(userId);
+  if (!user) return res.status(404).json({ error: 'User not found.' });
+
+  if (user.email?.toLowerCase() === 'printx286351@gmail.com') {
+    return res.status(400).json({ error: 'Cannot delete the master system administrator.' });
+  }
+
+  db.deleteUser(userId);
+  db.save();
+
+  res.json({ message: `User "${user.fullName}" (${user.email}) deleted successfully.` });
 });
 
 // List all registered shops for public directory / discovery

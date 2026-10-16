@@ -119,6 +119,40 @@ export default function App() {
     );
   }
 
+  // 3b. Authenticated user without linked shop
+  if (currentUser && !currentShop) {
+    return (
+      <div className="min-h-screen bg-[#080b14] text-[#f1f5f9] flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-[#0f172a] border border-white/15 rounded-3xl p-8 text-center space-y-5 shadow-2xl">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl mx-auto">
+            🏪
+          </div>
+          <div>
+            <h2 className="text-xl font-bold font-['Sora'] text-white">Welcome, {currentUser.fullName}!</h2>
+            <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+              Your account (<span className="text-pink-300 font-mono">{currentUser.email}</span>) is active and permanently saved.
+              Your shop profile is being configured by the system administrator.
+            </p>
+          </div>
+          <div className="pt-2 flex flex-col gap-3">
+            <button
+              onClick={() => window.location.reload()}
+              className="btn btn-primary py-2.5 text-xs font-bold cursor-pointer"
+            >
+              Refresh & Check Shop Link
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white cursor-pointer"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // 4. Public Landing Page
   return (
     <LandingPage
