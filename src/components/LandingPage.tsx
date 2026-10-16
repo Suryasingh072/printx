@@ -33,6 +33,7 @@ import {
   Moon,
   Sun,
   Menu,
+  LogIn,
 } from 'lucide-react';
 import { api } from '../lib/api.js';
 
@@ -108,7 +109,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
 
   // Auth Modals
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
 
   // Login Form
@@ -116,20 +116,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
-
-  // Register Form
-  const [regShopName, setRegShopName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPassword, setRegPassword] = useState('');
-  const [regPhone, setRegPhone] = useState('');
-  const [regCity, setRegCity] = useState('');
-  const [regAddress, setRegAddress] = useState('');
-  const [regOtp, setRegOtp] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpSending, setOtpSending] = useState(false);
-  const [otpDevHint, setOtpDevHint] = useState<string | null>(null);
-  const [regLoading, setRegLoading] = useState(false);
-  const [regError, setRegError] = useState<string | null>(null);
 
   // Reset Password State
   const [resetEmail, setResetEmail] = useState('');
@@ -141,24 +127,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
 
   // Interactive FAQ Accordion
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-
-  const handleSendOtp = async () => {
-    if (!regPhone || regPhone.replace(/[^0-9]/g, '').length < 10) {
-      alert('Please enter a valid 10-digit Indian WhatsApp number.');
-      return;
-    }
-    setOtpSending(true);
-    setRegError(null);
-    try {
-      const res = await api.sendRegistrationOtp(regPhone, regShopName);
-      setOtpSent(true);
-      if (res.devHint) setOtpDevHint(res.devHint);
-    } catch (e: any) {
-      setRegError(e.message || 'Failed to send WhatsApp OTP');
-    } finally {
-      setOtpSending(false);
-    }
-  };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,32 +140,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
       setLoginError(err.message || 'Invalid email or password');
     } finally {
       setLoginLoading(false);
-    }
-  };
-
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setRegLoading(true);
-    setRegError(null);
-    try {
-      const res = await api.register({
-        email: regEmail,
-        password: regPassword,
-        fullName: regShopName,
-        whatsappNumber: regPhone,
-        shopName: regShopName,
-        phone: regPhone,
-        address: regAddress || 'Main Road Counter',
-        city: regCity || 'City Center',
-        otpCode: regOtp,
-        verified: Boolean(regOtp),
-      });
-      setShowRegisterModal(false);
-      onLoginSuccess(res.user, res.shop);
-    } catch (err: any) {
-      setRegError(err.message || 'Registration failed');
-    } finally {
-      setRegLoading(false);
     }
   };
 
@@ -302,16 +244,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
 
             <button
               onClick={() => setShowLoginModal(true)}
-              className="px-4 py-2 text-sm font-semibold text-slate-200 border border-white/15 bg-white/5 hover:bg-white/10 rounded-xl transition cursor-pointer hidden sm:inline-flex"
+              className="px-5 py-2.5 text-sm font-black btn-grad rounded-xl cursor-pointer flex items-center gap-2 shadow-[0_4px_16px_rgba(255,46,99,0.35)]"
             >
+              <LogIn className="w-4 h-4" />
               Sign in
-            </button>
-
-            <button
-              onClick={() => setShowRegisterModal(true)}
-              className="px-4 py-2 text-sm font-bold btn-grad rounded-xl cursor-pointer"
-            >
-              Register your shop
             </button>
 
             <button
@@ -347,18 +283,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
                 {item.label}
               </button>
             ))}
-            <div className="pt-3 border-t border-white/10 flex gap-2">
+            <div className="pt-3 border-t border-white/10">
               <button
                 onClick={() => { setMobileMenuOpen(false); setShowLoginModal(true); }}
-                className="flex-1 py-2 text-center text-xs font-bold border border-white/15 rounded-xl text-slate-200"
+                className="w-full py-2.5 text-center text-xs font-bold btn-grad rounded-xl flex items-center justify-center gap-2"
               >
-                Sign in
-              </button>
-              <button
-                onClick={() => { setMobileMenuOpen(false); setShowRegisterModal(true); }}
-                className="flex-1 py-2 text-center text-xs font-bold btn-grad rounded-xl"
-              >
-                Register
+                <LogIn className="w-3.5 h-3.5" /> Sign in
               </button>
             </div>
           </div>
@@ -392,16 +322,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
 
             <div className="flex flex-wrap gap-3.5 pt-2">
               <button
-                onClick={() => setShowRegisterModal(true)}
-                className="px-6 py-3.5 rounded-xl font-bold text-sm btn-grad flex items-center gap-2 cursor-pointer shadow-lg shadow-rose-500/20"
+                onClick={() => setShowLoginModal(true)}
+                className="px-8 py-4 rounded-xl font-black text-sm btn-grad flex items-center gap-2.5 cursor-pointer shadow-xl shadow-rose-500/25 transition hover:scale-[1.02]"
               >
-                Register your shop →
-              </button>
-              <button
-                onClick={handleOpenPrintPortal}
-                className="px-6 py-3.5 rounded-xl font-semibold text-sm border border-white/15 bg-white/5 hover:bg-white/10 text-white transition flex items-center gap-2 cursor-pointer"
-              >
-                Customer Print Portal
+                <LogIn className="w-4 h-4" />
+                Sign in →
               </button>
             </div>
 
@@ -996,12 +921,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
               <p><button onClick={() => setLegalModal('refund')} className="text-slate-400 hover:text-white transition cursor-pointer">Refund Policy</button></p>
             </div>
 
-            {/* Col 4: Get Started */}
+            {/* Col 4: Shop Access */}
             <div className="space-y-2 text-xs">
-              <h5 className="font-['Sora'] font-bold text-slate-300 uppercase tracking-wider text-[11px] mb-3">Get Started</h5>
-              <p><button onClick={() => setShowRegisterModal(true)} className="text-slate-400 hover:text-white transition cursor-pointer">Register your shop</button></p>
-              <p><button onClick={() => setShowLoginModal(true)} className="text-slate-400 hover:text-white transition cursor-pointer">Shop sign in</button></p>
-              <p><button onClick={handleOpenPrintPortal} className="text-slate-400 hover:text-white transition cursor-pointer">Customer QR Portal</button></p>
+              <h5 className="font-['Sora'] font-bold text-slate-300 uppercase tracking-wider text-[11px] mb-3">Shop Access</h5>
+              <p><button onClick={() => setShowLoginModal(true)} className="text-slate-400 hover:text-white transition cursor-pointer">Shop Sign In</button></p>
+              <p><a href="#for-shops" className="text-slate-400 hover:text-white transition">Shop Benefits</a></p>
+              <p><a href="#how-it-works" className="text-slate-400 hover:text-white transition">How it works</a></p>
               <p><a href="#contact" className="text-slate-400 hover:text-white transition">Contact</a></p>
             </div>
           </div>
@@ -1083,159 +1008,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
             </form>
 
             <div className="mt-5 text-center text-xs text-slate-400">
-              New shop owner?{' '}
-              <button
-                onClick={() => { setShowLoginModal(false); setShowRegisterModal(true); }}
-                className="text-rose-400 hover:underline font-bold cursor-pointer"
-              >
-                Register your shop
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Register Shop Modal */}
-      {showRegisterModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-[#0f172a] border border-white/15 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative text-white my-8">
-            <button
-              onClick={() => setShowRegisterModal(false)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-white cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="mb-6">
-              <h3 className="text-xl font-bold font-['Sora']">Register Your Print Shop</h3>
-              <p className="text-xs text-slate-400 mt-1">Get your custom QR code, Windows print agent, and customer portal.</p>
-            </div>
-
-            {regError && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs">
-                {regError}
-              </div>
-            )}
-
-            <form onSubmit={handleRegisterSubmit} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1">Shop Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={regShopName}
-                  onChange={(e) => setRegShopName(e.target.value)}
-                  placeholder="e.g. Apex Print & Xerox Hub"
-                  className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">Email Address *</label>
-                  <input
-                    type="email"
-                    required
-                    value={regEmail}
-                    onChange={(e) => setRegEmail(e.target.value)}
-                    placeholder="shop@example.com"
-                    className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">Password *</label>
-                  <input
-                    type="password"
-                    required
-                    value={regPassword}
-                    onChange={(e) => setRegPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  />
-                </div>
-              </div>
-
-              {/* WhatsApp OTP */}
-              <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1">WhatsApp Mobile Number *</label>
-                <div className="flex gap-2">
-                  <input
-                    type="tel"
-                    required
-                    value={regPhone}
-                    onChange={(e) => setRegPhone(e.target.value)}
-                    placeholder="+91 98123 45678"
-                    className="flex-1 py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSendOtp}
-                    disabled={otpSending}
-                    className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold transition cursor-pointer"
-                  >
-                    {otpSending ? 'Sending...' : otpSent ? 'Resend OTP' : 'Send OTP'}
-                  </button>
-                </div>
-                {otpDevHint && (
-                  <p className="text-[11px] text-emerald-400 mt-1 font-mono">
-                    ✓ {otpDevHint} (Autofilled or enter below)
-                  </p>
-                )}
-              </div>
-
-              {otpSent && (
-                <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">Enter 6-Digit OTP</label>
-                  <input
-                    type="text"
-                    value={regOtp}
-                    onChange={(e) => setRegOtp(e.target.value)}
-                    placeholder="123456"
-                    className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white font-mono font-bold tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  />
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">City / Town</label>
-                  <input
-                    type="text"
-                    value={regCity}
-                    onChange={(e) => setRegCity(e.target.value)}
-                    placeholder="e.g. Lucknow, Noida, Delhi"
-                    className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">Counter Address</label>
-                  <input
-                    type="text"
-                    value={regAddress}
-                    onChange={(e) => setRegAddress(e.target.value)}
-                    placeholder="e.g. Shop 4, Main Market"
-                    className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={regLoading}
-                className="w-full py-3.5 rounded-xl font-bold text-sm btn-grad transition cursor-pointer mt-2"
-              >
-                {regLoading ? 'Registering Shop...' : 'Complete Registration & Open Dashboard'}
-              </button>
-            </form>
-
-            <div className="mt-4 text-center text-xs text-slate-400">
-              Already have an account?{' '}
-              <button
-                onClick={() => { setShowRegisterModal(false); setShowLoginModal(true); }}
-                className="text-rose-400 hover:underline font-bold cursor-pointer"
-              >
-                Sign in
-              </button>
+              Need a new shop registered? <span className="text-pink-400 font-semibold">Managed exclusively by System Administrator.</span>
             </div>
           </div>
         </div>

@@ -411,6 +411,20 @@ app.get('/api/admin/shops', requireAuth, (req, res) => {
   res.json(detailedShops);
 });
 
+// List all registered shops for public directory / discovery
+app.get('/api/shops', (_req, res) => {
+  const shops = db.getAllShops().filter((s) => s.status !== 'suspended');
+  res.json(shops.map((s) => ({
+    id: s.id,
+    name: s.name,
+    slug: s.slug,
+    phone: s.phone,
+    address: s.address,
+    city: s.city,
+    status: s.status,
+  })));
+});
+
 // Admin Create Shop directly
 app.post('/api/admin/shops', requireAuth, (req, res) => {
   const session = (req as any).user;
@@ -419,35 +433,59 @@ app.post('/api/admin/shops', requireAuth, (req, res) => {
   }
 
   const { name, slug, phone, address, city, ownerName, ownerEmail, ownerPassword, ownerWhatsApp } = req.body;
-  if (!name || !ownerEmail) {
-    return res.status(400).json({ error: 'Shop name and owner email are required.' });
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Shop name is required.' });
   }
 
-  let owner = db.getUserByEmail(ownerEmail);
-  if (!owner) {
-    owner = db.createUser({
-      email: ownerEmail,
-      passwordHash: crypto.createHash('sha256').update(ownerPassword || 'Shop#1234').digest('hex'),
-      fullName: ownerName || name,
-      whatsappNumber: ownerWhatsApp || phone || '+910000000000',
-      whatsappVerified: true,
-      role: 'shop_owner',
-    });
-  }
-
-  const generatedSlug = (slug || name)
+  // Generate clean slug with collision prevention
+  let baseSlug = (slug || name)
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
+  if (!baseSlug) {
+    baseSlug = `shop-${crypto.randomBytes(3).toString('hex')}`;
+  }
+
+  let uniqueSlug = baseSlug;
+  let counter = 1;
+  while (db.getShopBySlug(uniqueSlug)) {
+    counter++;
+    uniqueSlug = `${baseSlug}-${counter}`;
+  }
+
+  const effectiveEmail = (ownerEmail && ownerEmail.trim())
+    ? ownerEmail.trim().toLowerCase()
+    : `${uniqueSlug}@printx.shop`;
+
+  const effectivePassword = ownerPassword && ownerPassword.trim() ? ownerPassword.trim() : 'Shop#1234';
+
+  let owner = db.getUserByEmail(effectiveEmail);
+  if (!owner) {
+    owner = db.createUser({
+      email: effectiveEmail,
+      passwordHash: crypto.createHash('sha256').update(effectivePassword).digest('hex'),
+      fullName: ownerName || name,
+      whatsappNumber: ownerWhatsApp || phone || '+919876543210',
+      whatsappVerified: true,
+      role: 'shop_owner',
+    });
+  } else {
+    db.updateUser(owner.id, {
+      role: 'shop_owner',
+      fullName: ownerName || owner.fullName,
+      passwordHash: crypto.createHash('sha256').update(effectivePassword).digest('hex'),
+    });
+  }
+
   const newShop = db.createShop({
-    slug: generatedSlug,
-    name,
+    slug: uniqueSlug,
+    name: name.trim(),
     ownerId: owner.id,
     phone: phone || '+919876543210',
-    address: address || 'Main Road',
-    city: city || 'City',
+    address: address || 'Main Road Counter',
+    city: city || 'City Center',
     status: 'active',
   });
 
@@ -458,7 +496,17 @@ app.post('/api/admin/shops', requireAuth, (req, res) => {
     description: `Shop "${newShop.name}" registered and activated directly by Super Admin.`,
   });
 
-  res.status(201).json({ message: 'Shop created and activated successfully', shop: newShop });
+  // Ensure disk save is executed immediately
+  db.save();
+
+  res.status(201).json({
+    message: 'Shop created and activated successfully',
+    shop: {
+      ...newShop,
+      ownerEmail: owner.email,
+      ownerName: owner.fullName,
+    },
+  });
 });
 
 // Admin Update / Edit Shop Details
@@ -469,18 +517,43 @@ app.put('/api/admin/shops/:id', requireAuth, (req, res) => {
   }
 
   const shopId = req.params.id;
-  const { name, phone, address, city, status, slug } = req.body;
+  const { name, phone, address, city, status, slug, ownerName, ownerEmail, ownerPassword } = req.body;
   const shop = db.getShopById(shopId);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
+  let newSlug = shop.slug;
+  if (slug && slug.trim() && slug.trim().toLowerCase() !== shop.slug) {
+    const candidate = slug.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const existing = db.getShopBySlug(candidate);
+    if (!existing || existing.id === shopId) {
+      newSlug = candidate;
+    }
+  }
+
   const updated = db.updateShop(shopId, {
-    ...(name ? { name } : {}),
-    ...(phone ? { phone } : {}),
-    ...(address ? { address } : {}),
-    ...(city ? { city } : {}),
+    ...(name ? { name: name.trim() } : {}),
+    ...(phone ? { phone: phone.trim() } : {}),
+    ...(address ? { address: address.trim() } : {}),
+    ...(city ? { city: city.trim() } : {}),
     ...(status ? { status } : {}),
-    ...(slug ? { slug } : {}),
+    slug: newSlug,
   });
+
+  // Update owner details if provided
+  if (shop.ownerId) {
+    const owner = db.getUserById(shop.ownerId);
+    if (owner) {
+      const userUpdates: Partial<User> = {};
+      if (ownerName && ownerName.trim()) userUpdates.fullName = ownerName.trim();
+      if (ownerEmail && ownerEmail.trim()) userUpdates.email = ownerEmail.trim().toLowerCase();
+      if (ownerPassword && ownerPassword.trim()) {
+        userUpdates.passwordHash = crypto.createHash('sha256').update(ownerPassword.trim()).digest('hex');
+      }
+      if (Object.keys(userUpdates).length > 0) {
+        db.updateUser(owner.id, userUpdates);
+      }
+    }
+  }
 
   db.logActivity({
     shopId,
@@ -488,6 +561,8 @@ app.put('/api/admin/shops/:id', requireAuth, (req, res) => {
     actionType: 'shop_updated',
     description: `Shop "${shop.name}" updated by Administrator.`,
   });
+
+  db.save();
 
   res.json({ message: 'Shop updated successfully', shop: updated });
 });

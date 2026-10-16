@@ -28,6 +28,8 @@ import {
   Image as ImageIcon,
   Check,
   ChevronDown,
+  X,
+  Crop,
 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { Shop, ShopPricing, Order, ColorMode, DuplexMode, PaperSize, OrderFileItem } from '../types.js';
@@ -111,10 +113,23 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
       setPlacedOrder(res.order);
       setOnlineUpiSuccess(true);
       confetti({
-        particleCount: 120,
-        spread: 80,
+        particleCount: 150,
+        spread: 90,
         origin: { y: 0.6 },
       });
+
+      // Clear uploaded files and reset preferences so the page is fresh for a new print
+      setFileQueue([]);
+      setCustomerName('');
+      setCustomerPhone('');
+      setCustomNotes('');
+      setCopies(1);
+
+      // Auto-refresh to pristine clean upload state after 4.5 seconds
+      setTimeout(() => {
+        setPlacedOrder(null);
+        setOnlineUpiSuccess(false);
+      }, 4500);
     } catch (err: any) {
       alert(err.message || 'Payment simulation failed.');
     } finally {
@@ -613,111 +628,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
   }
 
   const { totalPages, total } = calculateTotal();
-
-  // ==========================================
-  // RENDER: ORDER CONFIRMATION & LIVE TRACKER
-  // ==========================================
-  if (placedOrder) {
-    const isPaid = placedOrder.paymentStatus === 'collected' || onlineUpiSuccess;
-
-    return (
-      <div className="min-h-screen bg-[#080b14] text-[#f1f5f9] py-12 px-4 flex flex-col items-center justify-center relative overflow-hidden font-sans">
-        <div className="w-96 h-96 bg-[rgba(255,46,99,0.15)] blur-[140px] rounded-full pointer-events-none absolute -top-24 -left-24 z-0" />
-        <div className="w-96 h-96 bg-[rgba(124,92,255,0.15)] blur-[140px] rounded-full pointer-events-none absolute -bottom-24 -right-24 z-0" />
-
-        <div className="max-w-xl w-full bg-[#0d1220]/90 border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative z-10 backdrop-blur-xl">
-          {/* Header */}
-          <div className="text-center space-y-2">
-            <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-center mx-auto text-emerald-400 shadow-[0_0_25px_rgba(34,197,94,0.3)]">
-              <CheckCircle2 className="w-9 h-9" />
-            </div>
-            <span className="badge text-[11px] font-black uppercase tracking-wider py-1 px-3 border-emerald-500/30 bg-emerald-500/15 text-emerald-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              Order Placed Successfully
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black font-head tracking-tight text-white">{placedOrder.orderNumber}</h2>
-            <p className="text-xs text-slate-400">
-              {shop.name} • {shop.address}, {shop.city}
-            </p>
-          </div>
-
-          {/* Amount Due & Online Payment Option */}
-          <div className="card text-center space-y-4">
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Print Amount</p>
-              <p className="text-4xl font-black text-white mt-1 font-head grad">₹{placedOrder.totalAmount.toFixed(2)}</p>
-            </div>
-
-            {isPaid ? (
-              <div className="p-3.5 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs font-bold flex items-center justify-center gap-2">
-                <Check className="w-4 h-4 stroke-[3]" /> Payment Verified & Order Dispatched to Printer
-              </div>
-            ) : (
-              <div className="space-y-3 pt-2">
-                <button
-                  type="button"
-                  onClick={handlePayOnlineNow}
-                  disabled={isPayingOnline}
-                  className="btn btn-primary w-full py-4 text-sm font-black disabled:opacity-50"
-                >
-                  <Zap className="w-4 h-4 fill-white" />
-                  {isPayingOnline ? 'Verifying UPI...' : 'Pay Online (UPI / GPay / PhonePe)'}
-                </button>
-                <p className="text-[11px] text-slate-400">
-                  Instant Auto-Print: Online pay karte hi document direct printer tray me print hona start ho jayega.
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Order Status Progress */}
-          <div className="p-5 bg-white/[0.03] border border-white/10 rounded-2xl space-y-4">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-slate-300">Live Printer Status:</span>
-              <span className="badge text-[10px] font-black uppercase tracking-wider py-0.5 px-2.5 border-blue-500/30 bg-blue-500/20 text-blue-300">
-                {placedOrder.status.replace('_', ' ').toUpperCase()}
-              </span>
-            </div>
-
-            <div className="space-y-2 text-xs text-slate-300">
-              <div className="flex justify-between py-1.5 border-b border-white/[0.06]">
-                <span className="text-slate-400">Documents / Files:</span>
-                <span className="font-bold truncate max-w-[240px] text-right text-white">{placedOrder.documentName}</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-white/[0.06]">
-                <span className="text-slate-400">Total Pages:</span>
-                <span className="font-bold text-white">{placedOrder.pageCount} Pages • {placedOrder.copies} {placedOrder.copies === 1 ? 'Copy' : 'Copies'}</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-white/[0.06]">
-                <span className="text-slate-400">Color & Sides:</span>
-                <span className="font-bold uppercase text-white">{placedOrder.colorMode} • {placedOrder.duplexMode}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Actions */}
-          <div className="flex gap-3 pt-2">
-            <button
-              onClick={() => {
-                setPlacedOrder(null);
-                setFileQueue([]);
-                setOnlineUpiSuccess(false);
-              }}
-              className="btn btn-primary flex-1 py-3 text-xs font-black"
-            >
-              Print Another Document
-            </button>
-            <button
-              onClick={onNavigateHome}
-              className="btn btn-ghost py-3 px-4 text-xs font-bold"
-            >
-              Exit
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const isPaid = placedOrder ? (placedOrder.paymentStatus === 'collected' || onlineUpiSuccess) : false;
 
   // ==========================================
   // RENDER: MAIN CUSTOMER PRINT PORTAL
@@ -759,6 +670,95 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
 
       {/* Main Container */}
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-7 relative z-10">
+        {/* Live Active Order Status & Payment Banner (No Exit Page) */}
+        {placedOrder && (
+          <div className="card bg-gradient-to-br from-[#0d1326] via-[#14122d] to-[#0c101d] border-2 border-emerald-500/40 rounded-3xl p-5 sm:p-7 shadow-[0_12px_40px_rgba(34,197,94,0.18)] space-y-5 animate-in fade-in duration-300 relative overflow-hidden">
+            {/* Top Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-emerald-500/15 border border-emerald-500/30 rounded-2xl flex items-center justify-center text-emerald-400 shadow-[0_0_20px_rgba(34,197,94,0.3)] shrink-0">
+                  <CheckCircle2 className="w-7 h-7" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="badge text-[10px] font-black uppercase tracking-wider py-0.5 px-2.5 border-emerald-500/30 bg-emerald-500/20 text-emerald-300">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Order Active & Queued
+                    </span>
+                    <span className="font-mono text-sm font-black text-white">{placedOrder.orderNumber}</span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    Live Status: <span className="font-bold text-pink-400 uppercase">{placedOrder.status.replace('_', ' ')}</span> • {placedOrder.pageCount} Pages • {placedOrder.copies} {placedOrder.copies === 1 ? 'Copy' : 'Copies'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 self-end sm:self-auto">
+                <div className="text-right">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Amount</p>
+                  <p className="text-2xl font-black text-white font-head grad">₹{placedOrder.totalAmount.toFixed(2)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlacedOrder(null);
+                    setFileQueue([]);
+                    setOnlineUpiSuccess(false);
+                  }}
+                  className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition cursor-pointer"
+                  title="Dismiss order banner"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Payment Row */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/[0.03] p-4 rounded-2xl border border-white/10">
+              <div className="text-xs text-slate-300">
+                {isPaid ? (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-emerald-400 font-black text-sm">
+                      <Check className="w-5 h-5 stroke-[3]" /> Payment Verified & Dispatched to Printer!
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      Files cleared. Agla document upload karne ke liye ready hai.
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <span className="font-bold text-white">Payment Pending:</span> Counter par cash pay karein ya instant UPI payment karein.
+                  </div>
+                )}
+              </div>
+
+              {isPaid ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlacedOrder(null);
+                    setFileQueue([]);
+                    setOnlineUpiSuccess(false);
+                  }}
+                  className="btn btn-primary py-2.5 px-5 text-xs font-black shadow-[0_4px_16px_rgba(255,46,99,0.35)] flex items-center gap-2 cursor-pointer shrink-0"
+                >
+                  <Plus className="w-4 h-4 stroke-[3]" />
+                  Naya Print / Upload Karein
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handlePayOnlineNow}
+                  disabled={isPayingOnline}
+                  className="btn btn-primary py-2.5 px-6 text-xs font-black shrink-0 disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <Zap className="w-3.5 h-3.5 fill-white" />
+                  {isPayingOnline ? 'Verifying UPI...' : 'Pay Online (UPI / GPay / PhonePe)'}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         {/* Service Selector: 2 Clean Options (Document & ID Card) */}
         <div className="grid grid-cols-2 p-1.5 bg-white/[0.04] border border-white/10 rounded-2xl max-w-xl mx-auto shadow-inner text-xs font-black gap-2">
           <button
@@ -928,29 +928,29 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                                 </button>
                               )}
 
-                              {/* Image Editor button */}
+                              {/* Image Editor button (Crop, Rotate, Brightness) */}
                               {isImage && !item.uploadError && (
                                 <button
                                   type="button"
                                   onClick={() => setEditingItem(item)}
-                                  className="px-2.5 py-1.5 bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 rounded-xl text-xs font-bold transition flex items-center gap-1 border border-cyan-500/30 cursor-pointer shadow-xs"
-                                  title="Phone Se Hi Editing (Crop, rotate, brightness)"
+                                  className="px-3 py-1.5 bg-gradient-to-r from-cyan-500/15 to-blue-500/15 hover:from-cyan-500/25 hover:to-blue-500/25 text-cyan-300 rounded-xl text-xs font-black transition flex items-center gap-1.5 border border-cyan-500/30 cursor-pointer shadow-xs"
+                                  title="Browser me crop, rotate aur brightness live adjust karein"
                                 >
-                                  <Edit className="w-3.5 h-3.5" />
-                                  <span className="hidden sm:inline">Crop & Edit</span>
+                                  <Crop className="w-3.5 h-3.5" />
+                                  <span>Crop, Rotate & Edit</span>
                                 </button>
                               )}
 
-                              {/* Document / PDF Editor button */}
+                              {/* Document / PDF Editor button (Crop, Rotate, Brightness, Pages) */}
                               {!isImage && !item.uploadError && (
                                 <button
                                   type="button"
                                   onClick={() => setEditingDocItem(item)}
-                                  className="px-2.5 py-1.5 bg-pink-500/15 hover:bg-pink-500/25 text-pink-300 rounded-xl text-xs font-bold transition flex items-center gap-1 border border-pink-500/30 cursor-pointer shadow-xs"
-                                  title="Edit Document Pages, Select Range & Rotation"
+                                  className="px-3 py-1.5 bg-gradient-to-r from-pink-500/15 to-purple-500/15 hover:from-pink-500/25 hover:to-purple-500/25 text-pink-300 rounded-xl text-xs font-black transition flex items-center gap-1.5 border border-pink-500/30 cursor-pointer shadow-xs"
+                                  title="PDF pages ko crop, rotate aur brightness live adjust karein"
                                 >
-                                  <Edit className="w-3.5 h-3.5" />
-                                  <span className="hidden sm:inline">Edit Doc</span>
+                                  <Crop className="w-3.5 h-3.5" />
+                                  <span>Crop, Rotate & Edit</span>
                                 </button>
                               )}
 

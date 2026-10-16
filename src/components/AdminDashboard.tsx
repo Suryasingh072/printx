@@ -108,24 +108,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           address: formAddress,
           city: formCity,
           status: formStatus,
+          ownerName: formOwnerName,
+          ownerEmail: formOwnerEmail,
+          ownerPassword: formOwnerPassword || undefined,
         });
-        showToast('Shop details updated successfully!', 'success');
+        showToast('Shop details and credentials updated successfully!', 'success');
       } else {
         // Register new shop by Admin
         await api.createShop({
           name: formName,
-          slug: formSlug,
+          slug: formSlug || undefined,
           phone: formPhone,
           address: formAddress,
           city: formCity,
-          ownerName: formOwnerName,
-          ownerEmail: formOwnerEmail,
-          ownerPassword: formOwnerPassword || 'Ekma#1234',
+          ownerName: formOwnerName || formName,
+          ownerEmail: formOwnerEmail || `${(formSlug || formName).toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'shop'}@printx.shop`,
+          ownerPassword: formOwnerPassword || 'Shop#1234',
         });
         showToast('New shop registered and activated successfully!', 'success');
       }
       setShowEditModal(false);
-      fetchShops();
+      await fetchShops();
     } catch (e: any) {
       showToast(e.message || 'Operation failed', 'error');
     } finally {
@@ -464,7 +467,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                 />
               </div>
 
-              {editingShop ? (
+              {editingShop && (
                 <div>
                   <label className="text-xs font-bold text-slate-300 block mb-1">Status</label>
                   <select
@@ -477,47 +480,47 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                     <option value="suspended">Suspended</option>
                   </select>
                 </div>
-              ) : (
-                <>
-                  <div className="pt-2 border-t border-white/10">
-                    <p className="text-xs font-bold text-pink-300 mb-3 uppercase tracking-wider font-head">Owner Account Credentials</p>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-xs font-semibold text-slate-300 block mb-1">Owner Name</label>
-                        <input
-                          type="text"
-                          required
-                          value={formOwnerName}
-                          onChange={(e) => setFormOwnerName(e.target.value)}
-                          placeholder="Rajesh Sharma"
-                          className="w-full py-2 px-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-pink-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold text-slate-300 block mb-1">Owner Email</label>
-                        <input
-                          type="email"
-                          required
-                          value={formOwnerEmail}
-                          onChange={(e) => setFormOwnerEmail(e.target.value)}
-                          placeholder="owner@printshop.in"
-                          className="w-full py-2 px-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-pink-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold text-slate-300 block mb-1">Initial Password</label>
-                        <input
-                          type="text"
-                          value={formOwnerPassword}
-                          onChange={(e) => setFormOwnerPassword(e.target.value)}
-                          placeholder="Shop#1234"
-                          className="w-full py-2 px-3 bg-white/5 border border-white/10 rounded-xl text-sm font-mono text-white focus:outline-none focus:border-pink-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </>
               )}
+
+              <div className="pt-2 border-t border-white/10">
+                <p className="text-xs font-bold text-pink-300 mb-3 uppercase tracking-wider font-head">
+                  {editingShop ? 'Owner Account Credentials (Optional to Change)' : 'Owner Account Credentials'}
+                </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">Owner Name</label>
+                    <input
+                      type="text"
+                      value={formOwnerName}
+                      onChange={(e) => setFormOwnerName(e.target.value)}
+                      placeholder="Rajesh Sharma"
+                      className="w-full py-2 px-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-pink-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">Owner Email / Login ID</label>
+                    <input
+                      type="email"
+                      value={formOwnerEmail}
+                      onChange={(e) => setFormOwnerEmail(e.target.value)}
+                      placeholder="owner@printshop.in"
+                      className="w-full py-2 px-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-pink-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">
+                      {editingShop ? 'New Password (Leave blank to keep unchanged)' : 'Initial Password'}
+                    </label>
+                    <input
+                      type="text"
+                      value={formOwnerPassword}
+                      onChange={(e) => setFormOwnerPassword(e.target.value)}
+                      placeholder={editingShop ? 'Leave blank or enter new password' : 'Shop#1234'}
+                      className="w-full py-2 px-3 bg-white/5 border border-white/10 rounded-xl text-sm font-mono text-white focus:outline-none focus:border-pink-500"
+                    />
+                  </div>
+                </div>
+              </div>
 
               <div className="pt-4 flex gap-3">
                 <button
