@@ -13,7 +13,7 @@
     },
     {
       "email": "surya286351@gmail.com",
-      "passwordHash": "199dbec4be35a155d7fc826a6757d4dac404899667cfa6bf7aa09bf048e35270",
+      "passwordHash": "d86bac8de3e7efec7080b35b9e0c8fbceb38e7820bc4dc65875da0d30aec2b79",
       "fullName": "surya",
       "whatsappNumber": "9431683881",
       "whatsappVerified": true,
@@ -65,6 +65,29 @@
       "id": "usr-ee175464",
       "createdAt": "2026-10-17T16:18:03.417Z",
       "updatedAt": "2026-10-17T16:18:03.417Z"
+    },
+    {
+      "email": "gupta.cyber@gmail.com",
+      "passwordHash": "6978fa9731b5236683fb65756161156678bd48d726150c87bcab5c742ea61724",
+      "fullName": "Gupta Cyber Zone",
+      "whatsappNumber": "+919876543210",
+      "whatsappVerified": false,
+      "role": "shop_owner",
+      "id": "usr-12c86f0e",
+      "createdAt": "2026-10-17T16:37:32.390Z",
+      "updatedAt": "2026-10-17T16:37:32.390Z"
+    },
+    {
+      "email": "verma.cyber@gmail.com",
+      "passwordHash": "107077bc013943a477d3ead50cd8d457789132e0ec686de1e4c0102d3e0e4f80",
+      "fullName": "Anil Verma",
+      "whatsappNumber": "9876543219",
+      "whatsappVerified": true,
+      "role": "shop_owner",
+      "id": "usr-91f474c0",
+      "createdAt": "2026-10-17T16:43:43.048Z",
+      "updatedAt": "2026-10-17T16:43:43.050Z",
+      "shopId": "shp-8aee248c"
     }
   ],
   "shops": [
@@ -117,6 +140,30 @@
       "id": "shp-4a80e000",
       "createdAt": "2026-10-17T16:18:03.418Z",
       "updatedAt": "2026-10-17T16:18:03.418Z"
+    },
+    {
+      "slug": "gupta-cyber-zone",
+      "name": "Gupta Cyber Zone",
+      "ownerId": "usr-12c86f0e",
+      "phone": "+919876543210",
+      "address": "Main Road Counter",
+      "city": "Ekma",
+      "status": "active",
+      "id": "shp-809e746e",
+      "createdAt": "2026-10-17T16:37:32.391Z",
+      "updatedAt": "2026-10-17T16:37:32.391Z"
+    },
+    {
+      "slug": "verma-cyber-cafe",
+      "name": "Verma Cyber Cafe",
+      "ownerId": "usr-91f474c0",
+      "phone": "9876543219",
+      "address": "Main Counter",
+      "city": "Ekma",
+      "status": "active",
+      "id": "shp-8aee248c",
+      "createdAt": "2026-10-17T16:43:43.049Z",
+      "updatedAt": "2026-10-17T16:43:43.049Z"
     }
   ],
   "pricing": [
@@ -171,6 +218,32 @@
       "idCardSinglePrice": 15,
       "currency": "INR",
       "updatedAt": "2026-10-17T16:18:03.418Z"
+    },
+    {
+      "id": "prc-1844556e",
+      "shopId": "shp-809e746e",
+      "bwSinglePrice": 2,
+      "bwDuplexPrice": 3,
+      "colorSinglePrice": 10,
+      "colorDuplexPrice": 18,
+      "legalExtra": 1,
+      "photo4x6Price": 20,
+      "idCardSinglePrice": 15,
+      "currency": "INR",
+      "updatedAt": "2026-10-17T16:37:32.391Z"
+    },
+    {
+      "id": "prc-02b2b9ae",
+      "shopId": "shp-8aee248c",
+      "bwSinglePrice": 2,
+      "bwDuplexPrice": 3,
+      "colorSinglePrice": 10,
+      "colorDuplexPrice": 18,
+      "legalExtra": 1,
+      "photo4x6Price": 20,
+      "idCardSinglePrice": 15,
+      "currency": "INR",
+      "updatedAt": "2026-10-17T16:43:43.049Z"
     }
   ],
   "approvalRules": [
@@ -213,6 +286,26 @@
       "requirePaymentBeforePrint": true,
       "notifyWhatsapp": true,
       "updatedAt": "2026-10-17T16:18:03.418Z"
+    },
+    {
+      "id": "rul-fba66ec5",
+      "shopId": "shp-809e746e",
+      "mode": "smart",
+      "maxAutoPages": 10,
+      "maxAutoAmount": 50,
+      "requirePaymentBeforePrint": true,
+      "notifyWhatsapp": true,
+      "updatedAt": "2026-10-17T16:37:32.391Z"
+    },
+    {
+      "id": "rul-75fddba2",
+      "shopId": "shp-8aee248c",
+      "mode": "smart",
+      "maxAutoPages": 10,
+      "maxAutoAmount": 50,
+      "requirePaymentBeforePrint": true,
+      "notifyWhatsapp": true,
+      "updatedAt": "2026-10-17T16:43:43.049Z"
     }
   ],
   "agents": [
@@ -272,6 +365,28 @@
       "appVersion": "2.4.0",
       "dryRunMode": false,
       "createdAt": "2026-10-17T16:18:03.418Z"
+    },
+    {
+      "id": "agt-63c955cb",
+      "shopId": "shp-809e746e",
+      "deviceName": "Shop Windows PC",
+      "pairingCode": "195009",
+      "status": "offline",
+      "installedPrinters": [],
+      "appVersion": "2.4.0",
+      "dryRunMode": false,
+      "createdAt": "2026-10-17T16:37:32.391Z"
+    },
+    {
+      "id": "agt-c4b1051d",
+      "shopId": "shp-8aee248c",
+      "deviceName": "Shop Windows PC",
+      "pairingCode": "328368",
+      "status": "offline",
+      "installedPrinters": [],
+      "appVersion": "2.4.0",
+      "dryRunMode": false,
+      "createdAt": "2026-10-17T16:43:43.049Z"
     }
   ],
   "orders": [
@@ -352,184 +467,7 @@
       "purgedAt": "2026-10-15T05:55:33.280Z"
     }
   ],
-  "orderHistory": [
-    {
-      "id": "hst-0e6ac11e",
-      "orderId": "ord-88128368",
-      "newStatus": "queued",
-      "changedByName": "Customer Submission",
-      "comment": "Order placed by customer via Shop QR Portal",
-      "createdAt": "2026-10-10T07:02:21.447Z"
-    },
-    {
-      "id": "hst-b3462da5",
-      "orderId": "ord-10f046cc",
-      "newStatus": "payment_pending",
-      "changedByName": "Customer Submission",
-      "comment": "Order placed by customer via Shop QR Portal",
-      "createdAt": "2026-10-10T07:07:11.127Z"
-    },
-    {
-      "id": "hst-5a98fd48",
-      "orderId": "ord-004",
-      "previousStatus": "pending_approval",
-      "newStatus": "payment_pending",
-      "changedByName": "Rajesh Sharma",
-      "changedById": "usr-owner-001",
-      "comment": "Order approved by shopkeeper",
-      "createdAt": "2026-10-10T07:09:24.080Z"
-    },
-    {
-      "id": "hst-8eb38762",
-      "orderId": "ord-10f046cc",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"Default Windows Printer\"",
-      "createdAt": "2026-10-10T07:10:10.677Z"
-    },
-    {
-      "id": "hst-77fb5769",
-      "orderId": "ord-10f046cc",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"Default Windows Printer\"",
-      "createdAt": "2026-10-10T07:10:13.404Z"
-    },
-    {
-      "id": "hst-0f27c557",
-      "orderId": "ord-10f046cc",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"Default Windows Printer\"",
-      "createdAt": "2026-10-10T07:10:14.131Z"
-    },
-    {
-      "id": "hst-36f1f676",
-      "orderId": "ord-10f046cc",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"Default Windows Printer\"",
-      "createdAt": "2026-10-10T07:10:15.430Z"
-    },
-    {
-      "id": "hst-b66507e9",
-      "orderId": "ord-10f046cc",
-      "previousStatus": "queued",
-      "newStatus": "queued",
-      "changedByName": "Print Dispatcher",
-      "changedById": "usr-3129a8fa",
-      "comment": "Sent to print job queue for \"Default Windows Printer\"",
-      "createdAt": "2026-10-10T07:10:15.643Z"
-    },
-    {
-      "id": "hst-f0133c52",
-      "orderId": "ord-10f046cc",
-      "previousStatus": "queued",
-      "newStatus": "completed",
-      "changedByName": "surya",
-      "changedById": "usr-3129a8fa",
-      "comment": "Marked completed",
-      "createdAt": "2026-10-10T07:11:20.405Z"
-    },
-    {
-      "id": "hst-48ac0479",
-      "orderId": "ord-228b2979",
-      "newStatus": "queued",
-      "changedByName": "Customer Submission",
-      "comment": "Order placed by customer via Shop QR Portal",
-      "createdAt": "2026-10-10T07:33:17.482Z"
-    },
-    {
-      "id": "hst-9d829020",
-      "orderId": "ord-10f046cc",
-      "previousStatus": "completed",
-      "newStatus": "archived",
-      "changedByName": "surya",
-      "changedById": "usr-3129a8fa",
-      "comment": "Archived by shopkeeper",
-      "createdAt": "2026-10-10T07:44:34.649Z"
-    },
-    {
-      "id": "hst-0b2266c3",
-      "orderId": "ord-003",
-      "previousStatus": "completed",
-      "newStatus": "completed",
-      "changedByName": "printx Privacy Engine",
-      "comment": "Customer files automatically & permanently deleted 5 minutes after completion for privacy protection.",
-      "createdAt": "2026-10-13T17:09:53.866Z"
-    },
-    {
-      "id": "hst-c201f6f4",
-      "orderId": "ord-88128368",
-      "previousStatus": "completed",
-      "newStatus": "completed",
-      "changedByName": "printx Privacy Engine",
-      "comment": "Customer files automatically & permanently deleted 5 minutes after completion for privacy protection.",
-      "createdAt": "2026-10-13T17:09:53.866Z"
-    },
-    {
-      "id": "hst-5e624234",
-      "orderId": "ord-10f046cc",
-      "previousStatus": "archived",
-      "newStatus": "archived",
-      "changedByName": "printx Privacy Engine",
-      "comment": "Customer files automatically & permanently deleted 5 minutes after completion for privacy protection.",
-      "createdAt": "2026-10-13T17:09:53.866Z"
-    },
-    {
-      "id": "hst-22a53f13",
-      "orderId": "ord-228b2979",
-      "previousStatus": "completed",
-      "newStatus": "completed",
-      "changedByName": "printx Privacy Engine",
-      "comment": "Customer files automatically & permanently deleted 5 minutes after completion for privacy protection.",
-      "createdAt": "2026-10-13T17:09:53.867Z"
-    },
-    {
-      "id": "hst-67ed1b8e",
-      "orderId": "ord-0cc53f41",
-      "newStatus": "queued",
-      "changedByName": "Customer Submission",
-      "comment": "Order placed by customer via Shop QR Portal",
-      "createdAt": "2026-10-15T05:50:03.583Z"
-    },
-    {
-      "id": "hst-de37b93a",
-      "orderId": "ord-0cc53f41",
-      "previousStatus": "queued",
-      "newStatus": "printing",
-      "changedByName": "Auto-Print Spooler",
-      "comment": "Online payment received (₹2). Automatically spooled to \"HP LaserJet Pro M404dn\".",
-      "createdAt": "2026-10-15T05:50:09.464Z"
-    },
-    {
-      "id": "hst-2a9c5324",
-      "orderId": "ord-0cc53f41",
-      "previousStatus": "printing",
-      "newStatus": "completed",
-      "changedByName": "surya",
-      "changedById": "usr-3129a8fa",
-      "comment": "Marked completed",
-      "createdAt": "2026-10-15T05:50:25.752Z"
-    },
-    {
-      "id": "hst-bf04b0b8",
-      "orderId": "ord-0cc53f41",
-      "previousStatus": "completed",
-      "newStatus": "completed",
-      "changedByName": "printx Privacy Engine",
-      "comment": "Customer files automatically & permanently deleted 5 minutes after completion for privacy protection.",
-      "createdAt": "2026-10-15T05:55:33.280Z"
-    }
-  ],
+  "orderHistory": [],
   "payments": [
     {
       "id": "pay-001",
@@ -668,6 +606,22 @@
     }
   ],
   "activityLogs": [
+    {
+      "shopId": "shp-8aee248c",
+      "userId": "usr-91f474c0",
+      "actionType": "shop_registered",
+      "description": "Shop \"Verma Cyber Cafe\" registered and activated live. WhatsApp: 9876543219.",
+      "id": "log-0e6e206b",
+      "createdAt": "2026-10-17T16:43:43.051Z"
+    },
+    {
+      "shopId": "shp-809e746e",
+      "userId": "usr-12c86f0e",
+      "actionType": "shop_registered",
+      "description": "Shop \"Gupta Cyber Zone\" registered. WhatsApp: +919876543210.",
+      "id": "log-a82de1e8",
+      "createdAt": "2026-10-17T16:37:32.393Z"
+    },
     {
       "shopId": "shp-4a80e000",
       "userId": "usr-admin-001",

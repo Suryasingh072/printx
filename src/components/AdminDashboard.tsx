@@ -853,12 +853,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1">Owner Email / Login ID</label>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">
+                      Owner Email / Login ID <span className="text-pink-400">*</span>
+                    </label>
                     <input
                       type="email"
+                      required
                       value={formOwnerEmail}
                       onChange={(e) => setFormOwnerEmail(e.target.value)}
-                      placeholder="owner@printshop.in"
+                      placeholder="e.g. owner@gmail.com"
                       className="w-full py-2 px-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-pink-500"
                     />
                   </div>
@@ -868,6 +871,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                     </label>
                     <input
                       type="text"
+                      required={!editingShop}
                       value={formOwnerPassword}
                       onChange={(e) => setFormOwnerPassword(e.target.value)}
                       placeholder={editingShop ? 'Keep unchanged' : 'Shop#1234'}

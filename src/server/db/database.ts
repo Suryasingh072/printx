@@ -78,58 +78,54 @@ export class Database {
     if (!remote) return;
     if (Array.isArray(remote.shops) && remote.shops.length > 0) {
       for (const s of remote.shops) {
-        if (s.id === 'shp-apex-001' || s.id === 'shp-sai-002') continue;
-        const existingIdx = this.data.shops.findIndex((item) => item.id === s.id);
-        if (existingIdx !== -1) {
-          this.data.shops[existingIdx] = { ...this.data.shops[existingIdx], ...s };
-        } else {
+        if (!s || !s.id || s.id === 'shp-apex-001' || s.id === 'shp-sai-002') continue;
+        const existingIdx = this.data.shops.findIndex((item) => item.id === s.id || (item.slug && item.slug.toLowerCase() === (s.slug || '').toLowerCase()));
+        if (existingIdx === -1) {
           this.data.shops.push(s);
         }
       }
     }
     if (Array.isArray(remote.pricing) && remote.pricing.length > 0) {
       for (const p of remote.pricing) {
+        if (!p || !p.shopId) continue;
         const existingIdx = this.data.pricing.findIndex((item) => item.shopId === p.shopId);
-        if (existingIdx !== -1) {
-          this.data.pricing[existingIdx] = { ...this.data.pricing[existingIdx], ...p };
-        } else {
+        if (existingIdx === -1) {
           this.data.pricing.push(p);
         }
       }
     }
     if (Array.isArray(remote.approvalRules) && remote.approvalRules.length > 0) {
       for (const r of remote.approvalRules) {
+        if (!r || !r.shopId) continue;
         const existingIdx = this.data.approvalRules.findIndex((item) => item.shopId === r.shopId);
-        if (existingIdx !== -1) {
-          this.data.approvalRules[existingIdx] = { ...this.data.approvalRules[existingIdx], ...r };
-        } else {
+        if (existingIdx === -1) {
           this.data.approvalRules.push(r);
         }
       }
     }
     if (Array.isArray(remote.orders) && remote.orders.length > 0) {
       for (const o of remote.orders) {
+        if (!o || !o.id) continue;
         const existingIdx = this.data.orders.findIndex((item) => item.id === o.id);
-        if (existingIdx !== -1) {
-          this.data.orders[existingIdx] = { ...this.data.orders[existingIdx], ...o };
-        } else {
+        if (existingIdx === -1) {
           this.data.orders.push(o);
         }
       }
     }
     if (Array.isArray(remote.agents) && remote.agents.length > 0) {
       for (const a of remote.agents) {
-        const existingIdx = this.data.agents.findIndex((item) => item.id === a.id);
-        if (existingIdx !== -1) {
-          this.data.agents[existingIdx] = { ...this.data.agents[existingIdx], ...a };
-        } else {
+        if (!a || !a.shopId) continue;
+        const existingIdx = this.data.agents.findIndex((item) => item.id === a.id || item.shopId === a.shopId);
+        if (existingIdx === -1) {
           this.data.agents.push(a);
         }
       }
     }
     if (Array.isArray(remote.users) && remote.users.length > 0) {
       for (const u of remote.users) {
-        const existingIdx = this.data.users.findIndex((item) => item.id === u.id);
+        if (!u || !u.id || u.id === 'usr-owner-001' || u.id === 'usr-owner-002') continue;
+        const uEmail = (u.email || '').trim().toLowerCase();
+        const existingIdx = this.data.users.findIndex((item) => item.id === u.id || (item.email && item.email.trim().toLowerCase() === uEmail));
         if (existingIdx === -1) {
           this.data.users.push(u);
         }
@@ -164,7 +160,9 @@ export class Database {
   }
 
   public verifyPassword(plain: string, hash: string): boolean {
-    return this.hashPassword(plain) === hash;
+    if (!plain || !hash) return false;
+    const clean = plain.trim();
+    return this.hashPassword(clean) === hash || this.hashPassword(plain) === hash;
   }
 
   public save(): void {
@@ -174,7 +172,7 @@ export class Database {
     // 2. Sync to Supabase Cloud if connected
     if (this.saveTimeout) clearTimeout(this.saveTimeout);
     this.saveTimeout = setTimeout(() => {
-      supabaseService.saveRemoteState(this.data).catch((err) => {
+      supabaseService.saveRemoteState(this.data).catch(() => {
         // Warning only
       });
     }, 1000);
@@ -182,19 +180,124 @@ export class Database {
 
   private loadOrCreateDatabase(): DatabaseSchema {
     const candidateFiles = [DB_FILE, BACKUP_FILE, TMP_FILE];
-    let bestData: DatabaseSchema | null = null;
-    let maxRecords = -1;
+    const merged: DatabaseSchema = {
+      users: [],
+      shops: [],
+      pricing: [],
+      approvalRules: [],
+      agents: [],
+      orders: [],
+      orderHistory: [],
+      payments: [],
+      printJobs: [],
+      activityLogs: [],
+    };
+
+    let foundAnyFile = false;
 
     for (const filePath of candidateFiles) {
       if (fs.existsSync(filePath)) {
         try {
           const raw = fs.readFileSync(filePath, 'utf-8');
           const parsed = JSON.parse(raw);
-          if (parsed && Array.isArray(parsed.users)) {
-            const count = (parsed.users?.length || 0) + (parsed.shops?.length || 0);
-            if (count > maxRecords) {
-              maxRecords = count;
-              bestData = parsed;
+          if (parsed && typeof parsed === 'object') {
+            foundAnyFile = true;
+
+            // Merge shops: NEVER lose any registered shop
+            if (Array.isArray(parsed.shops)) {
+              for (const s of parsed.shops) {
+                if (!s || !s.id || s.id === 'shp-apex-001' || s.id === 'shp-sai-002') continue;
+                const idx = merged.shops.findIndex((item) => item.id === s.id || (item.slug && item.slug.toLowerCase() === (s.slug || '').toLowerCase()));
+                if (idx === -1) {
+                  merged.shops.push(s);
+                } else {
+                  merged.shops[idx] = { ...merged.shops[idx], ...s };
+                }
+              }
+            }
+
+            // Merge users: NEVER lose any registered account
+            if (Array.isArray(parsed.users)) {
+              for (const u of parsed.users) {
+                if (!u || !u.id || u.id === 'usr-owner-001' || u.id === 'usr-owner-002') continue;
+                const uEmail = (u.email || '').trim().toLowerCase();
+                const idx = merged.users.findIndex((item) => item.id === u.id || (item.email && item.email.trim().toLowerCase() === uEmail));
+                if (idx === -1) {
+                  merged.users.push(u);
+                } else {
+                  merged.users[idx] = { ...merged.users[idx], ...u };
+                }
+              }
+            }
+
+            // Merge pricing
+            if (Array.isArray(parsed.pricing)) {
+              for (const p of parsed.pricing) {
+                if (!p || !p.shopId) continue;
+                if (!merged.pricing.some((item) => item.shopId === p.shopId)) {
+                  merged.pricing.push(p);
+                }
+              }
+            }
+
+            // Merge approval rules
+            if (Array.isArray(parsed.approvalRules)) {
+              for (const r of parsed.approvalRules) {
+                if (!r || !r.shopId) continue;
+                if (!merged.approvalRules.some((item) => item.shopId === r.shopId)) {
+                  merged.approvalRules.push(r);
+                }
+              }
+            }
+
+            // Merge agents
+            if (Array.isArray(parsed.agents)) {
+              for (const a of parsed.agents) {
+                if (!a || !a.shopId) continue;
+                if (!merged.agents.some((item) => item.id === a.id || item.shopId === a.shopId)) {
+                  merged.agents.push(a);
+                }
+              }
+            }
+
+            // Merge orders
+            if (Array.isArray(parsed.orders)) {
+              for (const o of parsed.orders) {
+                if (!o || !o.id) continue;
+                if (!merged.orders.some((item) => item.id === o.id)) {
+                  merged.orders.push(o);
+                }
+              }
+            }
+
+            // Merge payments
+            if (Array.isArray(parsed.payments)) {
+              for (const p of parsed.payments) {
+                if (!p || !p.id) continue;
+                if (!merged.payments.some((item) => item.id === p.id)) {
+                  merged.payments.push(p);
+                }
+              }
+            }
+
+            // Merge printJobs
+            if (Array.isArray(parsed.printJobs)) {
+              for (const j of parsed.printJobs) {
+                if (!j || !j.id) continue;
+                if (!merged.printJobs.some((item) => item.id === j.id)) {
+                  merged.printJobs.push(j);
+                }
+              }
+            }
+
+            // Merge activityLogs
+            if (Array.isArray(parsed.activityLogs)) {
+              for (const l of parsed.activityLogs) {
+                if (!l || !l.id) continue;
+                if (!merged.activityLogs.some((item) => item.id === l.id)) {
+                  merged.activityLogs.push(l);
+                }
+              }
             }
           }
         } catch (e) {
@@ -203,33 +306,40 @@ export class Database {
       }
     }
 
-    if (bestData && Array.isArray(bestData.users)) {
-      // Ensure the master system admin account printx286351@gmail.com exists
-      let admin = bestData.users.find((u: any) => u.email?.toLowerCase() === 'printx286351@gmail.com');
-      if (admin) {
-        admin.email = 'printx286351@gmail.com';
-        admin.passwordHash = this.hashPassword('Ekma#1234');
-        admin.role = 'admin';
-        admin.fullName = 'printx System Administrator';
-      } else {
-        bestData.users.unshift({
-          id: 'usr-admin-001',
-          email: 'printx286351@gmail.com',
-          passwordHash: this.hashPassword('Ekma#1234'),
-          fullName: 'printx System Administrator',
-          whatsappNumber: '+919876543210',
-          whatsappVerified: true,
-          role: 'admin',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
+    // Ensure Master Administrator account exists
+    let admin = merged.users.find((u: any) => (u.email || '').trim().toLowerCase() === 'printx286351@gmail.com');
+    if (admin) {
+      admin.email = 'printx286351@gmail.com';
+      admin.passwordHash = this.hashPassword('Ekma#1234');
+      admin.role = 'admin';
+      admin.fullName = 'printx System Administrator';
+    } else {
+      merged.users.unshift({
+        id: 'usr-admin-001',
+        email: 'printx286351@gmail.com',
+        passwordHash: this.hashPassword('Ekma#1234'),
+        fullName: 'printx System Administrator',
+        whatsappNumber: '+919876543210',
+        whatsappVerified: true,
+        role: 'admin',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    if (foundAnyFile) {
+      // Sync merged state synchronously back to all candidate disk files
+      try {
+        const content = JSON.stringify(merged, null, 2);
+        fs.writeFileSync(DB_FILE, content, 'utf-8');
+        fs.writeFileSync(BACKUP_FILE, content, 'utf-8');
+        if (DB_FILE !== TMP_FILE) {
+          try { fs.writeFileSync(TMP_FILE, content, 'utf-8'); } catch (_) {}
+        }
+      } catch (e) {
+        console.error('Error writing merged database state:', e);
       }
-
-      // Remove legacy mock placeholders only (preserve all genuine user-created shops & accounts)
-      bestData.shops = (bestData.shops || []).filter((s: any) => s.id !== 'shp-apex-001' && s.id !== 'shp-sai-002');
-      bestData.users = (bestData.users || []).filter((u: any) => u.id !== 'usr-owner-001' && u.id !== 'usr-owner-002');
-
-      return bestData;
+      return merged;
     }
 
     const initial = this.generateSeedData();
@@ -271,8 +381,9 @@ export class Database {
 
   // --- User Queries ---
   public getUserByEmail(email: string): User | undefined {
-    const clean = (email || '').trim().toLowerCase();
-    return this.data.users.find((u) => u.email.toLowerCase() === clean);
+    if (!email) return undefined;
+    const clean = email.trim().toLowerCase();
+    return this.data.users.find((u) => (u.email || '').trim().toLowerCase() === clean);
   }
 
   public getUserById(id: string): User | undefined {
@@ -280,8 +391,48 @@ export class Database {
   }
 
   public getUserByWhatsApp(phone: string): User | undefined {
+    if (!phone) return undefined;
     const clean = phone.replace(/[^0-9]/g, '');
-    return this.data.users.find((u) => u.whatsappNumber.replace(/[^0-9]/g, '') === clean);
+    if (!clean) return undefined;
+    return this.data.users.find((u) => {
+      const uClean = (u.whatsappNumber || '').replace(/[^0-9]/g, '');
+      return uClean && (uClean.endsWith(clean) || clean.endsWith(uClean));
+    });
+  }
+
+  public getUserByIdentifier(identifier: string): User | undefined {
+    if (!identifier) return undefined;
+    const clean = identifier.trim().toLowerCase();
+
+    // 1. By exact or lower email
+    const byEmail = this.data.users.find((u) => (u.email || '').trim().toLowerCase() === clean);
+    if (byEmail) return byEmail;
+
+    // 2. By phone / WhatsApp digits
+    const digits = identifier.replace(/[^0-9]/g, '');
+    if (digits.length >= 7) {
+      const byPhone = this.data.users.find((u) => {
+        const uPhone = (u.whatsappNumber || '').replace(/[^0-9]/g, '');
+        return uPhone && (uPhone.endsWith(digits) || digits.endsWith(uPhone));
+      });
+      if (byPhone) return byPhone;
+    }
+
+    // 3. By shop slug (e.g. user typed ekma-super-cyber)
+    const shop = this.getShopBySlug(clean);
+    if (shop?.ownerId) {
+      const byShopOwner = this.getUserById(shop.ownerId);
+      if (byShopOwner) return byShopOwner;
+    }
+
+    // 4. By shop name
+    const shopByName = this.data.shops.find((s) => (s.name || '').trim().toLowerCase() === clean);
+    if (shopByName?.ownerId) {
+      const byShopOwner = this.getUserById(shopByName.ownerId);
+      if (byShopOwner) return byShopOwner;
+    }
+
+    return undefined;
   }
 
   public createUser(user: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): User {

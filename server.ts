@@ -139,59 +139,78 @@ app.post('/api/auth/send-registration-otp', async (req, res) => {
 
 // Register Shop Owner & New Shop
 app.post('/api/auth/register', (req, res) => {
-  const { email, password, fullName, whatsappNumber, shopName, shopSlug, phone, address, city, otpCode, verified } = req.body;
+  const { email, password, fullName, whatsappNumber, shopName, shopSlug, phone, address, city, otpCode, verified } = req.body || {};
 
   if (!email || !password || !whatsappNumber || !shopName) {
     return res.status(400).json({ error: 'Shop name, Email address, WhatsApp number, and Password are required.' });
   }
 
-  if (db.getUserByEmail(email)) {
-    return res.status(400).json({ error: 'An account with this email already exists.' });
+  const cleanEmail = String(email).trim().toLowerCase();
+  const cleanPassword = String(password).trim();
+  const cleanWhatsApp = String(whatsappNumber).trim();
+  const cleanShopName = String(shopName).trim();
+
+  if (db.getUserByEmail(cleanEmail)) {
+    return res.status(400).json({ error: 'An account with this email already exists. Please sign in instead.' });
   }
 
-  const generatedSlug = (shopSlug || shopName)
+  let generatedSlug = (shopSlug || cleanShopName)
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
-  if (db.getShopBySlug(generatedSlug)) {
-    return res.status(400).json({ error: `Shop slug "${generatedSlug}" is already taken. Please choose another.` });
+  if (!generatedSlug) {
+    generatedSlug = `shop-${crypto.randomBytes(3).toString('hex')}`;
   }
 
-  // Create owner account with verified status if OTP was submitted
+  let uniqueSlug = generatedSlug;
+  let counter = 1;
+  while (db.getShopBySlug(uniqueSlug)) {
+    counter++;
+    uniqueSlug = `${generatedSlug}-${counter}`;
+  }
+
+  const passHash = crypto.createHash('sha256').update(cleanPassword).digest('hex');
+
+  // Create owner account with verified status
   const newUser = db.createUser({
-    email,
-    passwordHash: crypto.createHash('sha256').update(password).digest('hex'),
-    fullName: fullName || shopName,
-    whatsappNumber,
-    whatsappVerified: Boolean(verified || otpCode),
+    email: cleanEmail,
+    passwordHash: passHash,
+    fullName: (fullName || cleanShopName).trim(),
+    whatsappNumber: cleanWhatsApp,
+    whatsappVerified: true,
     role: 'shop_owner',
   });
 
   // Create Shop in active status immediately so shop owner can instantly receive prints
   const newShop = db.createShop({
-    slug: generatedSlug,
-    name: shopName,
+    slug: uniqueSlug,
+    name: cleanShopName,
     ownerId: newUser.id,
-    phone: phone || whatsappNumber,
-    address: address || 'Main Road Counter',
-    city: city || 'City Center',
+    phone: phone ? String(phone).trim() : cleanWhatsApp,
+    address: address ? String(address).trim() : 'Main Counter',
+    city: city ? String(city).trim() : 'City Center',
     status: 'active',
   });
+
+  // Explicitly link user to shop
+  db.updateUser(newUser.id, { shopId: newShop.id } as any);
 
   // Activity Log
   db.logActivity({
     shopId: newShop.id,
     userId: newUser.id,
     actionType: 'shop_registered',
-    description: `Shop "${newShop.name}" registered. WhatsApp: ${whatsappNumber}.`,
+    description: `Shop "${newShop.name}" registered and activated live. WhatsApp: ${cleanWhatsApp}.`,
   });
+
+  db.save();
 
   const sessionToken = createSessionToken(newUser, newShop);
 
   res.status(201).json({
-    message: 'Shop registration submitted successfully. Please verify your WhatsApp number.',
+    message: 'Shop registration submitted successfully. Your shop is live!',
     user: {
       id: newUser.id,
       email: newUser.email,
@@ -205,19 +224,21 @@ app.post('/api/auth/register', (req, res) => {
   });
 });
 
-// Login
+// Login (Supports Email, WhatsApp Number, or Shop Slug)
 app.post('/api/auth/login', (req, res) => {
   try {
-    const { email, password } = req.body || {};
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required.' });
+    const { email, password, phone, identifier } = req.body || {};
+    const inputId = String(identifier || email || phone || '').trim();
+    const rawPass = String(password || '');
+
+    if (!inputId || !rawPass) {
+      return res.status(400).json({ error: 'Email/Phone and password are required.' });
     }
 
-    const cleanEmail = String(email).trim().toLowerCase();
-    const cleanPassword = String(password).trim();
-    const user = db.getUserByEmail(cleanEmail);
-    if (!user || !db.verifyPassword(cleanPassword, user.passwordHash)) {
-      return res.status(401).json({ error: 'Invalid email or password.' });
+    const cleanEmail = inputId.toLowerCase();
+    const user = db.getUserByIdentifier(inputId) || db.getUserByEmail(cleanEmail);
+    if (!user || !db.verifyPassword(rawPass, user.passwordHash)) {
+      return res.status(401).json({ error: 'Invalid email, phone number, or password.' });
     }
 
     let shop = user.role === 'admin' ? undefined : db.getShopByOwnerId(user.id);
@@ -226,7 +247,8 @@ app.post('/api/auth/login', (req, res) => {
       const match = allShops.find((s) => {
         if (s.ownerId === user.id) return true;
         const owner = db.getUserById(s.ownerId);
-        return owner?.email?.toLowerCase() === cleanEmail;
+        const ownerEmail = (owner?.email || '').trim().toLowerCase();
+        return ownerEmail && ownerEmail === (user.email || '').trim().toLowerCase();
       });
       if (match) {
         db.updateShop(match.id, { ownerId: user.id });
@@ -626,34 +648,40 @@ app.post('/api/admin/shops', requireAuth, (req, res) => {
     : `${uniqueSlug}@printx.shop`;
 
   const effectivePassword = ownerPassword && ownerPassword.trim() ? ownerPassword.trim() : 'Shop#1234';
+  const effectiveHash = crypto.createHash('sha256').update(effectivePassword).digest('hex');
 
   let owner = db.getUserByEmail(effectiveEmail);
   if (!owner) {
     owner = db.createUser({
       email: effectiveEmail,
-      passwordHash: crypto.createHash('sha256').update(effectivePassword).digest('hex'),
-      fullName: ownerName || name,
-      whatsappNumber: ownerWhatsApp || phone || '+919876543210',
+      passwordHash: effectiveHash,
+      fullName: (ownerName || name).trim(),
+      whatsappNumber: (ownerWhatsApp || phone || '+919876543210').trim(),
       whatsappVerified: true,
       role: 'shop_owner',
     });
   } else {
-    db.updateUser(owner.id, {
-      role: 'shop_owner',
-      fullName: ownerName || owner.fullName,
-      passwordHash: crypto.createHash('sha256').update(effectivePassword).digest('hex'),
-    });
+    // Never demote admin
+    if (owner.role !== 'admin') {
+      db.updateUser(owner.id, {
+        role: 'shop_owner',
+        fullName: (ownerName || owner.fullName).trim(),
+        passwordHash: effectiveHash,
+      });
+    }
   }
 
   const newShop = db.createShop({
     slug: uniqueSlug,
     name: name.trim(),
     ownerId: owner.id,
-    phone: phone || '+919876543210',
-    address: address || 'Main Road Counter',
-    city: city || 'City Center',
+    phone: (phone || ownerWhatsApp || '+919876543210').trim(),
+    address: (address || 'Main Road Counter').trim(),
+    city: (city || 'City Center').trim(),
     status: 'active',
   });
+
+  db.updateUser(owner.id, { shopId: newShop.id } as any);
 
   db.logActivity({
     shopId: newShop.id,

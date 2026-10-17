@@ -133,11 +133,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
     setLoginLoading(true);
     setLoginError(null);
     try {
-      const res = await api.login(loginEmail, loginPassword);
+      const res = await api.login(loginEmail.trim(), loginPassword.trim());
       setShowLoginModal(false);
       onLoginSuccess(res.user, res.shop);
     } catch (err: any) {
-      setLoginError(err.message || 'Invalid email or password');
+      setLoginError(err.message || 'Invalid email, phone number, or password');
     } finally {
       setLoginLoading(false);
     }
@@ -942,7 +942,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
           9. MODALS: LOGIN, REGISTER, FORGOT, LEGAL
          ======================================================== */}
 
-      {/* Login Modal */}
+      {/* Sign In Modal */}
       {showLoginModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-[#0f172a] border border-white/15 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative text-white">
@@ -966,13 +966,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
 
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1">Email Address</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1">
+                  Email Address or WhatsApp Number
+                </label>
                 <input
-                  type="email"
+                  type="text"
                   required
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
-                  placeholder="e.g. shop@printx.com"
+                  placeholder="e.g. surya.ekma@gmail.com or 9431683881"
                   className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
                 />
               </div>
@@ -1001,14 +1003,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
               <button
                 type="submit"
                 disabled={loginLoading}
-                className="w-full py-3 rounded-xl font-bold text-sm btn-grad transition cursor-pointer mt-2"
+                className="w-full py-3 rounded-xl font-bold text-sm btn-grad transition cursor-pointer mt-2 shadow-lg shadow-rose-500/25"
               >
                 {loginLoading ? 'Signing in...' : 'Sign In to Dashboard'}
               </button>
             </form>
 
             <div className="mt-5 text-center text-xs text-slate-400">
-              Need a new shop registered? <span className="text-pink-400 font-semibold">Managed exclusively by System Administrator.</span>
+              Need a new shop registered?{' '}
+              <span className="text-pink-400 font-semibold">Managed exclusively by System Administrator.</span>
             </div>
           </div>
         </div>
