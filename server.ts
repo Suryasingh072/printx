@@ -244,14 +244,37 @@ app.post('/api/auth/login', (req, res) => {
     let shop = user.role === 'admin' ? undefined : db.getShopByOwnerId(user.id);
     if (!shop && user.role !== 'admin') {
       const allShops = db.getAllShops();
-      const match = allShops.find((s) => {
-        if (s.ownerId === user.id) return true;
-        const owner = db.getUserById(s.ownerId);
-        const ownerEmail = (owner?.email || '').trim().toLowerCase();
-        return ownerEmail && ownerEmail === (user.email || '').trim().toLowerCase();
-      });
+      let match = allShops.find((s) => s.ownerId === user.id);
+      if (!match) {
+        match = allShops.find((s) => {
+          const owner = db.getUserById(s.ownerId);
+          const ownerEmail = (owner?.email || '').trim().toLowerCase();
+          return ownerEmail && ownerEmail === (user.email || '').trim().toLowerCase();
+        });
+      }
+      if (!match && user.shopId) {
+        match = db.getShopById(user.shopId);
+      }
+      if (!match) {
+        // Fallback: auto-create active counter for this owner so they never get stuck outside dashboard
+        const baseSlug = (user.fullName || user.email.split('@')[0])
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '') || `counter-${user.id.slice(-4)}`;
+        const slug = db.getShopBySlug(baseSlug) ? `${baseSlug}-${Date.now().toString().slice(-4)}` : baseSlug;
+        match = db.createShop({
+          name: user.fullName || 'Print Counter',
+          slug,
+          ownerId: user.id,
+          phone: user.whatsappNumber || '+919876543210',
+          address: 'Main Counter',
+          city: 'City Center',
+          status: 'active',
+        });
+      }
       if (match) {
         db.updateShop(match.id, { ownerId: user.id });
+        db.updateUser(user.id, { shopId: match.id } as any);
         shop = match;
       }
     }

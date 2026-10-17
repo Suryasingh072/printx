@@ -60,12 +60,15 @@ export const api = {
   },
 
   // Auth
-  async login(email: string, password: string): Promise<{ user: User; shop?: Shop; token: string }> {
+  async login(identifier: string, password: string): Promise<{ user: User; shop?: Shop; token: string }> {
     const res = await this.request<{ user: User; shop?: Shop; token: string }>('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ identifier: identifier.trim(), email: identifier.trim(), password: password.trim() }),
     });
     this.setToken(res.token);
+    if (res.shop?.id) {
+      this.setShopContext(res.shop.id);
+    }
     return res;
   },
 

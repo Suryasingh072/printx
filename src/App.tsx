@@ -75,11 +75,19 @@ export default function App() {
     navigateTo('/');
   };
 
-  const handleLoginSuccess = (user: User, shop?: Shop) => {
+  const handleLoginSuccess = async (user: User, shop?: Shop) => {
     setCurrentUser(user);
     if (shop) {
       setCurrentShop(shop);
       api.setShopContext(shop.id);
+    } else if (user.role === 'shop_owner') {
+      try {
+        const direct = await api.getCurrentShop();
+        if (direct) {
+          setCurrentShop(direct);
+          api.setShopContext(direct.id);
+        }
+      } catch (_) {}
     }
   };
 
@@ -147,10 +155,22 @@ export default function App() {
           </div>
           <div className="pt-2 flex flex-col gap-3">
             <button
-              onClick={() => window.location.reload()}
+              onClick={async () => {
+                try {
+                  const s = await api.getCurrentShop();
+                  if (s) {
+                    setCurrentShop(s);
+                    api.setShopContext(s.id);
+                  } else {
+                    window.location.reload();
+                  }
+                } catch (_) {
+                  window.location.reload();
+                }
+              }}
               className="btn btn-primary py-2.5 text-xs font-bold cursor-pointer"
             >
-              Refresh & Check Shop Link
+              Open My Counter Dashboard →
             </button>
             <button
               onClick={handleLogout}

@@ -13,14 +13,15 @@
     },
     {
       "email": "surya286351@gmail.com",
-      "passwordHash": "d86bac8de3e7efec7080b35b9e0c8fbceb38e7820bc4dc65875da0d30aec2b79",
-      "fullName": "surya",
+      "passwordHash": "8bbda22312cc5a13036290a21500876d62bfe54c6e8d6d2f397bc438ebf7e8de",
+      "fullName": "bbd",
       "whatsappNumber": "9431683881",
       "whatsappVerified": true,
       "role": "shop_owner",
       "id": "usr-3129a8fa",
       "createdAt": "2026-10-10T07:04:19.860Z",
-      "updatedAt": "2026-10-10T07:05:25.026Z"
+      "updatedAt": "2026-10-17T16:45:48.695Z",
+      "shopId": "shp-4faf170a"
     },
     {
       "email": "cyberowner@gmail.com",
@@ -164,6 +165,18 @@
       "id": "shp-8aee248c",
       "createdAt": "2026-10-17T16:43:43.049Z",
       "updatedAt": "2026-10-17T16:43:43.049Z"
+    },
+    {
+      "slug": "bbd",
+      "name": "bbdb",
+      "ownerId": "usr-3129a8fa",
+      "phone": "9856328965",
+      "address": "bbd",
+      "city": "bbd",
+      "status": "active",
+      "id": "shp-4faf170a",
+      "createdAt": "2026-10-17T16:45:48.692Z",
+      "updatedAt": "2026-10-17T16:45:48.692Z"
     }
   ],
   "pricing": [
@@ -244,6 +257,19 @@
       "idCardSinglePrice": 15,
       "currency": "INR",
       "updatedAt": "2026-10-17T16:43:43.049Z"
+    },
+    {
+      "id": "prc-4aed279a",
+      "shopId": "shp-4faf170a",
+      "bwSinglePrice": 2,
+      "bwDuplexPrice": 3,
+      "colorSinglePrice": 10,
+      "colorDuplexPrice": 18,
+      "legalExtra": 1,
+      "photo4x6Price": 20,
+      "idCardSinglePrice": 15,
+      "currency": "INR",
+      "updatedAt": "2026-10-17T16:45:48.692Z"
     }
   ],
   "approvalRules": [
@@ -306,6 +332,16 @@
       "requirePaymentBeforePrint": true,
       "notifyWhatsapp": true,
       "updatedAt": "2026-10-17T16:43:43.049Z"
+    },
+    {
+      "id": "rul-bda0c93b",
+      "shopId": "shp-4faf170a",
+      "mode": "smart",
+      "maxAutoPages": 10,
+      "maxAutoAmount": 50,
+      "requirePaymentBeforePrint": true,
+      "notifyWhatsapp": true,
+      "updatedAt": "2026-10-17T16:45:48.692Z"
     }
   ],
   "agents": [
@@ -387,6 +423,17 @@
       "appVersion": "2.4.0",
       "dryRunMode": false,
       "createdAt": "2026-10-17T16:43:43.049Z"
+    },
+    {
+      "id": "agt-8253141a",
+      "shopId": "shp-4faf170a",
+      "deviceName": "Shop Windows PC",
+      "pairingCode": "938994",
+      "status": "offline",
+      "installedPrinters": [],
+      "appVersion": "2.4.0",
+      "dryRunMode": false,
+      "createdAt": "2026-10-17T16:45:48.692Z"
     }
   ],
   "orders": [
@@ -606,6 +653,14 @@
     }
   ],
   "activityLogs": [
+    {
+      "shopId": "shp-4faf170a",
+      "userId": "usr-admin-001",
+      "actionType": "shop_registered",
+      "description": "Shop \"bbdb\" registered and activated directly by Super Admin.",
+      "id": "log-9d46c32f",
+      "createdAt": "2026-10-17T16:45:48.695Z"
+    },
     {
       "shopId": "shp-8aee248c",
       "userId": "usr-91f474c0",
