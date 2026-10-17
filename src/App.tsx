@@ -41,17 +41,23 @@ export default function App() {
         setCurrentUser(data.user);
         if (data.shop) {
           setCurrentShop(data.shop);
+          api.setShopContext(data.shop.id);
         } else if (data.user && data.user.role === 'shop_owner') {
           // Fallback: restore shop directly
           try {
             const directShop = await api.getCurrentShop();
-            if (directShop) setCurrentShop(directShop);
+            if (directShop) {
+              setCurrentShop(directShop);
+              api.setShopContext(directShop.id);
+            }
           } catch (shopErr) {
             console.warn('Could not restore shop profile:', shopErr);
           }
         }
-      } catch (e) {
-        api.clearToken();
+      } catch (e: any) {
+        if (e?.message?.includes('expired') || e?.message?.includes('invalid') || e?.message?.includes('Authentication required')) {
+          api.clearToken();
+        }
       } finally {
         setAuthLoading(false);
       }
@@ -62,6 +68,8 @@ export default function App() {
 
   const handleLogout = () => {
     api.logout();
+    api.clearToken();
+    api.setShopContext(null);
     setCurrentUser(null);
     setCurrentShop(null);
     navigateTo('/');
@@ -69,7 +77,10 @@ export default function App() {
 
   const handleLoginSuccess = (user: User, shop?: Shop) => {
     setCurrentUser(user);
-    if (shop) setCurrentShop(shop);
+    if (shop) {
+      setCurrentShop(shop);
+      api.setShopContext(shop.id);
+    }
   };
 
   if (authLoading) {

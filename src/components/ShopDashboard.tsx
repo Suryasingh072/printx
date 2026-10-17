@@ -57,6 +57,13 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
     'queue' | 'pricing' | 'approval' | 'profile' | 'supabase' | 'qr' | 'printers' | 'reports' | 'activity' | 'archive' | 'security'
   >('queue');
 
+  useEffect(() => {
+    if (initialShop?.id) {
+      api.setShopContext(initialShop.id);
+      setShop(initialShop);
+    }
+  }, [initialShop?.id]);
+
   // Interactive Toast Feedback
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {

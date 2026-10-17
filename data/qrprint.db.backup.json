@@ -54,6 +54,17 @@
       "id": "usr-192e5019",
       "createdAt": "2026-10-16T16:45:41.574Z",
       "updatedAt": "2026-10-16T16:45:41.574Z"
+    },
+    {
+      "email": "rohan.sharma@gmail.com",
+      "passwordHash": "d86bac8de3e7efec7080b35b9e0c8fbceb38e7820bc4dc65875da0d30aec2b79",
+      "fullName": "Rohan Sharma",
+      "whatsappNumber": "+919876500000",
+      "whatsappVerified": true,
+      "role": "shop_owner",
+      "id": "usr-ee175464",
+      "createdAt": "2026-10-17T16:18:03.417Z",
+      "updatedAt": "2026-10-17T16:18:03.417Z"
     }
   ],
   "shops": [
@@ -94,6 +105,18 @@
       "id": "shp-52d19b75",
       "createdAt": "2026-10-16T14:06:36.463Z",
       "updatedAt": "2026-10-16T14:06:36.463Z"
+    },
+    {
+      "slug": "sharma-digital",
+      "name": "Sharma Digital Prints",
+      "ownerId": "usr-ee175464",
+      "phone": "+919876500000",
+      "address": "Gandhi Chowk",
+      "city": "Ekma",
+      "status": "active",
+      "id": "shp-4a80e000",
+      "createdAt": "2026-10-17T16:18:03.418Z",
+      "updatedAt": "2026-10-17T16:18:03.418Z"
     }
   ],
   "pricing": [
@@ -135,6 +158,19 @@
       "idCardSinglePrice": 15,
       "currency": "INR",
       "updatedAt": "2026-10-16T14:06:36.463Z"
+    },
+    {
+      "id": "prc-28e7c931",
+      "shopId": "shp-4a80e000",
+      "bwSinglePrice": 2,
+      "bwDuplexPrice": 3,
+      "colorSinglePrice": 10,
+      "colorDuplexPrice": 18,
+      "legalExtra": 1,
+      "photo4x6Price": 20,
+      "idCardSinglePrice": 15,
+      "currency": "INR",
+      "updatedAt": "2026-10-17T16:18:03.418Z"
     }
   ],
   "approvalRules": [
@@ -167,6 +203,16 @@
       "requirePaymentBeforePrint": true,
       "notifyWhatsapp": true,
       "updatedAt": "2026-10-16T14:06:36.463Z"
+    },
+    {
+      "id": "rul-cf2bfce4",
+      "shopId": "shp-4a80e000",
+      "mode": "smart",
+      "maxAutoPages": 10,
+      "maxAutoAmount": 50,
+      "requirePaymentBeforePrint": true,
+      "notifyWhatsapp": true,
+      "updatedAt": "2026-10-17T16:18:03.418Z"
     }
   ],
   "agents": [
@@ -215,6 +261,17 @@
       "appVersion": "2.4.0",
       "dryRunMode": false,
       "createdAt": "2026-10-16T14:06:36.463Z"
+    },
+    {
+      "id": "agt-4481bacc",
+      "shopId": "shp-4a80e000",
+      "deviceName": "Shop Windows PC",
+      "pairingCode": "941726",
+      "status": "offline",
+      "installedPrinters": [],
+      "appVersion": "2.4.0",
+      "dryRunMode": false,
+      "createdAt": "2026-10-17T16:18:03.418Z"
     }
   ],
   "orders": [
@@ -611,6 +668,14 @@
     }
   ],
   "activityLogs": [
+    {
+      "shopId": "shp-4a80e000",
+      "userId": "usr-admin-001",
+      "actionType": "shop_registered",
+      "description": "Shop \"Sharma Digital Prints\" registered and activated directly by Super Admin.",
+      "id": "log-31ea5045",
+      "createdAt": "2026-10-17T16:18:03.419Z"
+    },
     {
       "shopId": "shp-52d19b75",
       "userId": "usr-admin-001",

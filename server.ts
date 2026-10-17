@@ -1139,10 +1139,72 @@ app.post('/api/shop/orders/:id/delete', requireAuth, (req, res) => {
 // 4. SHOP DASHBOARD API (PROTECTED)
 // ==========================================
 
+// Helper to resolve shop for the authenticated user/session with multi-fallback & auto-healing
+function getShopForSession(req: Request): Shop | undefined {
+  const session = (req as any).user;
+  if (!session) return undefined;
+
+  // 1. Explicit shop ID or slug from headers or query params
+  const requestedId =
+    (req.headers['x-shop-id'] as string) ||
+    (req.headers['x-shop-slug'] as string) ||
+    (req.query.shopId as string);
+
+  if (requestedId) {
+    const s = db.getShopById(requestedId) || db.getShopBySlug(requestedId);
+    if (s) {
+      if (session.role === 'admin' || s.ownerId === session.userId) {
+        return s;
+      }
+      const user = db.getUserById(session.userId);
+      const owner = db.getUserById(s.ownerId);
+      if (user && owner && user.email.toLowerCase() === owner.email.toLowerCase()) {
+        db.updateShop(s.id, { ownerId: user.id });
+        return s;
+      }
+    }
+  }
+
+  // 2. From session token shopId
+  if (session.shopId) {
+    const s = db.getShopById(session.shopId);
+    if (s) return s;
+  }
+
+  // 3. From owner ID
+  if (session.userId) {
+    const s = db.getShopByOwnerId(session.userId);
+    if (s) return s;
+
+    // 4. Try matching shop by owner's email address
+    const user = db.getUserById(session.userId);
+    if (user && user.email) {
+      const cleanEmail = user.email.toLowerCase();
+      const allShops = db.getAllShops();
+      const match = allShops.find((shop) => {
+        if (shop.ownerId === user.id) return true;
+        const owner = db.getUserById(shop.ownerId);
+        return owner?.email?.toLowerCase() === cleanEmail;
+      });
+      if (match) {
+        db.updateShop(match.id, { ownerId: user.id });
+        return match;
+      }
+    }
+
+    // 5. If user is an Admin, default to the first active shop
+    if (session.role === 'admin') {
+      const allShops = db.getAllShops();
+      if (allShops.length > 0) return allShops[0];
+    }
+  }
+
+  return undefined;
+}
+
 // Get Current Shop Details & Setup
 app.get('/api/shop/current', requireAuth, (req, res) => {
-  const session = (req as any).user;
-  const shop = session.shopId ? db.getShopById(session.shopId) : db.getShopByOwnerId(session.userId);
+  const shop = getShopForSession(req);
 
   if (!shop) {
     return res.status(404).json({ error: 'No shop associated with this user.' });
@@ -1168,7 +1230,7 @@ app.post('/api/supabase/sync', async (req, res) => {
 // Update Shop Details
 const handleUpdateShop = (req: Request, res: Response) => {
   const session = (req as any).user;
-  const shop = session.shopId ? db.getShopById(session.shopId) : db.getShopByOwnerId(session.userId);
+  const shop = getShopForSession(req);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
   const { name, phone, address, city, upiId, requiresCounterPayment } = req.body;
@@ -1197,8 +1259,7 @@ app.put('/api/shop/profile', requireAuth, handleUpdateShop);
 
 // Get & Update Pricing
 app.get('/api/shop/pricing', requireAuth, (req, res) => {
-  const session = (req as any).user;
-  const shop = session.shopId ? db.getShopById(session.shopId) : db.getShopByOwnerId(session.userId);
+  const shop = getShopForSession(req);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
   const pricing = db.getShopPricing(shop.id);
@@ -1207,7 +1268,7 @@ app.get('/api/shop/pricing', requireAuth, (req, res) => {
 
 app.put('/api/shop/pricing', requireAuth, (req, res) => {
   const session = (req as any).user;
-  const shop = session.shopId ? db.getShopById(session.shopId) : db.getShopByOwnerId(session.userId);
+  const shop = getShopForSession(req);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
   const {
@@ -1242,8 +1303,7 @@ app.put('/api/shop/pricing', requireAuth, (req, res) => {
 
 // Get & Update Approval Rules
 app.get('/api/shop/approval-rules', requireAuth, (req, res) => {
-  const session = (req as any).user;
-  const shop = session.shopId ? db.getShopById(session.shopId) : db.getShopByOwnerId(session.userId);
+  const shop = getShopForSession(req);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
   const rules = db.getShopApprovalRules(shop.id);
@@ -1252,7 +1312,7 @@ app.get('/api/shop/approval-rules', requireAuth, (req, res) => {
 
 app.put('/api/shop/approval-rules', requireAuth, (req, res) => {
   const session = (req as any).user;
-  const shop = session.shopId ? db.getShopById(session.shopId) : db.getShopByOwnerId(session.userId);
+  const shop = getShopForSession(req);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
   const { mode, maxAutoPages, maxAutoAmount, requirePaymentBeforePrint, notifyWhatsapp } = req.body;
@@ -1277,8 +1337,7 @@ app.put('/api/shop/approval-rules', requireAuth, (req, res) => {
 
 // Orders Queue
 app.get('/api/shop/orders', requireAuth, (req, res) => {
-  const session = (req as any).user;
-  const shop = session.shopId ? db.getShopById(session.shopId) : db.getShopByOwnerId(session.userId);
+  const shop = getShopForSession(req);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
   const filter = (req.query.filter as string) || 'all';
@@ -1519,8 +1578,7 @@ app.get('/api/documents/download/:orderId', (req, res) => {
 
 // Shop Reports & Stats
 app.get('/api/shop/stats', requireAuth, (req, res) => {
-  const session = (req as any).user;
-  const shop = session.shopId ? db.getShopById(session.shopId) : db.getShopByOwnerId(session.userId);
+  const shop = getShopForSession(req);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
   const stats = db.getShopStats(shop.id);
@@ -1529,8 +1587,7 @@ app.get('/api/shop/stats', requireAuth, (req, res) => {
 
 // Shop Activity Logs
 app.get('/api/shop/activity', requireAuth, (req, res) => {
-  const session = (req as any).user;
-  const shop = session.shopId ? db.getShopById(session.shopId) : db.getShopByOwnerId(session.userId);
+  const shop = getShopForSession(req);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
   const logs = db.getActivityLogs(shop.id);
@@ -1544,7 +1601,7 @@ app.get('/api/shop/activity', requireAuth, (req, res) => {
 // Create or retrieve Utility API Key (ADRTech Desktop for Windows)
 app.post('/api/shop/agent/utility-key', requireAuth, (req, res) => {
   const session = (req as any).user;
-  const shop = session.shopId ? db.getShopById(session.shopId) : db.getShopByOwnerId(session.userId);
+  const shop = getShopForSession(req);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
   const result = db.createUtilityApiKey(shop.id);
@@ -1721,7 +1778,7 @@ app.get('/api/agent/download-ps1', (req, res) => {
 // Shop generates pairing code for Windows desktop app (Fixed & Permanent per shop)
 app.post('/api/shop/agent/pairing-code', requireAuth, (req, res) => {
   const session = (req as any).user;
-  const shop = session.shopId ? db.getShopById(session.shopId) : db.getShopByOwnerId(session.userId);
+  const shop = getShopForSession(req);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
   const forceReset = Boolean(req.query.reset === 'true' || req.body?.reset);
@@ -1739,8 +1796,7 @@ app.post('/api/shop/agent/pairing-code', requireAuth, (req, res) => {
 
 // Shop gets agent status and detected printers (ensures permanent pairing code exists)
 app.get('/api/shop/agent/status', requireAuth, (req, res) => {
-  const session = (req as any).user;
-  const shop = session.shopId ? db.getShopById(session.shopId) : db.getShopByOwnerId(session.userId);
+  const shop = getShopForSession(req);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
   const agent = db.getOrCreateAgent(shop.id);
@@ -1750,7 +1806,7 @@ app.get('/api/shop/agent/status', requireAuth, (req, res) => {
 // Update configured printers (default, bw, color)
 app.put('/api/shop/agent/printers', requireAuth, (req, res) => {
   const session = (req as any).user;
-  const shop = session.shopId ? db.getShopById(session.shopId) : db.getShopByOwnerId(session.userId);
+  const shop = getShopForSession(req);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
   const agent = db.getAgentByShopId(shop.id);
@@ -1777,7 +1833,7 @@ app.put('/api/shop/agent/printers', requireAuth, (req, res) => {
 // Revoke Windows agent credentials
 app.post('/api/shop/agent/revoke', requireAuth, (req, res) => {
   const session = (req as any).user;
-  const shop = session.shopId ? db.getShopById(session.shopId) : db.getShopByOwnerId(session.userId);
+  const shop = getShopForSession(req);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
   db.revokeAgent(shop.id);

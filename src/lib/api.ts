@@ -1,6 +1,7 @@
 import { User, Shop, ShopPricing, ShopApprovalRules, Order, WindowsAgent, ShopStats, ActivityLog } from '../types.js';
 
 const TOKEN_KEY = 'printqr_auth_token';
+const SHOP_KEY = 'printqr_active_shop_id';
 
 export const api = {
   getToken(): string | null {
@@ -13,6 +14,19 @@ export const api = {
 
   clearToken() {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(SHOP_KEY);
+  },
+
+  setShopContext(shopId: string | null) {
+    if (shopId) {
+      localStorage.setItem(SHOP_KEY, shopId);
+    } else {
+      localStorage.removeItem(SHOP_KEY);
+    }
+  },
+
+  getShopContext(): string | null {
+    return localStorage.getItem(SHOP_KEY);
   },
 
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -24,6 +38,11 @@ export const api = {
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const activeShopId = this.getShopContext();
+    if (activeShopId) {
+      headers['x-shop-id'] = activeShopId;
     }
 
     const response = await fetch(endpoint, {
