@@ -43,9 +43,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
   // Supabase Cloud State
   const [supabaseStatus, setSupabaseStatus] = useState<any | null>(null);
-  const [supabaseUrl, setSupabaseUrl] = useState('https://skbwakxzlrsjkubmbzte.supabase.co');
+  const [supabaseUrl, setSupabaseUrl] = useState('https://ovyimgjzfzhysyubqycw.supabase.co');
   const [supabaseServiceKey, setSupabaseServiceKey] = useState('');
-  const [supabaseAnonKey, setSupabaseAnonKey] = useState('sb_publishable_QP1HmIg1sarCAM26rm_h9g_dnSeVjqg');
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState('');
   const [isSyncingSupabase, setIsSyncingSupabase] = useState(false);
   const [isSavingSupabase, setIsSavingSupabase] = useState(false);
   const [copiedSql, setCopiedSql] = useState(false);

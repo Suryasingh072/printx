@@ -2087,6 +2087,14 @@ async function startServer() {
     return;
   }
 
+  // Pre-hydrate all persistent state from Supabase Cloud on boot
+  try {
+    await db.hydrateFromCloud();
+    console.log(`[Startup] Supabase Cloud hydration complete. Active shops: ${db.getAllShops().length}`);
+  } catch (err) {
+    console.warn('[Startup] Supabase cloud hydration notice:', err);
+  }
+
   const isDev = process.env.NODE_ENV !== 'production';
 
   if (isDev) {

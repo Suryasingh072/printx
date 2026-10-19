@@ -59,19 +59,25 @@ export class Database {
     this.initSupabaseHydration();
   }
 
-  private initSupabaseHydration(): void {
-    // In background, hydrate/restore from Supabase Cloud
-    setTimeout(async () => {
-      try {
-        const remote = await supabaseService.loadRemoteState();
-        if (remote) {
-          console.log('[Supabase Cloud] Restoring database state from cloud backup...');
-          this.mergeRemoteData(remote);
-        }
-      } catch (err) {
-        console.warn('Initial Supabase hydration notice:', err);
+  public async hydrateFromCloud(): Promise<boolean> {
+    try {
+      const remote = await supabaseService.loadRemoteState();
+      if (remote) {
+        console.log('[Supabase Cloud] Restoring database state from cloud backup...');
+        this.mergeRemoteData(remote);
+        return true;
       }
-    }, 1200);
+    } catch (err) {
+      console.warn('Supabase cloud hydration error:', err);
+    }
+    return false;
+  }
+
+  private initSupabaseHydration(): void {
+    // In background, hydrate/restore immediately from Supabase Cloud
+    setTimeout(async () => {
+      await this.hydrateFromCloud();
+    }, 100);
   }
 
   public mergeRemoteData(remote: DatabaseSchema): void {
@@ -82,6 +88,8 @@ export class Database {
         const existingIdx = this.data.shops.findIndex((item) => item.id === s.id || (item.slug && item.slug.toLowerCase() === (s.slug || '').toLowerCase()));
         if (existingIdx === -1) {
           this.data.shops.push(s);
+        } else {
+          this.data.shops[existingIdx] = { ...this.data.shops[existingIdx], ...s };
         }
       }
     }
@@ -91,6 +99,8 @@ export class Database {
         const existingIdx = this.data.pricing.findIndex((item) => item.shopId === p.shopId);
         if (existingIdx === -1) {
           this.data.pricing.push(p);
+        } else {
+          this.data.pricing[existingIdx] = { ...this.data.pricing[existingIdx], ...p };
         }
       }
     }
@@ -100,6 +110,8 @@ export class Database {
         const existingIdx = this.data.approvalRules.findIndex((item) => item.shopId === r.shopId);
         if (existingIdx === -1) {
           this.data.approvalRules.push(r);
+        } else {
+          this.data.approvalRules[existingIdx] = { ...this.data.approvalRules[existingIdx], ...r };
         }
       }
     }
@@ -109,6 +121,8 @@ export class Database {
         const existingIdx = this.data.orders.findIndex((item) => item.id === o.id);
         if (existingIdx === -1) {
           this.data.orders.push(o);
+        } else {
+          this.data.orders[existingIdx] = { ...this.data.orders[existingIdx], ...o };
         }
       }
     }
@@ -118,6 +132,8 @@ export class Database {
         const existingIdx = this.data.agents.findIndex((item) => item.id === a.id || item.shopId === a.shopId);
         if (existingIdx === -1) {
           this.data.agents.push(a);
+        } else {
+          this.data.agents[existingIdx] = { ...this.data.agents[existingIdx], ...a };
         }
       }
     }
@@ -128,6 +144,8 @@ export class Database {
         const existingIdx = this.data.users.findIndex((item) => item.id === u.id || (item.email && item.email.trim().toLowerCase() === uEmail));
         if (existingIdx === -1) {
           this.data.users.push(u);
+        } else {
+          this.data.users[existingIdx] = { ...this.data.users[existingIdx], ...u };
         }
       }
     }
@@ -174,13 +192,13 @@ export class Database {
     // 1. Immediately persist to local disk and backup
     this.saveDiskOnly();
 
-    // 2. Sync to Supabase Cloud if connected
+    // 2. Sync to Supabase Cloud with low latency (150ms debounce)
     if (this.saveTimeout) clearTimeout(this.saveTimeout);
     this.saveTimeout = setTimeout(() => {
-      supabaseService.saveRemoteState(this.data).catch(() => {
-        // Warning only
+      supabaseService.saveRemoteState(this.data).catch((err) => {
+        console.warn('[Supabase Cloud] Autosave warning:', err?.message || err);
       });
-    }, 1000);
+    }, 150);
   }
 
   public async syncToCloudNow(): Promise<boolean> {

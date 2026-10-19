@@ -494,11 +494,11 @@
           "id": "d4211af7-8440-41a9-a28a-ada2ca4b7b49",
           "name": "image_9dda9c47.jpeg",
           "type": "image/jpeg",
-          "sizeBytes": 377851,
+          "edited": true,
           "filePath": "d4211af7-8440-41a9-a28a-ada2ca4b7b49.jpeg",
           "pageCount": 1,
-          "previewUrl": "blob:https://ais-dev-j4wzxf4ek3yadrvyzajprv-973482974092.asia-southeast1.run.app/b1c042ea-e6b9-40de-b84e-070d5f654726",
-          "edited": true
+          "sizeBytes": 377851,
+          "previewUrl": "blob:https://ais-dev-j4wzxf4ek3yadrvyzajprv-973482974092.asia-southeast1.run.app/b1c042ea-e6b9-40de-b84e-070d5f654726"
         }
       ],
       "id": "ord-0cc53f41",
@@ -653,6 +653,14 @@
     }
   ],
   "activityLogs": [
+    {
+      "shopId": "shp-9318ce49",
+      "userId": "usr-368869ab",
+      "actionType": "shop_registered",
+      "description": "Shop \"Permanent Test Cyber Shop\" registered and activated live. WhatsApp: +919876599999.",
+      "id": "log-8e93866e",
+      "createdAt": "2026-10-19T06:50:06.849Z"
+    },
     {
       "shopId": "shp-4faf170a",
       "userId": "usr-admin-001",

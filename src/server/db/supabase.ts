@@ -67,13 +67,13 @@ class SupabaseService {
     this.url =
       stored.url ||
       process.env.SUPABASE_URL ||
-      'https://skbwakxzlrsjkubmbzte.supabase.co';
+      'https://ovyimgjzfzhysyubqycw.supabase.co';
 
     this.serviceRoleKey =
       stored.serviceRoleKey ||
       process.env.SUPABASE_SERVICE_ROLE_KEY ||
       process.env.SUPABASE_SERVICE_KEY ||
-      '';
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92eWltZ2p6ZnpoeXN5dWJxeWN3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTk5ODQyMiwiZXhwIjoyMTA3NTc0NDIyfQ.12EMHwF9X1OjoWS0Kbeklj5WZ1BJhMfQBSjc08zQ4-A';
 
     const defaultAnonKey = 'sb_publishable_QP1HmIg1sarCAM26rm_h9g_dnSeVjqg';
     const anonKey =
