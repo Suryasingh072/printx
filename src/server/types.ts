@@ -30,6 +30,7 @@ export interface User {
   whatsappOtp?: string;
   whatsappOtpExpiresAt?: string;
   role: UserRole;
+  shopId?: string;
   resetToken?: string;
   resetTokenExpiresAt?: string;
   createdAt: string;

@@ -360,11 +360,18 @@ export const api = {
     });
   },
 
-  async getSupabaseStatus(): Promise<{ connected: boolean; url: string; lastSyncedAt?: string; mode: string; error?: string }> {
+  async getSupabaseStatus(): Promise<{ connected: boolean; url: string; hasServiceRoleKey?: boolean; lastSyncedAt?: string; mode: string; error?: string; sqlFix?: string; shopsCount?: number }> {
     return this.request('/api/supabase/status');
   },
 
   async syncSupabase(): Promise<{ success: boolean; status: any }> {
     return this.request('/api/supabase/sync', { method: 'POST' });
+  },
+
+  async updateSupabaseConfig(config: { url?: string; serviceRoleKey?: string; anonKey?: string }): Promise<{ success: boolean; status: any }> {
+    return this.request('/api/supabase/config', {
+      method: 'POST',
+      body: JSON.stringify(config),
+    });
   },
 };

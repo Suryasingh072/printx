@@ -183,6 +183,11 @@ export class Database {
     }, 1000);
   }
 
+  public async syncToCloudNow(): Promise<boolean> {
+    this.saveDiskOnly();
+    return await supabaseService.saveRemoteState(this.data);
+  }
+
   private loadOrCreateDatabase(): DatabaseSchema {
     const candidateFiles = [DB_FILE, BACKUP_FILE, TMP_FILE];
     const merged: DatabaseSchema = {

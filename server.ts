@@ -1264,15 +1264,39 @@ app.get('/api/shop/current', requireAuth, (req, res) => {
   res.json(shop);
 });
 
-// Supabase Cloud Status & Manual Trigger
+// Supabase Cloud Status, Config & Manual Trigger
 app.get('/api/supabase/status', (req, res) => {
   res.json(supabaseService.getStatus());
 });
 
+app.post('/api/supabase/config', async (req, res) => {
+  try {
+    const { url, serviceRoleKey, anonKey } = req.body || {};
+    const status = await supabaseService.updateConfig({ url, serviceRoleKey, anonKey });
+    // If connected, sync local state
+    if (status.connected && status.mode !== 'rls_blocked') {
+      await supabaseService.saveRemoteState((db as any).data);
+    }
+    res.json({ success: true, status: supabaseService.getStatus() });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/supabase/sync', async (req, res) => {
   try {
-    const success = await supabaseService.saveRemoteState((db as any).data);
-    res.json({ success, status: supabaseService.getStatus() });
+    // 1. Try to push local database to Supabase
+    const saved = await supabaseService.saveRemoteState((db as any).data);
+
+    // 2. Also try to pull any remote data that may have been saved from previous sessions
+    try {
+      const remote = await supabaseService.loadRemoteState();
+      if (remote) {
+        db.mergeRemoteData(remote);
+      }
+    } catch (_) {}
+
+    res.json({ success: saved, status: supabaseService.getStatus() });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

@@ -20,6 +20,10 @@ import {
   KeyRound,
   Check,
   Shield,
+  Database,
+  Cloud,
+  AlertTriangle,
+  CheckCircle,
 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { User } from '../types.js';
@@ -31,11 +35,20 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, onNavigateHome }) => {
-  const [activeTab, setActiveTab] = useState<'shops' | 'users'>('shops');
+  const [activeTab, setActiveTab] = useState<'shops' | 'users' | 'supabase'>('shops');
   const [shops, setShops] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Supabase Cloud State
+  const [supabaseStatus, setSupabaseStatus] = useState<any | null>(null);
+  const [supabaseUrl, setSupabaseUrl] = useState('https://skbwakxzlrsjkubmbzte.supabase.co');
+  const [supabaseServiceKey, setSupabaseServiceKey] = useState('');
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState('sb_publishable_QP1HmIg1sarCAM26rm_h9g_dnSeVjqg');
+  const [isSyncingSupabase, setIsSyncingSupabase] = useState(false);
+  const [isSavingSupabase, setIsSavingSupabase] = useState(false);
+  const [copiedSql, setCopiedSql] = useState(false);
 
   // Edit / Create Shop Modal
   const [showEditModal, setShowEditModal] = useState(false);
@@ -87,10 +100,55 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       ]);
       setShops(shopsData);
       setUsers(usersData);
+      loadSupabaseStatus();
     } catch (e: any) {
       showToast(e.message || 'Failed to load data', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSupabaseStatus = async () => {
+    try {
+      const res = await api.getSupabaseStatus();
+      setSupabaseStatus(res);
+      if (res?.url) setSupabaseUrl(res.url);
+    } catch (_) {}
+  };
+
+  const handleSaveSupabaseConfig = async () => {
+    try {
+      setIsSavingSupabase(true);
+      const res = await api.updateSupabaseConfig({
+        url: supabaseUrl,
+        serviceRoleKey: supabaseServiceKey,
+        anonKey: supabaseAnonKey,
+      });
+      setSupabaseStatus(res.status);
+      showToast('Supabase settings updated & tested!', 'success');
+      loadData();
+    } catch (e: any) {
+      showToast(e.message || 'Failed to update Supabase configuration', 'error');
+    } finally {
+      setIsSavingSupabase(false);
+    }
+  };
+
+  const handleSyncSupabaseNow = async () => {
+    try {
+      setIsSyncingSupabase(true);
+      const res = await api.syncSupabase();
+      setSupabaseStatus(res.status);
+      if (res.success) {
+        showToast('All shops and data successfully synced to Supabase Cloud!', 'success');
+        loadData();
+      } else {
+        showToast(res.status?.error || 'Supabase sync failed. Check RLS or Service Key.', 'error');
+      }
+    } catch (e: any) {
+      showToast(e.message || 'Supabase sync error', 'error');
+    } finally {
+      setIsSyncingSupabase(false);
     }
   };
 
@@ -393,14 +451,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           </div>
 
           <div className="flex items-center gap-3">
-            {activeTab === 'shops' ? (
+            {activeTab === 'shops' && (
               <button
                 onClick={handleOpenCreateShopModal}
                 className="btn btn-primary text-xs font-black shadow-[0_10px_30px_rgba(255,46,99,0.35)] flex items-center gap-2"
               >
                 <Plus className="w-4 h-4 stroke-[3]" /> Register New Shop
               </button>
-            ) : (
+            )}
+            {activeTab === 'users' && (
               <button
                 onClick={handleOpenCreateUserModal}
                 className="btn btn-primary text-xs font-black shadow-[0_10px_30px_rgba(124,92,255,0.35)] flex items-center gap-2"
@@ -408,11 +467,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                 <Plus className="w-4 h-4 stroke-[3]" /> Create New User
               </button>
             )}
+            {activeTab === 'supabase' && (
+              <button
+                onClick={handleSyncSupabaseNow}
+                disabled={isSyncingSupabase}
+                className="btn btn-primary text-xs font-black shadow-[0_10px_30px_rgba(16,185,129,0.35)] flex items-center gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${isSyncingSupabase ? 'animate-spin' : ''}`} />
+                {isSyncingSupabase ? 'Syncing...' : 'Force Sync to Supabase'}
+              </button>
+            )}
           </div>
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center gap-3 bg-white/[0.03] p-1.5 rounded-2xl border border-white/10 w-fit">
+        <div className="flex flex-wrap items-center gap-3 bg-white/[0.03] p-1.5 rounded-2xl border border-white/10 w-fit">
           <button
             onClick={() => setActiveTab('shops')}
             className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition cursor-pointer ${
@@ -435,23 +504,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
             <Users className="w-4 h-4" />
             Users & Accounts ({users.length})
           </button>
+          <button
+            onClick={() => setActiveTab('supabase')}
+            className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition cursor-pointer ${
+              activeTab === 'supabase'
+                ? 'bg-grad text-white shadow-lg shadow-pink-500/25'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Database className="w-4 h-4 text-emerald-400" />
+            Supabase Cloud Database
+            {supabaseStatus?.connected ? (
+              supabaseStatus?.mode === 'rls_blocked' ? (
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" title="RLS policy required" />
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-emerald-400" title="Cloud Connected & Active" />
+              )
+            ) : (
+              <span className="w-2 h-2 rounded-full bg-rose-400" title="Not connected" />
+            )}
+          </button>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
-          <input
-            type="text"
-            placeholder={
-              activeTab === 'shops'
-                ? 'Search shops by name, slug (/shop/slug), owner email or city...'
-                : 'Search users by name, email, WhatsApp, role, or linked shop...'
-            }
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-pink-500/80 focus:ring-1 focus:ring-pink-500/50 shadow-inner transition"
-          />
-        </div>
+        {/* Search Bar (Only for shops and users) */}
+        {activeTab !== 'supabase' && (
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
+            <input
+              type="text"
+              placeholder={
+                activeTab === 'shops'
+                  ? 'Search shops by name, slug (/shop/slug), owner email or city...'
+                  : 'Search users by name, email, WhatsApp, role, or linked shop...'
+              }
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-pink-500/80 focus:ring-1 focus:ring-pink-500/50 shadow-inner transition"
+            />
+          </div>
+        )}
 
         {/* ========================================================
             TAB 1: REGISTERED SHOPS
@@ -739,6 +830,250 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ========================================================
+            TAB 3: SUPABASE CLOUD DATABASE & PERSISTENCE
+           ======================================================== */}
+        {activeTab === 'supabase' && (
+          <div className="space-y-6">
+            {/* Status Banner */}
+            <div className={`p-6 rounded-3xl border transition-all ${
+              supabaseStatus?.mode === 'service_role' || (supabaseStatus?.connected && supabaseStatus?.mode !== 'rls_blocked' && !supabaseStatus?.error)
+                ? 'bg-emerald-950/20 border-emerald-500/30'
+                : supabaseStatus?.mode === 'rls_blocked'
+                ? 'bg-amber-950/20 border-amber-500/30'
+                : 'bg-rose-950/20 border-rose-500/30'
+            }`}>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-2xl grid place-items-center text-2xl ${
+                    supabaseStatus?.mode === 'service_role' || (supabaseStatus?.connected && supabaseStatus?.mode !== 'rls_blocked' && !supabaseStatus?.error)
+                      ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
+                      : supabaseStatus?.mode === 'rls_blocked'
+                      ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400'
+                      : 'bg-rose-500/15 border border-rose-500/30 text-rose-400'
+                  }`}>
+                    {supabaseStatus?.mode === 'service_role' ? '🛡️' : supabaseStatus?.mode === 'rls_blocked' ? '⚠️' : '☁️'}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-black text-white font-head">
+                        {supabaseStatus?.mode === 'service_role'
+                          ? 'Supabase Cloud Connected (Service Role - 100% Permanent)'
+                          : supabaseStatus?.mode === 'rls_blocked'
+                          ? 'Supabase Connected, but RLS is Blocking Saves'
+                          : supabaseStatus?.connected
+                          ? 'Supabase Cloud Connected (Tables Mode)'
+                          : 'Supabase Cloud Not Connected'}
+                      </h3>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        supabaseStatus?.mode === 'service_role'
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                          : supabaseStatus?.mode === 'rls_blocked'
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                      }`}>
+                        {supabaseStatus?.mode === 'service_role'
+                          ? 'Full Persistence'
+                          : supabaseStatus?.mode === 'rls_blocked'
+                          ? 'Action Required'
+                          : supabaseStatus?.mode || 'Offline'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-1">
+                      {supabaseStatus?.mode === 'rls_blocked'
+                        ? 'Shop registration 2-3 minute me isliye gayab hoti hai kyunki Supabase RLS save hone se rok raha hai. Neeche diya gaya SQL run karein ya Service Role Key dalein.'
+                        : 'Har register hui shop, user, order, aur pricing automatically Supabase Cloud me backup hoti hai.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={handleSyncSupabaseNow}
+                    disabled={isSyncingSupabase}
+                    className="btn btn-primary text-xs font-bold flex items-center gap-2"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncingSupabase ? 'animate-spin' : ''}`} />
+                    {isSyncingSupabase ? 'Syncing...' : 'Sync Now'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Metrics Strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-white/10 text-xs">
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Database Host</span>
+                  <span className="text-white font-mono font-bold truncate block">{supabaseStatus?.url || supabaseUrl}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Local Server Shops</span>
+                  <span className="text-emerald-400 font-bold">{shops.length} Active Shops</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Cloud Backed Up Shops</span>
+                  <span className="text-pink-400 font-bold">{supabaseStatus?.shopsCount !== undefined ? `${supabaseStatus.shopsCount} Shops` : 'Sync Pending'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Last Cloud Sync</span>
+                  <span className="text-slate-300 font-mono text-[11px]">
+                    {supabaseStatus?.lastSyncedAt ? new Date(supabaseStatus.lastSyncedAt).toLocaleTimeString() : 'Never'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* TWO SOLUTIONS TO FIX SUPABASE PERSISTENCE */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Option 1: Supabase Service Role Key (Recommended) */}
+              <div className="card space-y-4 border-emerald-500/20 bg-white/[0.02]">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-black grid place-items-center">
+                      1
+                    </span>
+                    <h4 className="font-bold text-white text-sm">Option A: Service Role Key (Sabse Aasan & Best)</h4>
+                  </div>
+                  <span className="badge text-[10px] font-black uppercase tracking-wider py-0.5 px-2 bg-emerald-500/10 text-emerald-300 border-emerald-500/30">
+                    Recommended
+                  </span>
+                </div>
+
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Supabase Dashboard par jaayein &gt; <strong>Project Settings</strong> &gt; <strong>API</strong> &gt; 
+                  <strong><code>service_role</code> (secret)</strong> key copy karke yahan paste karein. 
+                  Yeh key Row Level Security (RLS) ko bypass karti hai aur bina kisi SQL script ke permanent save karti hai.
+                </p>
+
+                <div className="space-y-3 pt-2">
+                  <div>
+                    <label className="text-xs font-bold text-slate-300 block mb-1">Supabase Project URL</label>
+                    <input
+                      type="text"
+                      value={supabaseUrl}
+                      onChange={(e) => setSupabaseUrl(e.target.value)}
+                      placeholder="https://xyz.supabase.co"
+                      className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-pink-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-300 block mb-1">
+                      Supabase Service Role Key <span className="text-emerald-400 font-normal">(secret - starts with eyJ...)</span>
+                    </label>
+                    <input
+                      type="password"
+                      value={supabaseServiceKey}
+                      onChange={(e) => setSupabaseServiceKey(e.target.value)}
+                      placeholder="Paste your service_role secret key here..."
+                      className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-300 block mb-1">
+                      Supabase Anon / Public Key <span className="text-slate-500 font-normal">(Publishable)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={supabaseAnonKey}
+                      onChange={(e) => setSupabaseAnonKey(e.target.value)}
+                      placeholder="sb_publishable_..."
+                      className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-pink-500"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleSaveSupabaseConfig}
+                    disabled={isSavingSupabase}
+                    className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-2 mt-3"
+                  >
+                    {isSavingSupabase ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Saving & Testing...
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="w-3.5 h-3.5" /> Save Credentials & Activate Cloud Persistence
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Option 2: 1-Click SQL Script in Supabase Editor */}
+              <div className="card space-y-4 border-pink-500/20 bg-white/[0.02]">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-6 h-6 rounded-lg bg-pink-500/20 text-pink-400 text-xs font-black grid place-items-center">
+                      2
+                    </span>
+                    <h4 className="font-bold text-white text-sm">Option B: 1-Click SQL Script (Agar Anon Key use karni ho)</h4>
+                  </div>
+                  <span className="badge text-[10px] font-black uppercase tracking-wider py-0.5 px-2 bg-pink-500/10 text-pink-300 border-pink-500/30">
+                    SQL Fix
+                  </span>
+                </div>
+
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Agar aap Service Role key nahi dena chahte, toh Supabase Dashboard ke <strong>SQL Editor</strong> me 
+                  ye 3 lines paste karke <strong>RUN</strong> dabayein:
+                </p>
+
+                <div className="relative">
+                  <pre className="p-3.5 bg-black/60 border border-white/10 rounded-xl text-[11px] font-mono text-pink-200 overflow-x-auto max-h-48 whitespace-pre-wrap select-all">
+{supabaseStatus?.sqlFix || `-- 1. Create persistent table
+CREATE TABLE IF NOT EXISTS public.printx_app_state (
+  id TEXT PRIMARY KEY,
+  data JSONB NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 2. Disable Row Level Security so server can save freely
+ALTER TABLE public.printx_app_state DISABLE ROW LEVEL SECURITY;
+`}
+                  </pre>
+                  <button
+                    onClick={() => {
+                      const sql = supabaseStatus?.sqlFix || `CREATE TABLE IF NOT EXISTS public.printx_app_state (
+  id TEXT PRIMARY KEY,
+  data JSONB NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.printx_app_state DISABLE ROW LEVEL SECURITY;`;
+                      navigator.clipboard.writeText(sql);
+                      setCopiedSql(true);
+                      setTimeout(() => setCopiedSql(false), 2000);
+                      showToast('SQL copied! Paste in Supabase SQL Editor and click RUN.', 'info');
+                    }}
+                    className="absolute top-2.5 right-2.5 px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer backdrop-blur-md"
+                  >
+                    {copiedSql ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" /> Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" /> Copy SQL
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="p-3 bg-white/[0.03] rounded-xl border border-white/5 space-y-1 text-[11px] text-slate-300">
+                  <p className="font-bold text-white flex items-center gap-1.5">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Steps:
+                  </p>
+                  <ol className="list-decimal list-inside space-y-1 text-slate-400">
+                    <li>Supabase Dashboard खोलें &gt; <strong>SQL Editor</strong> &gt; <strong>New query</strong></li>
+                    <li>ऊपर का SQL paste करें और <strong>RUN</strong> बटन दबाएं।</li>
+                    <li>यहाँ आकर <strong>"Force Sync to Supabase"</strong> बटन दबाएं। Status तुरंत <strong>Green</strong> हो जाएगा!</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>

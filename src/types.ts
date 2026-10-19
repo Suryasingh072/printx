@@ -27,6 +27,7 @@ export interface User {
   whatsappNumber: string;
   whatsappVerified: boolean;
   role: UserRole;
+  shopId?: string;
 }
 
 export interface Shop {
