@@ -30,7 +30,10 @@ import {
   ChevronDown,
   X,
   Crop,
+  ExternalLink,
+  Copy,
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { api } from '../lib/api.js';
 import { Shop, ShopPricing, Order, ColorMode, DuplexMode, PaperSize, OrderFileItem } from '../types.js';
 import { PhotoIdCardTool } from './PhotoIdCardTool.js';
@@ -105,11 +108,40 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
   const [isPayingOnline, setIsPayingOnline] = useState(false);
   const [onlineUpiSuccess, setOnlineUpiSuccess] = useState(false);
 
-  const handlePayOnlineNow = async () => {
+  // Payment Gateway (IMB Payment) State
+  const defaultGatewayUrl = 'https://merchant.imbpayment.co.in/pay/pp_gtnQHY1RYx';
+  const gatewayUrl = shop?.paymentGatewayUrl || defaultGatewayUrl;
+  const [transactionRef, setTransactionRef] = useState<string>('');
+  const [copiedGatewayLink, setCopiedGatewayLink] = useState(false);
+  const [gatewayQrDataUrl, setGatewayQrDataUrl] = useState<string>('');
+  const [hasOpenedGateway, setHasOpenedGateway] = useState(false);
+
+  useEffect(() => {
+    if (gatewayUrl) {
+      QRCode.toDataURL(gatewayUrl, {
+        margin: 1,
+        width: 220,
+        color: { dark: '#000000', light: '#ffffff' },
+      })
+        .then((url) => setGatewayQrDataUrl(url))
+        .catch(() => {});
+    }
+  }, [gatewayUrl]);
+
+  const handleCopyGatewayLink = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(gatewayUrl);
+      setCopiedGatewayLink(true);
+      setTimeout(() => setCopiedGatewayLink(false), 2500);
+    }
+  };
+
+  const handlePayOnlineNow = async (customRef?: string) => {
     if (!placedOrder) return;
     setIsPayingOnline(true);
     try {
-      const res = await api.payOnline(placedOrder.orderNumber);
+      const refVal = customRef || transactionRef || 'IMB-Gateway-Auto';
+      const res = await api.payOnline(placedOrder.orderNumber, refVal);
       setPlacedOrder(res.order);
       setOnlineUpiSuccess(true);
       confetti({
@@ -118,20 +150,15 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
         origin: { y: 0.6 },
       });
 
-      // Clear uploaded files and reset preferences so the page is fresh for a new print
+      // Clear uploaded files and reset preferences so the page is ready for fresh print
       setFileQueue([]);
       setCustomerName('');
       setCustomerPhone('');
       setCustomNotes('');
       setCopies(1);
-
-      // Auto-refresh to pristine clean upload state after 4.5 seconds
-      setTimeout(() => {
-        setPlacedOrder(null);
-        setOnlineUpiSuccess(false);
-      }, 4500);
+      setTransactionRef('');
     } catch (err: any) {
-      alert(err.message || 'Payment simulation failed.');
+      alert(err.message || 'Payment confirmation failed.');
     } finally {
       setIsPayingOnline(false);
     }
@@ -713,26 +740,18 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
               </div>
             </div>
 
-            {/* Payment Row */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/[0.03] p-4 rounded-2xl border border-white/10">
-              <div className="text-xs text-slate-300">
-                {isPaid ? (
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-emerald-400 font-black text-sm">
-                      <Check className="w-5 h-5 stroke-[3]" /> Payment Verified & Dispatched to Printer!
-                    </div>
-                    <p className="text-[11px] text-slate-400">
-                      Files cleared. Agla document upload karne ke liye ready hai.
-                    </p>
+            {/* Payment Row / IMB Gateway Box */}
+            {isPaid ? (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-emerald-950/30 border border-emerald-500/40 p-4 sm:p-5 rounded-2xl">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-emerald-400 font-black text-sm">
+                    <Check className="w-5 h-5 stroke-[3]" /> Payment Verified via IMB Gateway & Dispatched to Printer!
                   </div>
-                ) : (
-                  <div>
-                    <span className="font-bold text-white">Payment Pending:</span> Counter par cash pay karein ya instant UPI payment karein.
-                  </div>
-                )}
-              </div>
+                  <p className="text-[11px] text-slate-300">
+                    Aapka order printer queue me chala gaya hai. Print machine se turant collect karein.
+                  </p>
+                </div>
 
-              {isPaid ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -745,18 +764,135 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                   <Plus className="w-4 h-4 stroke-[3]" />
                   Naya Print / Upload Karein
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handlePayOnlineNow}
-                  disabled={isPayingOnline}
-                  className="btn btn-primary py-2.5 px-6 text-xs font-black shrink-0 disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  <Zap className="w-3.5 h-3.5 fill-white" />
-                  {isPayingOnline ? 'Verifying UPI...' : 'Pay Online (UPI / GPay / PhonePe)'}
-                </button>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="space-y-4 bg-gradient-to-br from-[#0b1528] via-[#0f172a] to-[#0a1120] p-5 sm:p-6 rounded-2xl border-2 border-emerald-500/40 shadow-[0_8px_30px_rgba(16,185,129,0.15)]">
+                {/* Gateway Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30 shrink-0">
+                      <CreditCard className="w-6 h-6 stroke-[2.5]" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-sm font-black text-white font-head">IMB Payment Gateway</h4>
+                        <span className="badge text-[10px] font-black uppercase tracking-wider py-0.5 px-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                          Instant Auto-Print
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 mt-0.5">
+                        UPI • Google Pay • PhonePe • Paytm • BHIM • RuPay / Debit Cards
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-3 bg-white/[0.04] sm:bg-transparent px-3 py-2 sm:p-0 rounded-xl">
+                    <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Payable:</span>
+                    <span className="text-2xl font-black text-white font-mono grad font-head">₹{placedOrder.totalAmount.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* Gateway Action Center */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center pt-1">
+                  {/* Left Column: Direct Gateway Link & Verification */}
+                  <div className="md:col-span-8 space-y-3.5">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-200 block">
+                        Step 1: Gateway par jaakar ₹{placedOrder.totalAmount.toFixed(2)} pay karein:
+                      </label>
+                      <div className="flex flex-col sm:flex-row gap-2.5">
+                        <a
+                          href={gatewayUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setHasOpenedGateway(true)}
+                          className="btn bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-black py-3.5 px-6 rounded-xl shadow-[0_8px_25px_rgba(16,185,129,0.35)] flex items-center justify-center gap-2.5 text-xs font-head cursor-pointer flex-1 transition transform hover:scale-[1.01]"
+                        >
+                          <ExternalLink className="w-4 h-4 stroke-[2.5]" />
+                          Pay ₹{placedOrder.totalAmount.toFixed(2)} on IMB Payment Gateway
+                        </a>
+
+                        <button
+                          type="button"
+                          onClick={handleCopyGatewayLink}
+                          className="py-3 px-4 bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 rounded-xl text-xs font-bold text-slate-200 hover:text-white transition flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                          title="Payment Gateway Link copy karein"
+                        >
+                          {copiedGatewayLink ? (
+                            <>
+                              <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
+                              <span className="text-emerald-400 font-black">Link Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-4 h-4 text-slate-400" />
+                              <span>Copy Link</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Step 2: Verification Input */}
+                    <div className="p-3.5 bg-black/40 border border-white/10 rounded-xl space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-slate-300">
+                          Step 2: Payment hone ke baad confirm karein:
+                        </label>
+                        <span className="text-[10px] text-emerald-400 font-mono">Instant Auto-Spool</span>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="text"
+                          placeholder="UPI Ref ID / UTR No. (Optional)"
+                          value={transactionRef}
+                          onChange={(e) => setTransactionRef(e.target.value)}
+                          className="flex-1 py-2 px-3 bg-white/[0.05] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-emerald-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handlePayOnlineNow()}
+                          disabled={isPayingOnline}
+                          className="btn bg-emerald-600 hover:bg-emerald-500 text-white py-2 px-4 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shrink-0 shadow-lg shadow-emerald-600/30 cursor-pointer disabled:opacity-50"
+                        >
+                          <Zap className="w-3.5 h-3.5 fill-white" />
+                          {isPayingOnline ? 'Confirming...' : 'Maine Pay Kar Diya (Print Shuru Karein)'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Instant Phone Scan QR Code */}
+                  <div className="md:col-span-4 flex flex-col items-center justify-center p-3.5 bg-white/[0.03] border border-white/10 rounded-2xl text-center space-y-2">
+                    {gatewayQrDataUrl ? (
+                      <div className="p-2.5 bg-white rounded-xl shadow-lg shadow-black/40">
+                        <img
+                          src={gatewayQrDataUrl}
+                          alt="IMB Payment Gateway QR"
+                          className="w-28 h-28 object-contain"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-28 h-28 bg-white/5 rounded-xl flex items-center justify-center">
+                        <QrCode className="w-8 h-8 text-slate-500" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-200">Phone se QR Scan Karein</p>
+                      <p className="text-[10px] text-slate-400">Direct Gateway payment khul jayega</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Counter Cash Alternative */}
+                <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-400">
+                  <span>Online gateway se pay nahi karna?</span>
+                  <span className="font-bold text-slate-300 flex items-center gap-1.5">
+                    <Store className="w-3.5 h-3.5 text-pink-400" /> Counter par cash ₹{placedOrder.totalAmount.toFixed(2)} dekar bhi direct print le sakte hain.
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         )}
         {/* Service Selector: 2 Clean Options (Document & ID Card) */}
@@ -1166,7 +1302,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                     </>
                   ) : (
                     <>
-                      <FileCheck className="w-5 h-5 stroke-[2.5]" /> Place Print Order • ₹{total.toFixed(2)}
+                      <FileCheck className="w-5 h-5 stroke-[2.5]" /> Place Order & Pay via Gateway • ₹{total.toFixed(2)}
                     </>
                   )}
                 </button>
@@ -1205,6 +1341,22 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                   <div className="pt-3 border-t border-white/10 flex items-baseline justify-between">
                     <span className="text-sm font-black text-white">Total Price:</span>
                     <span className="text-3xl font-black grad font-head font-mono">₹{total.toFixed(2)}</span>
+                  </div>
+
+                  {/* Payment Gateway Badge */}
+                  <div className="p-3 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 rounded-2xl border border-emerald-500/20 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs font-black text-emerald-300">
+                        <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+                        IMB Payment Gateway
+                      </span>
+                      <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        Instant Auto-Print
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 leading-snug">
+                      Order submit karte hi aap <strong className="text-white">IMB UPI / GPay / PhonePe / Paytm / Cards</strong> se online pay karke instant auto-print pa sakte hain.
+                    </p>
                   </div>
                 </div>
 

@@ -78,6 +78,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
     address: initialShop.address || '',
     city: initialShop.city || '',
     upiId: (initialShop as any).upiId || '',
+    paymentGatewayUrl: initialShop.paymentGatewayUrl || 'https://merchant.imbpayment.co.in/pay/pp_gtnQHY1RYx',
     requiresCounterPayment: (initialShop as any).requiresCounterPayment ?? true,
   });
   const [savingProfile, setSavingProfile] = useState(false);
@@ -1144,6 +1145,23 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                     placeholder="e.g. 9812345678@upi or shop@okaxis"
                   />
                   <p className="text-[11px] text-slate-400 mt-1">Customers can scan and pay directly to this UPI ID</p>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5 flex items-center justify-between">
+                    <span>Customer Online Payment Gateway URL (IMB Payment)</span>
+                    <span className="text-[10px] text-emerald-400 font-mono">Active Link</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={profileForm.paymentGatewayUrl}
+                    onChange={(e) => setProfileForm({ ...profileForm, paymentGatewayUrl: e.target.value })}
+                    className="w-full py-2.5 px-3 bg-white/5 border border-white/10 rounded-xl text-xs font-mono font-semibold text-white focus:outline-none focus:border-pink-500"
+                    placeholder="https://merchant.imbpayment.co.in/pay/pp_gtnQHY1RYx"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Customer portal par online payment ke liye ye IMB Gateway link use hoga (Default: <span className="text-pink-300 font-mono">https://merchant.imbpayment.co.in/pay/pp_gtnQHY1RYx</span>)
+                  </p>
                 </div>
               </div>
 

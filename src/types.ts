@@ -42,6 +42,7 @@ export interface Shop {
   rejectionReason?: string;
   activatedAt?: string;
   qrCodeUrl?: string;
+  paymentGatewayUrl?: string;
   createdAt: string;
 }
 

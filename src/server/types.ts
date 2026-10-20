@@ -50,6 +50,7 @@ export interface Shop {
   activatedAt?: string;
   activatedBy?: string;
   qrCodeUrl?: string;
+  paymentGatewayUrl?: string;
   createdAt: string;
   updatedAt: string;
 }

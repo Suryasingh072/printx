@@ -869,6 +869,7 @@ app.get(['/api/shops/:slug', '/api/s/:slug'], (req, res) => {
       address: shop.address,
       city: shop.city,
       status: shop.status,
+      paymentGatewayUrl: shop.paymentGatewayUrl || 'https://merchant.imbpayment.co.in/pay/pp_gtnQHY1RYx',
     },
     pricing: {
       bwSinglePrice: pricing.bwSinglePrice,
