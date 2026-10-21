@@ -135,6 +135,9 @@ export interface Order {
   paymentCollectedAt?: string;
   paymentCollectorName?: string;
   paymentMethod?: PaymentMethod;
+  gatewayPaymentUrl?: string;
+  gatewayOrderId?: string;
+  gatewayCheckLink?: string;
   files?: OrderFileItem[];
   approvedAt?: string;
   printedAt?: string;

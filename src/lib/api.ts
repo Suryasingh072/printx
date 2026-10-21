@@ -291,6 +291,29 @@ export const api = {
     });
   },
 
+  async createImbSession(orderNumber: string): Promise<{
+    success: boolean;
+    paymentUrl: string;
+    orderId?: string;
+    checkLink?: string;
+    amount: number;
+  }> {
+    return this.request(`/api/orders/${orderNumber}/imb-session`, {
+      method: 'POST',
+    });
+  },
+
+  async checkImbPaymentStatus(orderNumber: string): Promise<{
+    paid: boolean;
+    status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'UNKNOWN';
+    rawStatus?: string;
+    order?: any;
+  }> {
+    return this.request(`/api/orders/${orderNumber}/check-imb-payment`, {
+      method: 'GET',
+    });
+  },
+
   async collectPayment(orderId: string, method: 'counter_upi' | 'online_upi', notes?: string): Promise<any> {
     return this.request(`/api/shop/orders/${orderId}/collect-payment`, {
       method: 'POST',

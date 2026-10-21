@@ -931,8 +931,90 @@ app.post('/api/orders/upload', (req, res) => {
   });
 });
 
-// Customer Order Submission
-app.post('/api/orders', (req, res) => {
+// Helper to create an IMB Payment Gateway session with the exact order amount
+async function createImbGatewaySession(
+  gatewayUrl: string,
+  amount: number,
+  orderNumber?: string
+): Promise<{
+  success: boolean;
+  paymentUrl: string;
+  orderId?: string;
+  checkLink?: string;
+  amount: number;
+}> {
+  const defaultGateway = 'https://merchant.imbpayment.co.in/pay/pp_gtnQHY1RYx';
+  const targetUrl = gatewayUrl && gatewayUrl.startsWith('http') ? gatewayUrl : defaultGateway;
+  const cleanUrl = targetUrl.split('?')[0].replace(/\/$/, '');
+
+  try {
+    const getRes = await fetch(cleanUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (getRes.ok) {
+      const html = await getRes.text();
+      const rawCookies =
+        typeof (getRes.headers as any).getSetCookie === 'function'
+          ? (getRes.headers as any).getSetCookie()
+          : [getRes.headers.get('set-cookie')].filter(Boolean);
+      const cookieStr = rawCookies.map((c: string) => c.split(';')[0]).join('; ');
+      const tokenMatch = html.match(/name="_token" value="([^"]+)"/);
+      const token = tokenMatch ? tokenMatch[1] : null;
+
+      if (token) {
+        const fd = new URLSearchParams();
+        fd.append('_token', token);
+        fd.append('amount', String(amount));
+
+        const submitUrl = `${cleanUrl}/submit`;
+        const postRes = await fetch(submitUrl, {
+          method: 'POST',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Cookie: cookieStr,
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+            Referer: cleanUrl,
+            Origin: new URL(cleanUrl).origin,
+          },
+          body: fd.toString(),
+          signal: AbortSignal.timeout(5000),
+        });
+
+        if (postRes.ok) {
+          const data = await postRes.json();
+          if (data && data.status && data.payment_url) {
+            return {
+              success: true,
+              paymentUrl: data.payment_url,
+              orderId: data.order_id,
+              checkLink: data.check_link,
+              amount: data.amount || amount,
+            };
+          }
+        }
+      }
+    }
+  } catch (err: any) {
+    console.warn(`[IMB Gateway] Session generation fallback for ${orderNumber || 'order'}:`, err.message);
+  }
+
+  // Resilient fallback with amount appended
+  const separator = cleanUrl.includes('?') ? '&' : '?';
+  return {
+    success: false,
+    paymentUrl: `${cleanUrl}${separator}amount=${amount}`,
+    amount,
+  };
+}
+
+// Customer Order Submission (100% Online Payment Portal)
+app.post('/api/orders', async (req, res) => {
   const {
     shopSlug,
     customerName,
@@ -982,7 +1064,7 @@ app.post('/api/orders', (req, res) => {
   });
 
   // Evaluate Approval Rules
-  let initialStatus: 'pending_approval' | 'payment_pending' | 'queued' = 'pending_approval';
+  let initialStatus: 'pending_approval' | 'payment_pending' | 'queued' = 'payment_pending';
 
   const totalPages = (pageCount || 1) * (copies || 1);
   const isAutoApproved =
@@ -992,17 +1074,16 @@ app.post('/api/orders', (req, res) => {
       priceCalc.totalAmount <= rules.maxAutoAmount);
 
   if (isAutoApproved) {
-    // If shop requires payment before print, order waits in payment_pending
-    if (rules.requirePaymentBeforePrint) {
-      initialStatus = 'payment_pending';
-    } else {
-      initialStatus = 'queued';
-    }
+    initialStatus = 'payment_pending';
   }
+
+  // Automatically create dynamic IMB Payment Gateway session with exact order amount
+  const gatewayUrl = shop.paymentGatewayUrl || 'https://merchant.imbpayment.co.in/pay/pp_gtnQHY1RYx';
+  const gatewaySession = await createImbGatewaySession(gatewayUrl, priceCalc.totalAmount);
 
   const order = db.createOrder({
     shopId: shop.id,
-    customerName: customerName ? customerName.trim() : 'Counter Customer',
+    customerName: customerName ? customerName.trim() : 'Online Customer',
     customerPhone: customerPhone ? customerPhone.trim() : '',
     documentName,
     documentType: documentType || 'application/pdf',
@@ -1020,18 +1101,21 @@ app.post('/api/orders', (req, res) => {
     totalAmount: priceCalc.totalAmount,
     status: initialStatus,
     paymentStatus: 'unpaid',
+    gatewayPaymentUrl: gatewaySession.paymentUrl,
+    gatewayOrderId: gatewaySession.orderId,
+    gatewayCheckLink: gatewaySession.checkLink,
     files: Array.isArray(req.body.files) ? req.body.files : undefined,
   });
 
   db.logActivity({
     shopId: shop.id,
     actionType: 'order_submitted',
-    description: `Order ${order.orderNumber} placed by ${customerName} (${order.documentName}, ₹${order.totalAmount}). Status: ${initialStatus}`,
-    metadata: { orderNumber: order.orderNumber, amount: order.totalAmount },
+    description: `Order ${order.orderNumber} placed by ${order.customerName} (${order.documentName}, ₹${order.totalAmount}). Gateway session ready.`,
+    metadata: { orderNumber: order.orderNumber, amount: order.totalAmount, gatewayOrderId: gatewaySession.orderId },
   });
 
   res.status(201).json({
-    message: 'Order placed successfully!',
+    message: 'Order placed successfully! Please complete online payment via IMB Gateway.',
     order: {
       orderNumber: order.orderNumber,
       customerName: order.customerName,
@@ -1044,6 +1128,9 @@ app.post('/api/orders', (req, res) => {
       totalAmount: order.totalAmount,
       status: order.status,
       paymentStatus: order.paymentStatus,
+      gatewayPaymentUrl: order.gatewayPaymentUrl,
+      gatewayOrderId: order.gatewayOrderId,
+      gatewayCheckLink: order.gatewayCheckLink,
       createdAt: order.createdAt,
     },
     shop: {
@@ -1082,6 +1169,9 @@ app.get('/api/orders/:orderNumber', (req, res) => {
       paymentStatus: order.paymentStatus,
       paymentCollectedAt: order.paymentCollectedAt,
       printedAt: order.printedAt,
+      gatewayPaymentUrl: order.gatewayPaymentUrl,
+      gatewayOrderId: order.gatewayOrderId,
+      gatewayCheckLink: order.gatewayCheckLink,
       createdAt: order.createdAt,
     },
     shop: {
@@ -1090,6 +1180,125 @@ app.get('/api/orders/:orderNumber', (req, res) => {
       address: shop?.address,
       city: shop?.city,
     },
+  });
+});
+
+// Create or Refresh IMB Gateway Session for an existing order
+app.post('/api/orders/:orderNumber/imb-session', async (req, res) => {
+  const { orderNumber } = req.params;
+  const order = db.getOrderByNumber(orderNumber);
+  if (!order) {
+    return res.status(404).json({ error: 'Order not found.' });
+  }
+
+  const shop = db.getShopById(order.shopId);
+  const gatewayUrl = shop?.paymentGatewayUrl || 'https://merchant.imbpayment.co.in/pay/pp_gtnQHY1RYx';
+  const session = await createImbGatewaySession(gatewayUrl, order.totalAmount, order.orderNumber);
+
+  db.updateOrderGatewayDetails(order.id, {
+    gatewayPaymentUrl: session.paymentUrl,
+    gatewayOrderId: session.orderId,
+    gatewayCheckLink: session.checkLink,
+  });
+
+  res.json({
+    success: session.success,
+    paymentUrl: session.paymentUrl,
+    orderId: session.orderId,
+    checkLink: session.checkLink,
+    amount: order.totalAmount,
+  });
+});
+
+// Check IMB Gateway payment status in real-time
+app.get('/api/orders/:orderNumber/check-imb-payment', async (req, res) => {
+  const { orderNumber } = req.params;
+  const order = db.getOrderByNumber(orderNumber);
+  if (!order) {
+    return res.status(404).json({ error: 'Order not found.' });
+  }
+
+  // Already marked collected
+  if (order.paymentStatus === 'collected') {
+    return res.json({
+      paid: true,
+      status: 'SUCCESS',
+      order: db.getOrderById(order.id),
+    });
+  }
+
+  // Check remote IMB gateway checkLink if available
+  if (order.gatewayCheckLink) {
+    try {
+      const checkRes = await fetch(order.gatewayCheckLink, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(4500),
+      });
+
+      if (checkRes.ok) {
+        const text = (await checkRes.text()).trim().toUpperCase();
+        const isSuccess =
+          text.includes('SUCCESS') ||
+          text.includes('PAID') ||
+          text.includes('COMPLETED') ||
+          (text.length > 0 && !text.includes('PENDING') && !text.includes('FAIL') && !text.includes('EXPIRE'));
+
+        if (isSuccess) {
+          // Record payment and auto-spool to printer!
+          db.recordPayment({
+            orderId: order.id,
+            shopId: order.shopId,
+            amount: order.totalAmount,
+            method: 'online_upi',
+            collectorName: 'IMB Payment Gateway',
+            notes: `Auto-verified via IMB Gateway (${order.gatewayOrderId || 'UPI'}). Gateway status: ${text}`,
+          });
+
+          const agent = db.getAgentByShopId(order.shopId);
+          const targetPrinter =
+            (order.colorMode === 'color' ? agent?.colorPrinter : agent?.bwPrinter) ||
+            agent?.defaultPrinter ||
+            'Default Windows Printer';
+
+          db.createPrintJobsForOrder(order.id, targetPrinter);
+          db.updateOrderStatus(
+            order.id,
+            'printing',
+            'Auto-Print Spooler',
+            undefined,
+            `IMB Payment Gateway verified (₹${order.totalAmount}). Automatically spooled to "${targetPrinter}".`
+          );
+
+          db.logActivity({
+            shopId: order.shopId,
+            actionType: 'payment_collected',
+            description: `Order ${order.orderNumber} paid ₹${order.totalAmount} via IMB Gateway. Automatically sent to printer.`,
+          });
+
+          return res.json({
+            paid: true,
+            status: 'SUCCESS',
+            rawStatus: text,
+            order: db.getOrderById(order.id),
+          });
+        }
+
+        return res.json({
+          paid: false,
+          status: 'PENDING',
+          rawStatus: text,
+          order: db.getOrderById(order.id),
+        });
+      }
+    } catch (err: any) {
+      console.warn(`[IMB Check] Polling check_link for ${order.orderNumber}:`, err.message);
+    }
+  }
+
+  return res.json({
+    paid: false,
+    status: 'PENDING',
+    order: db.getOrderById(order.id),
   });
 });
 
@@ -1117,7 +1326,7 @@ app.post('/api/orders/:orderNumber/pay-online', (req, res) => {
   const agent = db.getAgentByShopId(order.shopId);
   const targetPrinter = (order.colorMode === 'color' ? agent?.colorPrinter : agent?.bwPrinter) || agent?.defaultPrinter || 'Default Windows Printer';
 
-  db.createPrintJob(order.id, order.shopId, targetPrinter);
+  db.createPrintJobsForOrder(order.id, targetPrinter);
   db.updateOrderStatus(order.id, 'printing', 'Auto-Print Spooler', undefined, `Online payment received (₹${order.totalAmount}). Automatically spooled to "${targetPrinter}".`);
 
   db.logActivity({
@@ -1509,19 +1718,19 @@ app.post('/api/shop/orders/:id/dispatch-print', requireAuth, (req, res) => {
   const agent = db.getAgentByShopId(order.shopId);
   const targetPrinter = printerName || (order.colorMode === 'color' ? agent?.colorPrinter : agent?.bwPrinter) || agent?.defaultPrinter || 'Default Windows Printer';
 
-  const job = db.createPrintJob(orderId, order.shopId, targetPrinter);
+  const jobs = db.createPrintJobsForOrder(orderId, targetPrinter);
 
   // Update order status to queued
-  db.updateOrderStatus(orderId, 'queued', 'Print Dispatcher', session.userId, `Sent to print job queue for "${targetPrinter}"`);
+  db.updateOrderStatus(orderId, 'queued', 'Print Dispatcher', session.userId, `Sent to print job queue for "${targetPrinter}" (${jobs.length} file${jobs.length > 1 ? 's' : ''})`);
 
   db.logActivity({
     shopId: order.shopId,
     userId: session.userId,
     actionType: 'job_dispatched',
-    description: `Job created for order ${order.orderNumber} to printer ${targetPrinter}`,
+    description: `Dispatched ${jobs.length} job(s) for order ${order.orderNumber} to printer ${targetPrinter}`,
   });
 
-  res.json({ message: 'Print job dispatched to queue', job });
+  res.json({ message: 'Print job(s) dispatched to queue', jobs });
 });
 
 // Complete Order
@@ -1968,13 +2177,17 @@ app.get('/api/agent/jobs', requireAgentAuth, (req, res) => {
 
   // Return formatted job list with signed download token
   const jobs = pending.map(({ job, order }) => {
-    const { token } = storageService.generateSignedToken(order.id, 15);
+    const { token } = storageService.generateSignedToken(order.id, 60);
+    const docName = job.documentName || order.documentName;
+    const docType = job.documentType || order.documentType;
     return {
       jobId: job.id,
       orderId: order.id,
       orderNumber: order.orderNumber,
-      documentName: order.documentName,
-      documentType: order.documentType,
+      documentName: docName,
+      documentType: docType,
+      fileIndex: job.fileIndex || 1,
+      totalFiles: job.totalFiles || 1,
       copies: order.copies,
       colorMode: order.colorMode,
       duplexMode: order.duplexMode,
@@ -2021,16 +2234,33 @@ app.post('/api/agent/jobs/:jobId/report', requireAgentAuth, (req, res) => {
   res.json({ message: `Job status recorded as ${status}` });
 });
 
-// Agent Downloads Document for Spooling
-app.get('/api/agent/download-job/:jobId', (req, res) => {
+// Agent Downloads Document for Spooling (Supports both /api/agent/download-job/:jobId and /api/agent/jobs/:jobId/document)
+const handleAgentJobDownload = (req: Request, res: Response) => {
   const { jobId } = req.params;
-  const token = req.query.token as string;
+  const token = (req.query.token as string) || (req.headers['x-claim-token'] as string);
 
   const allJobs = (db as any).data.printJobs;
   const job = allJobs.find((j: any) => j.id === jobId);
 
   if (!job) return res.status(404).json({ error: 'Job not found' });
-  if (!token || !storageService.verifySignedToken(token, job.orderId)) {
+
+  // Token valid if matches job.claimToken, or is a signed storage token, or agent auth matches shop
+  let tokenValid = false;
+  if (token && job.claimToken && token === job.claimToken) {
+    tokenValid = true;
+  } else if (token && storageService.verifySignedToken(token, job.orderId)) {
+    tokenValid = true;
+  } else {
+    const authHeader = req.headers.authorization;
+    const headerToken = req.headers['x-agent-token'] as string;
+    const bearer = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : undefined;
+    const agentCandidate = db.getAgentByToken(headerToken || bearer || '');
+    if (agentCandidate && agentCandidate.shopId === job.shopId) {
+      tokenValid = true;
+    }
+  }
+
+  if (!tokenValid) {
     return res.status(403).json({ error: 'Invalid or expired download token.' });
   }
 
@@ -2038,20 +2268,32 @@ app.get('/api/agent/download-job/:jobId', (req, res) => {
   if (!order) return res.status(404).json({ error: 'Order not found' });
 
   try {
-    const fullPath = storageService.getAbsolutePath(order.filePath);
+    const targetFilePath = job.filePath || order.filePath;
+    const docName = job.documentName || order.documentName;
+    const docType = job.documentType || order.documentType || 'application/pdf';
+    const fullPath = storageService.getAbsolutePath(targetFilePath);
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Content-Type', docType);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(docName)}"`);
+
     if (!fs.existsSync(fullPath)) {
-      res.setHeader('Content-Type', order.documentType || 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${order.documentName}"`);
+      // Fallback to order primary file if individual file not at path
+      const orderFullPath = storageService.getAbsolutePath(order.filePath);
+      if (fs.existsSync(orderFullPath)) {
+        return fs.createReadStream(orderFullPath).pipe(res);
+      }
       return res.send(`%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R/Resources<<>>>>endobj\nxref\n0 4\n0000000000 65535 f\n0000000009 00000 n\n0000000052 00000 n\n0000000115 00000 n\ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n200\n%%EOF`);
     }
 
-    res.setHeader('Content-Type', order.documentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${order.documentName}"`);
     fs.createReadStream(fullPath).pipe(res);
   } catch (err: any) {
     res.status(500).json({ error: 'File read error' });
   }
-});
+};
+
+app.get('/api/agent/download-job/:jobId', handleAgentJobDownload);
+app.get('/api/agent/jobs/:jobId/document', handleAgentJobDownload);
 
 // Global Error Handler
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {

@@ -198,7 +198,7 @@ LogMessage "Permanent 6-Digit Pairing Code connects 24/7 until you click 'Logout
 
 # Timer for Background Job Polling
 $Timer = New-Object System.Windows.Forms.Timer
-$Timer.Interval = 4000
+$Timer.Interval = 2000
 $Global:AgentToken = ""
 $Global:IsConnected = $false
 $Global:PairingCode = $SavedCode
@@ -314,26 +314,33 @@ $Timer.Add_Tick({
                 $jobId = $job.jobId
                 $orderNum = $job.orderNumber
                 $docName = $job.documentName
+                $fileIdx = if ($job.fileIndex) { $job.fileIndex } else { 1 }
+                $totalF = if ($job.totalFiles) { $job.totalFiles } else { 1 }
 
-                LogMessage "NEW ORDER DETECTED: #$orderNum ($docName)"
+                LogMessage "NEW PRINT JOB: #$orderNum - File $fileIdx/$totalF ($docName)"
 
                 # Claim job
                 $claimResp = Invoke-RestMethod -Uri "$Server/api/agent/jobs/$jobId/claim" -Method Post -Headers $headers -TimeoutSec 5
                 $claimToken = $claimResp.claimToken
 
                 if ($claimToken) {
-                    LogMessage "Claimed #$orderNum. Spooling to '$($PrinterBox.Text)'..."
+                    LogMessage "Claimed job $jobId for #$orderNum (File $fileIdx/$totalF). Spooling to '$($PrinterBox.Text)'..."
 
-                    # Download file
-                    $tmpFile = Join-Path $WorkDir "$orderNum-$docName"
-                    Invoke-RestMethod -Uri "$Server/api/agent/jobs/$jobId/document?token=$claimToken" -Headers $headers -OutFile $tmpFile -TimeoutSec 15
+                    # Download file via dynamic URL or fallback endpoint
+                    $safeDocName = [System.IO.Path]::GetFileName($docName)
+                    $tmpFile = Join-Path $WorkDir "$orderNum-$fileIdx-$safeDocName"
+                    $dlUri = "$Server/api/agent/jobs/$jobId/document?token=$claimToken"
+                    if ($job.downloadUrl) {
+                        $dlUri = "$Server$($job.downloadUrl)"
+                    }
+                    Invoke-RestMethod -Uri $dlUri -Headers $headers -OutFile $tmpFile -TimeoutSec 15
 
                     if ($DryRunBox.Checked) {
                         LogMessage "[TEST MODE] Simulated print of $tmpFile completed."
                     } else {
                         # Physical Windows print command using shell print verb
                         Start-Process -FilePath $tmpFile -Verb Print -PassThru | Out-Null
-                        LogMessage "[SPOOL SUCCESS] Sent #$orderNum directly to Windows printer."
+                        LogMessage "[SPOOL SUCCESS] Sent #$orderNum (File $fileIdx/$totalF: $safeDocName) to Windows printer."
                     }
 
                     # Report success

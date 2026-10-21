@@ -817,6 +817,26 @@ export class Database {
     return this.data.orders[idx];
   }
 
+  public updateOrderGatewayDetails(
+    orderId: string,
+    details: {
+      gatewayPaymentUrl?: string;
+      gatewayOrderId?: string;
+      gatewayCheckLink?: string;
+    }
+  ): Order | undefined {
+    const idx = this.data.orders.findIndex((o) => o.id === orderId);
+    if (idx === -1) return undefined;
+
+    this.data.orders[idx] = {
+      ...this.data.orders[idx],
+      ...details,
+      updatedAt: new Date().toISOString(),
+    };
+    this.save();
+    return this.data.orders[idx];
+  }
+
   /**
    * Automatically purges customer files 5 minutes after print completion
    * to guarantee customer privacy and prevent data retention.
@@ -1160,7 +1180,18 @@ export class Database {
     return true;
   }
 
-  public createPrintJob(orderId: string, shopId: string, printerName: string): PrintJob {
+  public createPrintJob(
+    orderId: string,
+    shopId: string,
+    printerName: string,
+    fileDetails?: {
+      filePath?: string;
+      documentName?: string;
+      documentType?: string;
+      fileIndex?: number;
+      totalFiles?: number;
+    }
+  ): PrintJob {
     const job: PrintJob = {
       id: `job-${crypto.randomUUID().slice(0, 8)}`,
       orderId,
@@ -1168,11 +1199,83 @@ export class Database {
       printerName,
       status: 'pending',
       retryCount: 0,
+      filePath: fileDetails?.filePath,
+      documentName: fileDetails?.documentName,
+      documentType: fileDetails?.documentType,
+      fileIndex: fileDetails?.fileIndex,
+      totalFiles: fileDetails?.totalFiles,
       createdAt: new Date().toISOString(),
     };
     this.data.printJobs.push(job);
     this.save();
     return job;
+  }
+
+  public createPrintJobsForOrder(orderId: string, preferredPrinter?: string): PrintJob[] {
+    const order = this.getOrderById(orderId);
+    if (!order) return [];
+
+    const agent = this.getAgentByShopId(order.shopId);
+    const targetPrinter =
+      preferredPrinter ||
+      (order.colorMode === 'color' ? agent?.colorPrinter : agent?.bwPrinter) ||
+      agent?.defaultPrinter ||
+      'Default Windows Printer';
+
+    const existingJobs = this.data.printJobs.filter((j) => j.orderId === orderId);
+
+    const hasMultiFiles = Array.isArray(order.files) && order.files.length > 0;
+    const created: PrintJob[] = [];
+
+    if (hasMultiFiles && order.files) {
+      const total = order.files.length;
+      order.files.forEach((file, index) => {
+        const fileIdx = index + 1;
+        const alreadyExists = existingJobs.some(
+          (j) => j.fileIndex === fileIdx || (j.filePath && j.filePath === file.filePath)
+        );
+        if (!alreadyExists) {
+          const job: PrintJob = {
+            id: `job-${crypto.randomUUID().slice(0, 8)}`,
+            orderId: order.id,
+            shopId: order.shopId,
+            printerName: targetPrinter,
+            status: 'pending',
+            retryCount: 0,
+            filePath: file.filePath,
+            documentName: file.name,
+            documentType: file.type || 'application/pdf',
+            fileIndex: fileIdx,
+            totalFiles: total,
+            createdAt: new Date().toISOString(),
+          };
+          this.data.printJobs.push(job);
+          created.push(job);
+        }
+      });
+    } else {
+      if (existingJobs.length === 0) {
+        const job: PrintJob = {
+          id: `job-${crypto.randomUUID().slice(0, 8)}`,
+          orderId: order.id,
+          shopId: order.shopId,
+          printerName: targetPrinter,
+          status: 'pending',
+          retryCount: 0,
+          filePath: order.filePath,
+          documentName: order.documentName,
+          documentType: order.documentType || 'application/pdf',
+          fileIndex: 1,
+          totalFiles: 1,
+          createdAt: new Date().toISOString(),
+        };
+        this.data.printJobs.push(job);
+        created.push(job);
+      }
+    }
+
+    this.save();
+    return created.length > 0 ? created : existingJobs;
   }
 
   public getPendingPrintJobsForShop(shopId: string): { job: PrintJob; order: Order }[] {
@@ -1181,10 +1284,14 @@ export class Database {
 
     for (const job of jobs) {
       const order = this.getOrderById(job.orderId);
-      if (order) {
+      if (order && order.status !== 'rejected' && order.status !== 'archived') {
         // Enforce approval and payment checks before handing to printer!
         const rules = this.getShopApprovalRules(shopId);
-        const isApproved = order.status === 'queued' || order.status === 'approved' || order.status === 'printing';
+        const isApproved =
+          order.status === 'queued' ||
+          order.status === 'approved' ||
+          order.status === 'printing' ||
+          order.status === 'completed';
         const isPaymentSatisfied = !rules.requirePaymentBeforePrint || order.paymentStatus === 'collected';
 
         if (isApproved && isPaymentSatisfied) {
@@ -1209,7 +1316,7 @@ export class Database {
 
     // Update order status to printing
     const order = this.getOrderById(job.orderId);
-    if (order) {
+    if (order && order.status !== 'completed') {
       order.status = 'printing';
       order.updatedAt = new Date().toISOString();
     }
@@ -1235,9 +1342,21 @@ export class Database {
     const order = this.getOrderById(job.orderId);
     if (order) {
       if (status === 'printed') {
-        order.status = 'completed';
-        order.printedAt = new Date().toISOString();
         job.completedAt = new Date().toISOString();
+        // Check if there are remaining pending or active print jobs for this order
+        const remainingActive = this.data.printJobs.filter(
+          (j) =>
+            j.orderId === order.id &&
+            j.id !== jobId &&
+            (j.status === 'pending' || j.status === 'claimed' || j.status === 'spooling')
+        );
+
+        if (remainingActive.length === 0) {
+          order.status = 'completed';
+          order.printedAt = new Date().toISOString();
+        } else {
+          order.status = 'printing';
+        }
       } else if (status === 'failed') {
         job.retryCount += 1;
         // Don't fail permanently on first try if under 3 retries

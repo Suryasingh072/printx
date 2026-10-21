@@ -134,6 +134,9 @@ export interface Order {
   paymentCollectedAt?: string;
   paymentCollectorName?: string;
   paymentMethod?: PaymentMethod;
+  gatewayPaymentUrl?: string;
+  gatewayOrderId?: string;
+  gatewayCheckLink?: string;
   files?: Array<{
     id: string;
     name: string;
@@ -189,6 +192,11 @@ export interface PrintJob {
   completedAt?: string;
   retryCount: number;
   errorMessage?: string;
+  filePath?: string;
+  documentName?: string;
+  documentType?: string;
+  fileIndex?: number;
+  totalFiles?: number;
   createdAt: string;
 }
 
