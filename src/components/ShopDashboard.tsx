@@ -511,51 +511,56 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
 
       {/* Top Navigation Bar */}
       <header className="backdrop-blur-xl bg-[#080b14]/85 border-b border-white/10 sticky top-0 z-40 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-grad flex items-center justify-center font-black text-white shadow-lg shadow-rose-500/30">
-              <Printer className="w-5 h-5" />
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-0 sm:h-16 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-grad flex items-center justify-center font-black text-white shadow-lg shadow-rose-500/30 shrink-0">
+              <Printer className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-base font-head tracking-tight text-white">{shop.name}</span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="font-bold text-sm sm:text-base font-head tracking-tight text-white truncate max-w-[130px] sm:max-w-xs">{shop.name}</span>
                 {shop.status === 'active' ? (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0">
                     Active
                   </span>
                 ) : (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                    Pending Review
+                  <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 shrink-0">
+                    Pending
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-400">{user.fullName} ({user.email})</p>
+              <p className="text-[11px] sm:text-xs text-slate-400 truncate max-w-[150px] sm:max-w-xs">{user.fullName}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             <button
               type="button"
               onClick={() => {
                 window.location.href = `/shop/${shop.slug}`;
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-pink-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition border border-white/10 cursor-pointer"
+              className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-bold text-pink-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition border border-white/10 cursor-pointer"
+              title="View Public Shop"
             >
-              <ExternalLink className="w-3.5 h-3.5" /> View Public Shop
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">View Public Shop</span>
+              <span className="sm:hidden">Shop</span>
             </button>
 
             <button
               onClick={onLogout}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-xl transition border border-rose-500/20 cursor-pointer"
+              className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-xl transition border border-rose-500/20 cursor-pointer"
+              title="Sign Out"
             >
-              <LogOut className="w-3.5 h-3.5" /> Sign Out
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sign Out</span>
             </button>
           </div>
         </div>
 
-        {/* Secondary Sub-Tabs */}
-        <div className="bg-[#0d1220]/80 backdrop-blur-md border-t border-white/10 overflow-x-auto relative z-10">
-          <div className="max-w-7xl mx-auto px-4 flex gap-1">
+        {/* Secondary Sub-Tabs (Smooth Horizontal Swipe on Mobile) */}
+        <div className="bg-[#0d1220]/80 backdrop-blur-md border-t border-white/10 overflow-x-auto relative z-10 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none]">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 flex gap-1 min-w-max py-0.5">
             {[
               { id: 'queue', label: 'Print Queue', icon: FileText, badge: orders.filter((o) => o.status === 'pending_approval' || o.status === 'payment_pending').length },
               { id: 'pricing', label: 'Pricing Card', icon: DollarSign },
@@ -572,13 +577,13 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-4 py-3 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
+                  className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 text-[11px] sm:text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
                     activeTab === tab.id
                       ? 'border-pink-500 text-white bg-white/5 shadow-[inset_0_-2px_8px_rgba(255,46,99,0.2)]'
                       : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                   {tab.label}
                   {tab.badge ? (
                     <span className="px-1.5 py-0.2 rounded-full bg-grad text-white text-[10px] flex items-center justify-center font-black shadow-xs">
@@ -622,8 +627,8 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
         {activeTab === 'queue' && (
           <div className="space-y-6">
             {/* Filter Bar & Controls */}
-            <div className="card p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+            <div className="card p-3 sm:p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] w-full sm:w-auto">
                 {[
                   { id: 'all', label: 'All Jobs' },
                   { id: 'pending_approval', label: 'Pending Approval' },
@@ -636,7 +641,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                   <button
                     key={f.id}
                     onClick={() => setQueueFilter(f.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer shrink-0 ${
                       queueFilter === f.id
                         ? 'btn-grad text-white shadow-md shadow-rose-500/25'
                         : 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10'
@@ -662,7 +667,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                 <button
                   onClick={refreshOrders}
                   disabled={loadingOrders}
-                  className="p-2 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 rounded-xl transition cursor-pointer"
+                  className="p-2 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 rounded-xl transition cursor-pointer shrink-0"
                   title="Refresh Queue"
                 >
                   <RefreshCw className={`w-4 h-4 ${loadingOrders ? 'animate-spin text-pink-400' : ''}`} />
@@ -688,16 +693,16 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                   return (
                     <div
                       key={ord.id}
-                      className="card p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-white/20 transition-all duration-200"
+                      className="card p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:border-white/20 transition-all duration-200"
                     >
                       {/* Left: Info */}
-                      <div className="flex items-start gap-4">
-                        <div className="p-3.5 bg-gradient-to-br from-pink-500/20 to-purple-500/20 text-pink-400 border border-pink-500/30 rounded-2xl shrink-0 shadow-lg shadow-rose-500/10">
-                          <FileText className="w-6 h-6" />
+                      <div className="flex items-start gap-3 sm:gap-4 min-w-0">
+                        <div className="p-2.5 sm:p-3.5 bg-gradient-to-br from-pink-500/20 to-purple-500/20 text-pink-400 border border-pink-500/30 rounded-2xl shrink-0 shadow-lg shadow-rose-500/10">
+                          <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
                         </div>
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-black text-white text-base font-head tracking-tight">{ord.orderNumber}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                            <span className="font-black text-white text-sm sm:text-base font-head tracking-tight">{ord.orderNumber}</span>
                             {/* Status badge */}
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
@@ -746,11 +751,11 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                             ) : null}
                           </div>
 
-                          <p className="text-xs font-semibold text-slate-200 mt-1">
+                          <p className="text-xs font-semibold text-slate-200 mt-1 break-words">
                             {ord.documentName}
                           </p>
 
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 mt-1.5">
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] sm:text-xs text-slate-400 mt-1.5">
                             <span>👤 {ord.customerName} ({ord.customerPhone})</span>
                             <span>📄 {ord.pageCount} pgs × {ord.copies} {ord.copies === 1 ? 'copy' : 'copies'}</span>
                             <span className="font-medium text-slate-300">
@@ -760,7 +765,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                           </div>
 
                           {ord.customNotes && (
-                            <p className="text-xs text-pink-300 bg-pink-500/10 border border-pink-500/20 px-2 py-1 rounded-md mt-2 inline-block">
+                            <p className="text-xs text-pink-300 bg-pink-500/10 border border-pink-500/20 px-2 py-1 rounded-md mt-2 inline-block break-words">
                               Note: {ord.customNotes}
                             </p>
                           )}
@@ -768,7 +773,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                       </div>
 
                       {/* Right: Actions */}
-                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto pt-3 lg:pt-0 border-t lg:border-t-0 border-white/10 shrink-0">
                         {/* Quick Approve Button for Pending Orders */}
                         {ord.status === 'pending_approval' && (
                           <button
@@ -1378,18 +1383,18 @@ create table if not exists public.shops (
                 </button>
               </div>
 
-              <div className="w-full flex gap-3">
+              <div className="w-full flex flex-col sm:flex-row gap-2.5 sm:gap-3">
                 <a
                   href={qrDataUrl}
                   download={`${shop.slug}-QR.png`}
-                  className="btn btn-ghost flex-1 py-3 text-xs font-bold text-center cursor-pointer"
+                  className="btn btn-ghost py-3 px-4 text-xs font-bold text-center cursor-pointer justify-center"
                 >
                   Download PNG
                 </a>
 
                 <button
                   onClick={() => generateShopPosterPdf(shop)}
-                  className="btn btn-primary flex-1 py-3 text-xs font-black shadow-lg shadow-rose-500/30 flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="btn btn-primary flex-1 py-3 px-4 text-xs font-black shadow-lg shadow-rose-500/30 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Download className="w-4 h-4" /> Printable A4 Poster PDF
                 </button>

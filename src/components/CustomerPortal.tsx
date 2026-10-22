@@ -978,31 +978,33 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
         )}
 
         {/* Service Selector: 2 Clean Options (Document & ID Card) */}
-        <div className="grid grid-cols-2 p-1.5 bg-white/[0.04] border border-white/10 rounded-2xl max-w-xl mx-auto shadow-inner text-xs font-black gap-2">
+        <div className="grid grid-cols-2 p-1.5 bg-white/[0.04] border border-white/10 rounded-2xl max-w-xl mx-auto shadow-inner text-xs font-black gap-1.5 sm:gap-2">
           <button
             type="button"
             onClick={() => setActiveTab('document')}
-            className={`py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition cursor-pointer text-xs font-black ${
+            className={`py-2.5 sm:py-3 px-2 sm:px-4 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-[11px] sm:text-xs font-black text-center ${
               activeTab === 'document'
                 ? 'bg-grad text-white shadow-[0_8px_25px_rgba(255,46,99,0.35)]'
                 : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
-            <FileText className="w-4 h-4" />
-            <span>📄 Document & Photo Print (A4)</span>
+            <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="hidden sm:inline">📄 Document & Photo Print (A4)</span>
+            <span className="sm:hidden">📄 Document Print</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('id_card')}
-            className={`py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition cursor-pointer text-xs font-black ${
+            className={`py-2.5 sm:py-3 px-2 sm:px-4 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 transition cursor-pointer text-[11px] sm:text-xs font-black text-center ${
               activeTab === 'id_card'
                 ? 'bg-grad text-white shadow-[0_8px_25px_rgba(255,46,99,0.35)]'
                 : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
-            <Layers className="w-4 h-4" />
-            <span>🪪 ID Card 2-in-1 Sheet (A4)</span>
+            <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="hidden sm:inline">🪪 ID Card 2-in-1 Sheet (A4)</span>
+            <span className="sm:hidden">🪪 ID Card Sheet</span>
           </button>
         </div>
 
@@ -1242,37 +1244,37 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                 {/* Color Mode */}
                 <div>
                   <label className="text-xs font-bold text-slate-300 block mb-2">Print Colour</label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     <button
                       type="button"
                       onClick={() => setColorMode('bw')}
-                      className={`p-3.5 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
+                      className={`p-2.5 sm:p-3.5 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
                         colorMode === 'bw'
                           ? 'border-pink-500 bg-pink-500/15 text-white shadow-[0_0_20px_rgba(255,46,99,0.25)]'
                           : 'border-white/10 hover:border-white/20 bg-white/[0.02] text-slate-300'
                       }`}
                     >
-                      <div>
-                        <p className="text-xs font-black font-head">Black & White (B&W)</p>
-                        <p className="text-[11px] text-slate-400 font-normal mt-0.5">₹{pricing?.bwSinglePrice} / page</p>
+                      <div className="min-w-0 pr-1">
+                        <p className="text-[11px] sm:text-xs font-black font-head truncate">Black & White (B&W)</p>
+                        <p className="text-[10px] sm:text-[11px] text-slate-400 font-normal mt-0.5">₹{pricing?.bwSinglePrice} / page</p>
                       </div>
-                      {colorMode === 'bw' && <CheckCircle2 className="w-4 h-4 text-pink-400" />}
+                      {colorMode === 'bw' && <CheckCircle2 className="w-4 h-4 text-pink-400 shrink-0" />}
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setColorMode('color')}
-                      className={`p-3.5 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
+                      className={`p-2.5 sm:p-3.5 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
                         colorMode === 'color'
                           ? 'border-pink-500 bg-pink-500/15 text-white shadow-[0_0_20px_rgba(255,46,99,0.25)]'
                           : 'border-white/10 hover:border-white/20 bg-white/[0.02] text-slate-300'
                       }`}
                     >
-                      <div>
-                        <p className="text-xs font-black font-head">Full Colour</p>
-                        <p className="text-[11px] text-slate-400 font-normal mt-0.5">₹{pricing?.colorSinglePrice} / page</p>
+                      <div className="min-w-0 pr-1">
+                        <p className="text-[11px] sm:text-xs font-black font-head truncate">Full Colour</p>
+                        <p className="text-[10px] sm:text-[11px] text-slate-400 font-normal mt-0.5">₹{pricing?.colorSinglePrice} / page</p>
                       </div>
-                      {colorMode === 'color' && <CheckCircle2 className="w-4 h-4 text-pink-400" />}
+                      {colorMode === 'color' && <CheckCircle2 className="w-4 h-4 text-pink-400 shrink-0" />}
                     </button>
                   </div>
                 </div>
@@ -1280,43 +1282,43 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                 {/* Duplex Mode */}
                 <div>
                   <label className="text-xs font-bold text-slate-300 block mb-2">Sides</label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                     <button
                       type="button"
                       onClick={() => setDuplexMode('single')}
-                      className={`p-3.5 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
+                      className={`p-2.5 sm:p-3.5 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
                         duplexMode === 'single'
                           ? 'border-violet-500 bg-violet-500/15 text-white shadow-[0_0_20px_rgba(124,92,255,0.25)]'
                           : 'border-white/10 hover:border-white/20 bg-white/[0.02] text-slate-300'
                       }`}
                     >
-                      <div>
-                        <p className="text-xs font-black font-head">Single-Sided</p>
-                        <p className="text-[11px] text-slate-400 font-normal mt-0.5">Standard 1 side per sheet</p>
+                      <div className="min-w-0 pr-1">
+                        <p className="text-[11px] sm:text-xs font-black font-head">Single-Sided</p>
+                        <p className="text-[10px] sm:text-[11px] text-slate-400 font-normal mt-0.5">Standard 1 side per sheet</p>
                       </div>
-                      {duplexMode === 'single' && <CheckCircle2 className="w-4 h-4 text-violet-400" />}
+                      {duplexMode === 'single' && <CheckCircle2 className="w-4 h-4 text-violet-400 shrink-0" />}
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setDuplexMode('duplex')}
-                      className={`p-3.5 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
+                      className={`p-2.5 sm:p-3.5 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
                         duplexMode === 'duplex'
                           ? 'border-violet-500 bg-violet-500/15 text-white shadow-[0_0_20px_rgba(124,92,255,0.25)]'
                           : 'border-white/10 hover:border-white/20 bg-white/[0.02] text-slate-300'
                       }`}
                     >
-                      <div>
-                        <p className="text-xs font-black font-head">Double-Sided (Duplex)</p>
-                        <p className="text-[11px] text-slate-400 font-normal mt-0.5">Both sides of sheet</p>
+                      <div className="min-w-0 pr-1">
+                        <p className="text-[11px] sm:text-xs font-black font-head">Double-Sided (Duplex)</p>
+                        <p className="text-[10px] sm:text-[11px] text-slate-400 font-normal mt-0.5">Both sides of sheet</p>
                       </div>
-                      {duplexMode === 'duplex' && <CheckCircle2 className="w-4 h-4 text-violet-400" />}
+                      {duplexMode === 'duplex' && <CheckCircle2 className="w-4 h-4 text-violet-400 shrink-0" />}
                     </button>
                   </div>
                 </div>
 
                 {/* Copies & Paper Size */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="text-xs font-bold text-slate-300 block mb-1">Number of Sets / Copies</label>
                     <div className="flex items-center border border-white/10 rounded-xl overflow-hidden bg-white/[0.04]">

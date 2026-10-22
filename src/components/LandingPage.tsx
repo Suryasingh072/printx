@@ -43,29 +43,12 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, onLoginSuccess }) => {
-  // Theme state
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-
   useEffect(() => {
+    document.documentElement.dataset.theme = 'dark';
     try {
-      const saved = localStorage.getItem('px-theme') as 'dark' | 'light';
-      if (saved) {
-        setTheme(saved);
-        document.documentElement.dataset.theme = saved;
-      } else {
-        document.documentElement.dataset.theme = 'dark';
-      }
+      localStorage.setItem('px-theme', 'dark');
     } catch {}
   }, []);
-
-  const toggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
-    document.documentElement.dataset.theme = next;
-    try {
-      localStorage.setItem('px-theme', next);
-    } catch {}
-  };
 
   // Active section scroll / tab
   const [activeSection, setActiveSection] = useState<'home' | 'how-it-works' | 'features' | 'for-shops' | 'faq' | 'contact'>('home');
@@ -185,7 +168,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
   };
 
   return (
-    <div className={`min-h-screen text-slate-100 ${theme === 'light' ? 'bg-[#f6f7fb] text-slate-900' : 'bg-[#080b14]'}`}>
+    <div className="min-h-screen text-slate-100 bg-[#080b14]">
       {/* ========================================================
           1. TOP NAVIGATION BAR (Exact design from prompt)
          ======================================================== */}
@@ -234,14 +217,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
 
           {/* Nav Right CTA */}
           <div className="flex items-center gap-3">
-            <button
-              onClick={toggleTheme}
-              className="w-10 h-10 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 flex items-center justify-center text-sm cursor-pointer transition"
-              title="Toggle theme"
-            >
-              {theme === 'dark' ? '🌓' : '☀️'}
-            </button>
-
             <button
               onClick={() => setShowLoginModal(true)}
               className="px-5 py-2.5 text-sm font-black btn-grad rounded-xl cursor-pointer flex items-center gap-2 shadow-[0_4px_16px_rgba(255,46,99,0.35)]"
