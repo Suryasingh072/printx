@@ -146,7 +146,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
     }
   };
 
-  // Fetch shop details
+  // Fetch shop details & initial agent status
   useEffect(() => {
     const fetchShop = async () => {
       try {
@@ -520,6 +520,14 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
       return;
     }
 
+    const invalidFiles = fileQueue.filter(
+      (f) => !f.serverInfo?.filePath || !f.serverInfo?.filePath.trim() || f.sizeBytes === 0
+    );
+    if (invalidFiles.length > 0) {
+      alert('Kuch files theek se upload nahi ho paayi hain. Kripya unhe dubara upload karein.');
+      return;
+    }
+
     const stillUploading = fileQueue.filter((f) => f.isUploading || !f.serverInfo);
     if (stillUploading.length > 0) {
       alert('Files abhi upload ho rahi hain, kripya thoda intezaar karein.');
@@ -732,7 +740,9 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
               <Printer className="w-5 h-5 stroke-[2.5]" />
             </div>
             <div>
-              <h1 className="text-base sm:text-lg font-black text-white font-head tracking-tight">{shop.name}</h1>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-base sm:text-lg font-black text-white font-head tracking-tight">{shop.name}</h1>
+              </div>
               <p className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
                 <MapPin className="w-3.5 h-3.5 text-pink-400" /> {shop.city} • Ph: {shop.phone}
               </p>
@@ -966,6 +976,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
             )}
           </div>
         )}
+
         {/* Service Selector: 2 Clean Options (Document & ID Card) */}
         <div className="grid grid-cols-2 p-1.5 bg-white/[0.04] border border-white/10 rounded-2xl max-w-xl mx-auto shadow-inner text-xs font-black gap-2">
           <button

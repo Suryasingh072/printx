@@ -844,9 +844,16 @@ app.post('/api/admin/shops/:id/activate', requireAuth, (req, res) => {
   res.status(400).json({ error: 'Invalid action' });
 });
 
-// ==========================================
-// 3. PUBLIC SHOP & CUSTOMER QR PORTAL
-// ==========================================
+// Helper to determine if Windows Agent is actively connected and polling
+function isShopAgentOnline(shopId: string): boolean {
+  const agent = db.getAgentByShopId(shopId);
+  if (!agent) return false;
+  if (agent.status !== 'online') return false;
+  if (!agent.lastSeenAt) return false;
+  // Windows Agent polls every 2 seconds. Allow up to 30 seconds for network delay.
+  const diffMs = Date.now() - new Date(agent.lastSeenAt).getTime();
+  return diffMs < 30000;
+}
 
 // Get Shop Public Profile & Print Rates (supports /api/shops/:slug and /api/s/:slug)
 app.get(['/api/shops/:slug', '/api/s/:slug'], (req, res) => {
@@ -859,6 +866,7 @@ app.get(['/api/shops/:slug', '/api/s/:slug'], (req, res) => {
 
   const pricing = db.getShopPricing(shop.id);
   const approvalRules = db.getShopApprovalRules(shop.id);
+  const agentOnline = isShopAgentOnline(shop.id);
 
   res.json({
     shop: {
@@ -870,6 +878,7 @@ app.get(['/api/shops/:slug', '/api/s/:slug'], (req, res) => {
       city: shop.city,
       status: shop.status,
       paymentGatewayUrl: shop.paymentGatewayUrl || 'https://merchant.imbpayment.co.in/pay/pp_gtnQHY1RYx',
+      agentOnline,
     },
     pricing: {
       bwSinglePrice: pricing.bwSinglePrice,
@@ -882,6 +891,7 @@ app.get(['/api/shops/:slug', '/api/s/:slug'], (req, res) => {
       currency: pricing.currency,
     },
     requiresCounterPayment: approvalRules.requirePaymentBeforePrint,
+    agentOnline,
   });
 });
 
@@ -1033,8 +1043,15 @@ app.post('/api/orders', async (req, res) => {
     customNotes,
   } = req.body;
 
-  if (!shopSlug || !documentName || !filePath) {
-    return res.status(400).json({ error: 'Missing required order details.' });
+  if (!shopSlug || !documentName || !filePath || !String(filePath).trim()) {
+    return res.status(400).json({ error: 'Missing required order details or document file.' });
+  }
+
+  // Ensure uploaded physical file exists and is not 0 bytes to prevent blank print jobs!
+  if (!storageService.hasValidFile(filePath)) {
+    return res.status(400).json({
+      error: 'Uploaded document file could not be verified on the server. Please select and upload your file again.',
+    });
   }
 
   const shop = db.getShopBySlug(shopSlug);
@@ -1817,9 +1834,7 @@ app.get('/api/documents/preview/:orderId', (req, res) => {
     res.setHeader('Content-Type', order.documentType || 'application/pdf');
 
     if (!fs.existsSync(filePath)) {
-      // In dev/demo, serve a valid dummy PDF document if local sample file isn't on disk
-      res.setHeader('Content-Disposition', `inline; filename="${order.documentName}"`);
-      return res.send(`%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R/Resources<<>>>>endobj\nxref\n0 4\n0000000000 65535 f\n0000000009 00000 n\n0000000052 00000 n\n0000000115 00000 n\ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n200\n%%EOF`);
+      return res.status(404).json({ error: 'Document file not found on server.' });
     }
 
     res.setHeader('Content-Disposition', `inline; filename="${order.documentName}"`);
@@ -1838,7 +1853,7 @@ app.get('/api/documents/download/:orderId', (req, res) => {
 
   if (order.isDocumentPurged) {
     return res.status(410).json({
-      error: 'Customer document files were permanently deleted 5 minutes after print completion as per customer privacy policy.',
+      error: 'Customer document files were permanently deleted after print completion as per customer privacy policy.',
       purged: true,
       purgedAt: order.purgedAt,
     });
@@ -1851,7 +1866,7 @@ app.get('/api/documents/download/:orderId', (req, res) => {
     res.setHeader('Content-Type', order.documentType || 'application/octet-stream');
 
     if (!fs.existsSync(filePath)) {
-      return res.send(`%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R/Resources<<>>>>endobj\nxref\n0 4\n0000000000 65535 f\n0000000009 00000 n\n0000000052 00000 n\n0000000115 00000 n\ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n200\n%%EOF`);
+      return res.status(404).json({ error: 'Document file not found on server.' });
     }
 
     const stream = fs.createReadStream(filePath);
@@ -2173,6 +2188,10 @@ app.post('/api/agent/heartbeat', requireAgentAuth, (req, res) => {
 // Agent Polls for Authorized Ready Print Jobs
 app.get('/api/agent/jobs', requireAgentAuth, (req, res) => {
   const agent = (req as any).agent;
+  // Keep agent status actively online with current timestamp
+  agent.lastSeenAt = new Date().toISOString();
+  agent.status = 'online';
+
   const pending = db.getPendingPrintJobsForShop(agent.shopId);
 
   // Return formatted job list with signed download token
@@ -2271,20 +2290,22 @@ const handleAgentJobDownload = (req: Request, res: Response) => {
     const targetFilePath = job.filePath || order.filePath;
     const docName = job.documentName || order.documentName;
     const docType = job.documentType || order.documentType || 'application/pdf';
-    const fullPath = storageService.getAbsolutePath(targetFilePath);
+
+    const hasTarget = storageService.hasValidFile(targetFilePath);
+    const hasOrderPrimary = storageService.hasValidFile(order.filePath);
+
+    if (!hasTarget && !hasOrderPrimary) {
+      console.error(`[Download Error] Physical document file missing on server for job ${jobId}. target: ${targetFilePath}, primary: ${order.filePath}`);
+      return res.status(404).json({ error: 'Document file missing on server. Print skipped to prevent blank paper.' });
+    }
+
+    const fullPath = hasTarget
+      ? storageService.getAbsolutePath(targetFilePath)
+      : storageService.getAbsolutePath(order.filePath);
 
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', docType);
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(docName)}"`);
-
-    if (!fs.existsSync(fullPath)) {
-      // Fallback to order primary file if individual file not at path
-      const orderFullPath = storageService.getAbsolutePath(order.filePath);
-      if (fs.existsSync(orderFullPath)) {
-        return fs.createReadStream(orderFullPath).pipe(res);
-      }
-      return res.send(`%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R/Resources<<>>>>endobj\nxref\n0 4\n0000000000 65535 f\n0000000009 00000 n\n0000000052 00000 n\n0000000115 00000 n\ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n200\n%%EOF`);
-    }
 
     fs.createReadStream(fullPath).pipe(res);
   } catch (err: any) {

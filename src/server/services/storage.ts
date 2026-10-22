@@ -182,15 +182,75 @@ export class StorageService {
   }
 
   /**
-   * Get physical file path
+   * Get physical file path with fallback directory resolution
    */
   public getAbsolutePath(safeFilename: string): string {
-    const full = path.join(DOCS_DIR, safeFilename);
-    // Security check: ensure within DOCS_DIR
-    if (!full.startsWith(DOCS_DIR)) {
-      throw new Error('Access denied: Path traversal detected');
+    if (!safeFilename || typeof safeFilename !== 'string' || !safeFilename.trim()) {
+      return path.join(DOCS_DIR, '__missing_file__');
     }
-    return full;
+
+    const trimmed = safeFilename.trim();
+
+    // 1. If already an existing absolute path
+    if (path.isAbsolute(trimmed) && fs.existsSync(trimmed)) {
+      try {
+        if (fs.statSync(trimmed).isFile()) {
+          return trimmed;
+        }
+      } catch {}
+    }
+
+    // 2. Extract safe basename
+    const base = path.basename(trimmed);
+    if (!base || base === '.' || base === '..') {
+      return path.join(DOCS_DIR, '__missing_file__');
+    }
+
+    // 3. Check in primary DOCS_DIR
+    const inDocs = path.join(DOCS_DIR, base);
+    if (fs.existsSync(inDocs)) {
+      try {
+        if (fs.statSync(inDocs).isFile()) {
+          return inDocs;
+        }
+      } catch {}
+    }
+
+    // 4. Check in UPLOAD_ROOT
+    const inUploadRoot = path.join(UPLOAD_ROOT, base);
+    if (fs.existsSync(inUploadRoot)) {
+      try {
+        if (fs.statSync(inUploadRoot).isFile()) {
+          return inUploadRoot;
+        }
+      } catch {}
+    }
+
+    // 5. Check in ./uploads/documents relative to cwd
+    const inCwd = path.resolve(process.cwd(), './uploads/documents', base);
+    if (fs.existsSync(inCwd)) {
+      try {
+        if (fs.statSync(inCwd).isFile()) {
+          return inCwd;
+        }
+      } catch {}
+    }
+
+    return inDocs;
+  }
+
+  /**
+   * Check if a file physically exists on disk and is non-empty
+   */
+  public hasValidFile(safeFilename: string): boolean {
+    try {
+      const full = this.getAbsolutePath(safeFilename);
+      if (fs.existsSync(full)) {
+        const stat = fs.statSync(full);
+        return stat.isFile() && stat.size > 0;
+      }
+    } catch {}
+    return false;
   }
 
   /**

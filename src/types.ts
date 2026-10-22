@@ -43,6 +43,7 @@ export interface Shop {
   activatedAt?: string;
   qrCodeUrl?: string;
   paymentGatewayUrl?: string;
+  agentOnline?: boolean;
   createdAt: string;
 }
 

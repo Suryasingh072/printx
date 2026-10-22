@@ -12,8 +12,6 @@ import {
   QrCode,
   Laptop,
   BarChart3,
-  Archive,
-  Lock,
   LogOut,
   RefreshCw,
   Search,
@@ -54,7 +52,7 @@ interface ShopDashboardProps {
 export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initialShop, onLogout, onNavigateHome, onShopUpdate }) => {
   const [shop, setShop] = useState<Shop>(initialShop);
   const [activeTab, setActiveTab] = useState<
-    'queue' | 'pricing' | 'approval' | 'profile' | 'supabase' | 'qr' | 'printers' | 'reports' | 'activity' | 'archive' | 'security'
+    'queue' | 'pricing' | 'approval' | 'profile' | 'supabase' | 'qr' | 'printers' | 'reports' | 'activity'
   >('queue');
 
   useEffect(() => {
@@ -568,8 +566,6 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
               { id: 'printers', label: 'Windows Spooler Agent', icon: Laptop },
               { id: 'reports', label: 'Sales Reports', icon: BarChart3 },
               { id: 'activity', label: 'Activity Log', icon: Clock },
-              { id: 'archive', label: 'Archive', icon: Archive },
-              { id: 'security', label: 'Account & Security', icon: Lock },
             ].map((tab) => {
               const Icon = tab.icon;
               return (
@@ -608,10 +604,10 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
             </div>
             {!user.whatsappVerified && (
               <button
-                onClick={() => setActiveTab('security')}
+                onClick={() => setActiveTab('profile')}
                 className="font-bold underline text-amber-200 hover:text-white cursor-pointer"
               >
-                Verify WhatsApp Now
+                Verify Profile Now
               </button>
             )}
           </div>
@@ -823,16 +819,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                           </button>
                         )}
 
-                        {/* Archive button */}
-                        {ord.status === 'completed' && (
-                          <button
-                            onClick={() => handleArchiveOrder(ord.id)}
-                            className="px-2.5 py-1.5 text-slate-400 hover:text-white rounded-xl text-xs font-medium transition cursor-pointer hover:bg-white/5"
-                            title="Archive Order"
-                          >
-                            <Archive className="w-4 h-4" />
-                          </button>
-                        )}
+
 
                         {/* Delete Order button */}
                         <button
@@ -1777,130 +1764,6 @@ create table if not exists public.shops (
                   </span>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================
-            TAB 10: ARCHIVE
-           ======================================================== */}
-        {activeTab === 'archive' && (
-          <div className="card p-6 sm:p-8 space-y-4">
-            <div className="pb-3 border-b border-white/10">
-              <div className="eyebrow">HISTORICAL ORDERS</div>
-              <h3 className="text-xl font-black font-head text-white mb-1">Archived Orders</h3>
-              <p className="text-xs text-slate-400">
-                Completed and past orders archived for audit and financial record keeping.
-              </p>
-            </div>
-
-            <div className="space-y-3 pt-2">
-              {orders
-                .filter((o) => o.status === 'archived')
-                .map((ord) => (
-                  <div
-                    key={ord.id}
-                    className="p-4 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-between gap-3 hover:border-white/20 transition"
-                  >
-                    <div>
-                      <p className="text-xs font-bold text-white">
-                        {ord.orderNumber} - {ord.documentName}
-                      </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        ₹{ord.totalAmount} • {ord.customerName} • {new Date(ord.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() => handleRestoreOrder(ord.id)}
-                      className="btn btn-ghost btn-sm text-xs font-bold cursor-pointer"
-                    >
-                      Restore to Completed
-                    </button>
-                  </div>
-                ))}
-              {orders.filter((o) => o.status === 'archived').length === 0 && (
-                <div className="p-8 text-center text-xs text-slate-400">
-                  No orders currently archived.
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================
-            TAB 11: ACCOUNT & SECURITY
-           ======================================================== */}
-        {activeTab === 'security' && (
-          <div className="card max-w-2xl p-6 sm:p-8 space-y-6">
-            <div className="pb-4 border-b border-white/10">
-              <div className="eyebrow">AUTHENTICATION</div>
-              <h3 className="text-xl font-black font-head text-white">
-                Account Security & WhatsApp Verification
-              </h3>
-            </div>
-
-            {/* WhatsApp Verification */}
-            <div className="p-5 bg-white/5 rounded-2xl border border-white/10 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-slate-300">WhatsApp Number</p>
-                  <p className="text-sm text-white font-mono mt-0.5">{user.whatsappNumber}</p>
-                </div>
-                {user.whatsappVerified ? (
-                  <span className="px-3 py-1 bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Verified
-                  </span>
-                ) : (
-                  <span className="px-3 py-1 bg-amber-500/15 text-amber-300 border border-amber-500/30 rounded-full text-xs font-black uppercase tracking-wider">
-                    Unverified
-                  </span>
-                )}
-              </div>
-
-              {!user.whatsappVerified && (
-                <div className="pt-4 border-t border-white/10 space-y-3">
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Verify your WhatsApp number to activate priority alerts and critical print error notices.
-                  </p>
-
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleRequestOtp}
-                      disabled={isRequestingOtp}
-                      className="btn btn-primary text-xs font-bold py-2.5 px-4 cursor-pointer"
-                    >
-                      {isRequestingOtp ? 'Sending Code...' : 'Request Verification OTP'}
-                    </button>
-                  </div>
-
-                  {otpMessage && (
-                    <p className="text-xs font-medium text-emerald-400">{otpMessage}</p>
-                  )}
-                  {otpDevHint && (
-                    <p className="text-xs font-bold text-pink-300 bg-pink-500/10 border border-pink-500/20 p-2.5 rounded-xl font-mono">{otpDevHint}</p>
-                  )}
-
-                  <div className="flex gap-2 pt-1">
-                    <input
-                      type="text"
-                      placeholder="6-digit OTP"
-                      maxLength={6}
-                      value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value)}
-                      className="w-36 px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-pink-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleVerifyOtp}
-                      className="btn btn-ghost text-xs font-bold px-4 py-2 cursor-pointer"
-                    >
-                      Submit OTP
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )}

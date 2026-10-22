@@ -335,12 +335,53 @@ $Timer.Add_Tick({
                     }
                     Invoke-RestMethod -Uri $dlUri -Headers $headers -OutFile $tmpFile -TimeoutSec 15
 
+                    if (!(Test-Path $tmpFile) -or ((Get-Item $tmpFile).Length -lt 250)) {
+                        LogMessage "[ERROR] Downloaded file is empty or corrupted ($((Get-Item $tmpFile).Length) bytes). Print skipped to prevent blank paper."
+                        $report = @{ claimToken = $claimToken; status = "failed"; errorMessage = "Downloaded file was empty or missing on server" } | ConvertTo-Json
+                        Invoke-RestMethod -Uri "$Server/api/agent/jobs/$jobId/report" -Method Post -Headers $headers -Body $report -ContentType "application/json" -TimeoutSec 5 | Out-Null
+                        continue
+                    }
+
                     if ($DryRunBox.Checked) {
                         LogMessage "[TEST MODE] Simulated print of $tmpFile completed."
                     } else {
-                        # Physical Windows print command using shell print verb
-                        Start-Process -FilePath $tmpFile -Verb Print -PassThru | Out-Null
-                        LogMessage "[SPOOL SUCCESS] Sent #$orderNum (File $fileIdx/$totalF: $safeDocName) to Windows printer."
+                        $ext = [System.IO.Path]::GetExtension($tmpFile).ToLower()
+                        if ($ext -match '\.(jpg|jpeg|png|webp|bmp)$') {
+                            # Reliable headless GDI+ .NET image printing (fits image to A4 printable area cleanly without blank page!)
+                            try {
+                                Add-Type -AssemblyName System.Drawing
+                                $pdoc = New-Object System.Drawing.Printing.PrintDocument
+                                if ($PrinterBox.Text -and $PrinterBox.Text -ne "Default Windows Printer") {
+                                    $pdoc.PrinterSettings.PrinterName = $PrinterBox.Text
+                                }
+                                $script:printImg = [System.Drawing.Image]::FromFile($tmpFile)
+                                $pdoc.add_PrintPage({
+                                    param($sender, $ev)
+                                    $mb = $ev.MarginBounds
+                                    $w = $script:printImg.Width
+                                    $h = $script:printImg.Height
+                                    if ($w -gt 0 -and $h -gt 0) {
+                                        $scale = [Math]::Min($mb.Width / $w, $mb.Height / $h)
+                                        $dw = [int]($w * $scale)
+                                        $dh = [int]($h * $scale)
+                                        $dx = $mb.X + [int](($mb.Width - $dw) / 2)
+                                        $dy = $mb.Y + [int](($mb.Height - $dh) / 2)
+                                        $ev.Graphics.DrawImage($script:printImg, $dx, $dy, $dw, $dh)
+                                    }
+                                    $ev.HasMorePages = $false
+                                })
+                                $pdoc.Print()
+                                $script:printImg.Dispose()
+                                LogMessage "[SPOOL SUCCESS] Image printed cleanly to '$($PrinterBox.Text)' (File $fileIdx/$totalF: $safeDocName)."
+                            } catch {
+                                Start-Process -FilePath $tmpFile -Verb Print -PassThru | Out-Null
+                                LogMessage "[SPOOL SUCCESS] Sent image #$orderNum to Windows printer."
+                            }
+                        } else {
+                            # PDF document print
+                            Start-Process -FilePath $tmpFile -Verb Print -PassThru | Out-Null
+                            LogMessage "[SPOOL SUCCESS] Sent #$orderNum (File $fileIdx/$totalF: $safeDocName) to Windows printer."
+                        }
                     }
 
                     # Report success

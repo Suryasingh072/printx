@@ -51,6 +51,7 @@ export interface Shop {
   activatedBy?: string;
   qrCodeUrl?: string;
   paymentGatewayUrl?: string;
+  agentOnline?: boolean;
   createdAt: string;
   updatedAt: string;
 }
