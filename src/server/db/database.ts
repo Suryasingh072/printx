@@ -1231,10 +1231,18 @@ export class Database {
       const total = order.files.length;
       order.files.forEach((file, index) => {
         const fileIdx = index + 1;
-        const alreadyExists = existingJobs.some(
+        const existingJob = existingJobs.find(
           (j) => j.fileIndex === fileIdx || (j.filePath && j.filePath === file.filePath)
         );
-        if (!alreadyExists) {
+        if (existingJob) {
+          if (existingJob.status === 'failed') {
+            existingJob.status = 'pending';
+            existingJob.printerName = targetPrinter;
+            existingJob.retryCount = 0;
+            existingJob.errorMessage = undefined;
+            created.push(existingJob);
+          }
+        } else {
           const job: PrintJob = {
             id: `job-${crypto.randomUUID().slice(0, 8)}`,
             orderId: order.id,
@@ -1271,6 +1279,15 @@ export class Database {
         };
         this.data.printJobs.push(job);
         created.push(job);
+      } else {
+        const existingSingle = existingJobs[0];
+        if (existingSingle && existingSingle.status === 'failed') {
+          existingSingle.status = 'pending';
+          existingSingle.printerName = targetPrinter;
+          existingSingle.retryCount = 0;
+          existingSingle.errorMessage = undefined;
+          created.push(existingSingle);
+        }
       }
     }
 

@@ -2303,12 +2303,25 @@ const handleAgentJobDownload = (req: Request, res: Response) => {
       ? storageService.getAbsolutePath(targetFilePath)
       : storageService.getAbsolutePath(order.filePath);
 
+    const stat = fs.statSync(fullPath);
+    if (!stat || stat.size === 0) {
+      console.error(`[Download Error] Physical file is 0 bytes for job ${jobId}: ${fullPath}`);
+      return res.status(404).json({ error: 'File is 0 bytes on server. Print skipped to prevent blank paper.' });
+    }
+
+    console.log(`[Agent Spooler] Streaming file for job ${jobId} (#${order.orderNumber}, file ${job.fileIndex || 1}/${job.totalFiles || 1}: ${docName}, ${stat.size} bytes)`);
+
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', docType);
+    res.setHeader('Content-Length', stat.size);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(docName)}"`);
 
     fs.createReadStream(fullPath).pipe(res);
   } catch (err: any) {
+    console.error(`[Download Error] Exception serving job ${jobId}:`, err);
     res.status(500).json({ error: 'File read error' });
   }
 };

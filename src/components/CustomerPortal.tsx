@@ -546,7 +546,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
       const filesPayload: OrderFileItem[] = fileQueue.map((item) => ({
         id: item.serverInfo?.fileId || item.id,
         name: item.name,
-        type: item.type,
+        type: item.serverInfo?.mimeType || item.file?.type || item.type,
         sizeBytes: item.sizeBytes,
         filePath: item.serverInfo?.filePath || '',
         pageCount: item.pageCount,

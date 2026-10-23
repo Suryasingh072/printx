@@ -101,6 +101,18 @@
       "createdAt": "2026-10-23T18:30:30.878Z",
       "updatedAt": "2026-10-23T18:30:30.882Z",
       "shopId": "shp-00b3028b"
+    },
+    {
+      "id": "usr-a6c9f319",
+      "role": "shop_owner",
+      "email": "bbdniit@gmail.com",
+      "shopId": "shp-bb74affd",
+      "fullName": "BBDNIIT",
+      "createdAt": "2026-10-23T18:44:17.077Z",
+      "updatedAt": "2026-10-23T18:44:17.094Z",
+      "passwordHash": "8bbda22312cc5a13036290a21500876d62bfe54c6e8d6d2f397bc438ebf7e8de",
+      "whatsappNumber": "9431683881",
+      "whatsappVerified": true
     }
   ],
   "shops": [
@@ -201,6 +213,18 @@
       "id": "shp-00b3028b",
       "createdAt": "2026-10-23T18:30:30.879Z",
       "updatedAt": "2026-10-23T18:30:30.879Z"
+    },
+    {
+      "id": "shp-bb74affd",
+      "city": "BBDNIIT",
+      "name": "BBDNIIT",
+      "slug": "bbd-2",
+      "phone": "9431683881",
+      "status": "active",
+      "address": "BBDNIIT",
+      "ownerId": "usr-a6c9f319",
+      "createdAt": "2026-10-23T18:44:17.092Z",
+      "updatedAt": "2026-10-23T18:44:17.092Z"
     }
   ],
   "pricing": [
@@ -307,6 +331,19 @@
       "idCardSinglePrice": 15,
       "currency": "INR",
       "updatedAt": "2026-10-23T18:30:30.879Z"
+    },
+    {
+      "id": "prc-ee68143b",
+      "shopId": "shp-bb74affd",
+      "currency": "INR",
+      "updatedAt": "2026-10-23T18:44:17.092Z",
+      "legalExtra": 1,
+      "bwDuplexPrice": 3,
+      "bwSinglePrice": 2,
+      "photo4x6Price": 20,
+      "colorDuplexPrice": 18,
+      "colorSinglePrice": 10,
+      "idCardSinglePrice": 15
     }
   ],
   "approvalRules": [
@@ -389,15 +426,25 @@
       "requirePaymentBeforePrint": true,
       "notifyWhatsapp": true,
       "updatedAt": "2026-10-23T18:30:30.879Z"
+    },
+    {
+      "id": "rul-611d6f66",
+      "mode": "smart",
+      "shopId": "shp-bb74affd",
+      "updatedAt": "2026-10-23T18:44:17.092Z",
+      "maxAutoPages": 10,
+      "maxAutoAmount": 50,
+      "notifyWhatsapp": true,
+      "requirePaymentBeforePrint": true
     }
   ],
   "agents": [
     {
       "id": "agt-cf0f2f85",
       "shopId": "shp-00ff309e",
-      "deviceName": "DESKTOP-EOHTQ2R",
+      "deviceName": "COUNTER-PC",
       "status": "online",
-      "authTokenHash": "56597c21bc65c42af996919e21a18842399e0f774c683b17123d376146a718b8",
+      "authTokenHash": "e0751324e9b6d383616a482c0cf5530b767145d7af2d1fd65ee5acf09c5b368a",
       "utilityApiKey": "adr_util_live_db74742faaf0ea766249170ef3f11a8c",
       "installedPrinters": [
         {
@@ -452,7 +499,7 @@
       "pairingCode": "293843",
       "pairingCodeExpiresAt": "2026-10-16T05:37:06.202Z",
       "ipAddress": "127.0.0.1",
-      "lastSeenAt": "2026-10-21T05:47:47.970Z"
+      "lastSeenAt": "2026-10-23T19:06:55.453Z"
     },
     {
       "id": "agt-7ce119ab",
@@ -594,6 +641,64 @@
       "appVersion": "2.4.0",
       "dryRunMode": false,
       "createdAt": "2026-10-23T18:30:30.880Z"
+    },
+    {
+      "id": "agt-428a1c1e",
+      "shopId": "shp-bb74affd",
+      "status": "online",
+      "createdAt": "2026-10-23T18:44:17.092Z",
+      "ipAddress": "127.0.0.1",
+      "appVersion": "2.4.0",
+      "deviceName": "DESKTOP-EOHTQ2R",
+      "dryRunMode": false,
+      "lastSeenAt": "2026-10-23T19:06:19.343Z",
+      "pairingCode": "939800",
+      "authTokenHash": "4f352de2c95a2373ce4c71008871abf8e341a06148c8d4ad04197c01da126876",
+      "defaultPrinter": "Microsoft Print to PDF",
+      "installedPrinters": [
+        {
+          "name": "Send To OneNote 2010",
+          "status": "Ready",
+          "isDefault": false,
+          "supportsColor": true
+        },
+        {
+          "name": "OneNote for Windows 10",
+          "status": "Ready",
+          "isDefault": false,
+          "supportsColor": true
+        },
+        {
+          "name": "Microsoft XPS Document Writer",
+          "status": "Ready",
+          "isDefault": false,
+          "supportsColor": true
+        },
+        {
+          "name": "Microsoft Print to PDF",
+          "status": "Ready",
+          "isDefault": true,
+          "supportsColor": true
+        },
+        {
+          "name": "HP LaserJet 1020",
+          "status": "Ready",
+          "isDefault": false,
+          "supportsColor": false
+        },
+        {
+          "name": "HP Laser 103 107 108 (Copy 1)",
+          "status": "Ready",
+          "isDefault": false,
+          "supportsColor": false
+        },
+        {
+          "name": "Fax",
+          "status": "Ready",
+          "isDefault": false,
+          "supportsColor": false
+        }
+      ]
     }
   ],
   "orders": [
@@ -1438,9 +1543,174 @@
       "gatewayOrderId": "IMB471480407631",
       "gatewayCheckLink": "https://check.imb.org.in/paytm_status/UPI5770583229737954",
       "gatewayPaymentUrl": "https://v1-api.newqr.info/99267ce91beb7aef0859cb03099d44060f9d0859de88e0dd3cb4a7606798730a9352f0e8"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "customerName": "Multi Test",
+      "customerPhone": "9876543210",
+      "documentName": "test1.pdf + 1 aur file",
+      "documentType": "application/pdf",
+      "filePath": "680a8ec9-4a45-46ca-b88d-ea281865747f.pdf",
+      "fileSizeBytes": 862,
+      "pageCount": 2,
+      "copies": 1,
+      "colorMode": "bw",
+      "duplexMode": "single",
+      "paperSize": "A4",
+      "orderType": "document",
+      "pageRange": "all",
+      "unitPrice": 2,
+      "totalAmount": 4,
+      "status": "printing",
+      "paymentStatus": "collected",
+      "gatewayPaymentUrl": "https://v1-api.newqr.info/99267ce98eac39776db8eccda022855c75bacbfd8ddc1aa8f03f3557fbcbc93916852ad7",
+      "gatewayOrderId": "IMB369625571565",
+      "gatewayCheckLink": "https://check.imb.org.in/paytm_status/UPI8067370972746834",
+      "files": [
+        {
+          "id": "680a8ec9-4a45-46ca-b88d-ea281865747f",
+          "name": "test1.pdf",
+          "type": "application/pdf",
+          "sizeBytes": 431,
+          "filePath": "680a8ec9-4a45-46ca-b88d-ea281865747f.pdf",
+          "pageCount": 1
+        },
+        {
+          "id": "1fe63e60-c17d-4338-89da-3efde3f5b131",
+          "name": "test2.pdf",
+          "type": "application/pdf",
+          "sizeBytes": 431,
+          "filePath": "1fe63e60-c17d-4338-89da-3efde3f5b131.pdf",
+          "pageCount": 1
+        }
+      ],
+      "id": "ord-76662210",
+      "orderNumber": "ORD-148022",
+      "createdAt": "2026-10-23T19:02:57.612Z",
+      "updatedAt": "2026-10-23T19:02:57.665Z",
+      "paymentCollectedAt": "2026-10-23T19:02:57.619Z",
+      "paymentCollectorName": "Online UPI Gateway",
+      "paymentMethod": "online_upi"
+    },
+    {
+      "id": "ord-af1d3797",
+      "files": [
+        {
+          "id": "c2564760-4102-4be1-aab5-a005937c235f",
+          "name": "WhatsApp Image 2026-10-22 at 12.25.10 PM.jpeg",
+          "type": "image/jpeg",
+          "edited": true,
+          "filePath": "c2564760-4102-4be1-aab5-a005937c235f.jpg",
+          "pageCount": 1,
+          "sizeBytes": 167229,
+          "previewUrl": "blob:https://printx-x5a2.vercel.app/6a8432d4-9c6a-4672-afbe-f1fac8f8686f"
+        }
+      ],
+      "copies": 1,
+      "shopId": "shp-bb74affd",
+      "status": "printing",
+      "filePath": "c2564760-4102-4be1-aab5-a005937c235f.jpg",
+      "colorMode": "bw",
+      "createdAt": "2026-10-23T18:47:29.159Z",
+      "orderType": "document",
+      "pageCount": 1,
+      "pageRange": "all",
+      "paperSize": "A4",
+      "unitPrice": 2,
+      "updatedAt": "2026-10-23T18:48:09.742Z",
+      "duplexMode": "single",
+      "customNotes": "",
+      "orderNumber": "ORD-701091",
+      "totalAmount": 2,
+      "customerName": "Online Customer",
+      "documentName": "WhatsApp Image 2026-10-22 at 12.25.10 PM.jpeg",
+      "documentType": "image/jpeg",
+      "customerPhone": "",
+      "fileSizeBytes": 167229,
+      "paymentMethod": "online_upi",
+      "paymentStatus": "collected",
+      "gatewayOrderId": "IMB680321555325",
+      "gatewayCheckLink": "https://check.imb.org.in/paytm_status/UPI8070163615037183",
+      "gatewayPaymentUrl": "https://v1-api.newqr.info/99267ce9e2c400227c18c90f1eb85111fb0accf2cb648b3ed4c6248cb0c6a17013cf2dfb",
+      "paymentCollectedAt": "2026-10-23T18:48:06.264Z",
+      "paymentCollectorName": "IMB Payment Gateway"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "customerName": "Customer Multi Test",
+      "customerPhone": "9876543210",
+      "documentName": "Doc1.pdf + 2 aur files (3 items)",
+      "documentType": "application/pdf",
+      "filePath": "12c75fde-1bd0-4b90-a3b5-f57c288fba90.pdf",
+      "fileSizeBytes": 1295,
+      "pageCount": 3,
+      "copies": 1,
+      "colorMode": "bw",
+      "duplexMode": "single",
+      "paperSize": "A4",
+      "orderType": "document",
+      "pageRange": "all",
+      "unitPrice": 2,
+      "totalAmount": 6,
+      "status": "printing",
+      "paymentStatus": "collected",
+      "gatewayPaymentUrl": "https://v1-api.newqr.info/99267ce9bb9f9b07dfba77e493336fbda090de52c7368bce054b10c8526a7d4e9167d30a",
+      "gatewayOrderId": "IMB545286506246",
+      "gatewayCheckLink": "https://check.imb.org.in/paytm_status/UPI8035019981008103",
+      "files": [
+        {
+          "id": "12c75fde-1bd0-4b90-a3b5-f57c288fba90",
+          "name": "Doc1.pdf",
+          "type": "application/pdf",
+          "sizeBytes": 431,
+          "filePath": "12c75fde-1bd0-4b90-a3b5-f57c288fba90.pdf",
+          "pageCount": 1
+        },
+        {
+          "id": "0dd526ba-c363-4296-9fce-2380463eb1ba",
+          "name": "Doc2.pdf",
+          "type": "application/pdf",
+          "sizeBytes": 431,
+          "filePath": "0dd526ba-c363-4296-9fce-2380463eb1ba.pdf",
+          "pageCount": 1
+        },
+        {
+          "id": "d253cc0c-8d05-4882-82dc-0ea01e78bd50",
+          "name": "Doc3.pdf",
+          "type": "application/pdf",
+          "sizeBytes": 433,
+          "filePath": "d253cc0c-8d05-4882-82dc-0ea01e78bd50.pdf",
+          "pageCount": 1
+        }
+      ],
+      "id": "ord-106e3115",
+      "orderNumber": "ORD-560449",
+      "createdAt": "2026-10-23T19:06:41.670Z",
+      "updatedAt": "2026-10-23T19:06:41.753Z",
+      "paymentCollectedAt": "2026-10-23T19:06:41.696Z",
+      "paymentCollectorName": "Online UPI Gateway",
+      "paymentMethod": "online_upi"
     }
   ],
-  "orderHistory": [],
+  "orderHistory": [
+    {
+      "id": "hst-98221da6",
+      "orderId": "ord-106e3115",
+      "newStatus": "payment_pending",
+      "changedByName": "Customer Submission",
+      "comment": "Order placed by customer via Shop QR Portal",
+      "createdAt": "2026-10-23T19:06:41.670Z"
+    },
+    {
+      "id": "hst-092f70af",
+      "orderId": "ord-106e3115",
+      "previousStatus": "queued",
+      "newStatus": "printing",
+      "changedByName": "Auto-Print Spooler",
+      "comment": "Online payment received (₹6). Automatically spooled to \"HP LaserJet Pro M404dn\".",
+      "createdAt": "2026-10-23T19:06:41.699Z"
+    }
+  ],
   "payments": [
     {
       "id": "pay-001",
@@ -1484,6 +1754,28 @@
       "collectedBy": "Online UPI Gateway",
       "notes": "Online payment verified. Ref: UPI-1792043409463",
       "collectedAt": "2026-10-15T05:50:09.463Z"
+    },
+    {
+      "id": "pay-d4fe69db",
+      "orderId": "ord-76662210",
+      "shopId": "shp-00ff309e",
+      "amount": 4,
+      "method": "online_upi",
+      "status": "collected",
+      "collectedBy": "Online UPI Gateway",
+      "notes": "Online payment verified. Ref: TEST-TXN-123",
+      "collectedAt": "2026-10-23T19:02:57.619Z"
+    },
+    {
+      "id": "pay-c1c8e99f",
+      "orderId": "ord-106e3115",
+      "shopId": "shp-00ff309e",
+      "amount": 6,
+      "method": "online_upi",
+      "status": "collected",
+      "collectedBy": "Online UPI Gateway",
+      "notes": "Online payment verified. Ref: VERIFY-TXN-3FILES",
+      "collectedAt": "2026-10-23T19:06:41.696Z"
     }
   ],
   "printJobs": [
@@ -1573,12 +1865,138 @@
       "orderId": "ord-0cc53f41",
       "shopId": "shp-00ff309e",
       "printerName": "HP LaserJet Pro M404dn",
-      "status": "pending",
+      "status": "claimed",
       "retryCount": 0,
-      "createdAt": "2026-10-15T05:50:09.464Z"
+      "createdAt": "2026-10-15T05:50:09.464Z",
+      "agentId": "agt-cf0f2f85",
+      "claimToken": "claim_3d43bd6b-963f-44ce-98f9-475266af2157",
+      "claimedAt": "2026-10-23T19:02:57.642Z"
+    },
+    {
+      "id": "job-16993511",
+      "orderId": "ord-76662210",
+      "shopId": "shp-00ff309e",
+      "printerName": "HP LaserJet Pro M404dn",
+      "status": "claimed",
+      "retryCount": 0,
+      "filePath": "680a8ec9-4a45-46ca-b88d-ea281865747f.pdf",
+      "documentName": "test1.pdf",
+      "documentType": "application/pdf",
+      "fileIndex": 1,
+      "totalFiles": 2,
+      "createdAt": "2026-10-23T19:02:57.621Z",
+      "agentId": "agt-cf0f2f85",
+      "claimToken": "claim_0ef3febf-e866-4c81-a9e5-b7f6f2843908",
+      "claimedAt": "2026-10-23T19:02:57.654Z"
+    },
+    {
+      "id": "job-81b9324b",
+      "orderId": "ord-76662210",
+      "shopId": "shp-00ff309e",
+      "printerName": "HP LaserJet Pro M404dn",
+      "status": "claimed",
+      "retryCount": 0,
+      "filePath": "1fe63e60-c17d-4338-89da-3efde3f5b131.pdf",
+      "documentName": "test2.pdf",
+      "documentType": "application/pdf",
+      "fileIndex": 2,
+      "totalFiles": 2,
+      "createdAt": "2026-10-23T19:02:57.621Z",
+      "agentId": "agt-cf0f2f85",
+      "claimToken": "claim_1927d08e-df92-417b-aacb-8467cb64d9e2",
+      "claimedAt": "2026-10-23T19:02:57.665Z"
+    },
+    {
+      "id": "job-25573b4e",
+      "orderId": "ord-106e3115",
+      "shopId": "shp-00ff309e",
+      "printerName": "HP LaserJet Pro M404dn",
+      "status": "claimed",
+      "retryCount": 0,
+      "filePath": "12c75fde-1bd0-4b90-a3b5-f57c288fba90.pdf",
+      "documentName": "Doc1.pdf",
+      "documentType": "application/pdf",
+      "fileIndex": 1,
+      "totalFiles": 3,
+      "createdAt": "2026-10-23T19:06:41.698Z",
+      "agentId": "agt-cf0f2f85",
+      "claimToken": "claim_0ce7c78b-1e10-4436-acf7-f34fae9a0f27",
+      "claimedAt": "2026-10-23T19:06:41.726Z"
+    },
+    {
+      "id": "job-64de4efe",
+      "orderId": "ord-106e3115",
+      "shopId": "shp-00ff309e",
+      "printerName": "HP LaserJet Pro M404dn",
+      "status": "claimed",
+      "retryCount": 0,
+      "filePath": "0dd526ba-c363-4296-9fce-2380463eb1ba.pdf",
+      "documentName": "Doc2.pdf",
+      "documentType": "application/pdf",
+      "fileIndex": 2,
+      "totalFiles": 3,
+      "createdAt": "2026-10-23T19:06:41.698Z",
+      "agentId": "agt-cf0f2f85",
+      "claimToken": "claim_b38eea9a-0dba-4798-9c9c-d391662a824d",
+      "claimedAt": "2026-10-23T19:06:41.739Z"
+    },
+    {
+      "id": "job-9249df44",
+      "orderId": "ord-106e3115",
+      "shopId": "shp-00ff309e",
+      "printerName": "HP LaserJet Pro M404dn",
+      "status": "claimed",
+      "retryCount": 0,
+      "filePath": "d253cc0c-8d05-4882-82dc-0ea01e78bd50.pdf",
+      "documentName": "Doc3.pdf",
+      "documentType": "application/pdf",
+      "fileIndex": 3,
+      "totalFiles": 3,
+      "createdAt": "2026-10-23T19:06:41.698Z",
+      "agentId": "agt-cf0f2f85",
+      "claimToken": "claim_dc705997-7851-4e70-80d1-b4fd3fad6ca8",
+      "claimedAt": "2026-10-23T19:06:41.753Z"
     }
   ],
   "activityLogs": [
+    {
+      "shopId": "shp-00ff309e",
+      "actionType": "payment_collected",
+      "description": "Order ORD-560449 paid ₹6 online. Instantly sent to printer.",
+      "id": "log-ef03b84e",
+      "createdAt": "2026-10-23T19:06:41.701Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "actionType": "order_submitted",
+      "description": "Order ORD-560449 placed by Customer Multi Test (Doc1.pdf + 2 aur files (3 items), ₹6). Gateway session ready.",
+      "metadata": {
+        "orderNumber": "ORD-560449",
+        "amount": 6,
+        "gatewayOrderId": "IMB545286506246"
+      },
+      "id": "log-d0df3b3d",
+      "createdAt": "2026-10-23T19:06:41.673Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "actionType": "payment_collected",
+      "description": "Order ORD-148022 paid ₹4 online. Instantly sent to printer.",
+      "id": "log-3189cbaa",
+      "createdAt": "2026-10-23T19:02:57.624Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "actionType": "order_submitted",
+      "description": "Order ORD-148022 placed by Multi Test (test1.pdf + 1 aur file, ₹4). Gateway session ready.",
+      "metadata": {
+        "orderNumber": "ORD-148022",
+        "amount": 4,
+        "gatewayOrderId": "IMB369625571565"
+      },
+      "id": "log-8ece77c4",
+      "createdAt": "2026-10-23T19:02:57.613Z"
+    },
     {
       "shopId": "shp-4faf170a",
       "actionType": "order_submitted",

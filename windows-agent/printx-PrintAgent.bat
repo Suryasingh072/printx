@@ -327,60 +327,129 @@ $Timer.Add_Tick({
                     LogMessage "Claimed job $jobId for #$orderNum (File $fileIdx/$totalF). Spooling to '$($PrinterBox.Text)'..."
 
                     # Download file via dynamic URL or fallback endpoint
-                    $safeDocName = [System.IO.Path]::GetFileName($docName)
-                    $tmpFile = Join-Path $WorkDir "$orderNum-$fileIdx-$safeDocName"
+                    # Sanitize filename to avoid invalid Windows path characters
+                    $cleanName = [System.IO.Path]::GetFileName($docName) -replace '[^a-zA-Z0-9_\-\.]', '_'
+                    if (!$cleanName -or $cleanName.Length -lt 3) {
+                        $cleanName = "document_$fileIdx"
+                    }
+                    $ext = [System.IO.Path]::GetExtension($cleanName).ToLower()
+                    if (!$ext -or $ext.Length -lt 2) {
+                        $docTypeStr = "$($job.documentType)".ToLower()
+                        if ($docTypeStr -match 'png') { $ext = '.png' }
+                        elseif ($docTypeStr -match 'jpe?g') { $ext = '.jpg' }
+                        elseif ($docTypeStr -match 'webp') { $ext = '.webp' }
+                        else { $ext = '.pdf' }
+                        $cleanName = "$cleanName$ext"
+                    }
+
+                    $tmpFile = Join-Path $WorkDir "$orderNum-file$fileIdx-$cleanName"
                     $dlUri = "$Server/api/agent/jobs/$jobId/document?token=$claimToken"
                     if ($job.downloadUrl) {
                         $dlUri = "$Server$($job.downloadUrl)"
                     }
-                    Invoke-RestMethod -Uri $dlUri -Headers $headers -OutFile $tmpFile -TimeoutSec 15
+
+                    LogMessage "[DOWNLOADING] Fetching file $fileIdx/$totalF ($cleanName)..."
+                    try {
+                        Invoke-RestMethod -Uri $dlUri -Headers $headers -OutFile $tmpFile -TimeoutSec 20
+                    } catch {
+                        try {
+                            Invoke-WebRequest -Uri $dlUri -Headers $headers -OutFile $tmpFile -TimeoutSec 20
+                        } catch {}
+                    }
 
                     if (!(Test-Path $tmpFile) -or ((Get-Item $tmpFile).Length -lt 250)) {
-                        LogMessage "[ERROR] Downloaded file is empty or corrupted ($((Get-Item $tmpFile).Length) bytes). Print skipped to prevent blank paper."
-                        $report = @{ claimToken = $claimToken; status = "failed"; errorMessage = "Downloaded file was empty or missing on server" } | ConvertTo-Json
+                        $fSize = if (Test-Path $tmpFile) { (Get-Item $tmpFile).Length } else { 0 }
+                        LogMessage "[ERROR] File $fileIdx/$totalF download incomplete ($fSize bytes). Skipping print to prevent blank paper."
+                        $report = @{ claimToken = $claimToken; status = "failed"; errorMessage = "Downloaded file was empty or missing on server ($fSize bytes)" } | ConvertTo-Json
+                        Invoke-RestMethod -Uri "$Server/api/agent/jobs/$jobId/report" -Method Post -Headers $headers -Body $report -ContentType "application/json" -TimeoutSec 5 | Out-Null
+                        continue
+                    }
+
+                    # Verify downloaded file is not a server JSON error response
+                    $firstBytes = Get-Content -Path $tmpFile -TotalCount 2 -Raw
+                    if ($firstBytes -and $firstBytes.Trim().StartsWith('{"error"')) {
+                        LogMessage "[ERROR] Server returned error for file $fileIdx/$totalF. Skipping to prevent blank paper."
+                        $report = @{ claimToken = $claimToken; status = "failed"; errorMessage = "Server error response" } | ConvertTo-Json
                         Invoke-RestMethod -Uri "$Server/api/agent/jobs/$jobId/report" -Method Post -Headers $headers -Body $report -ContentType "application/json" -TimeoutSec 5 | Out-Null
                         continue
                     }
 
                     if ($DryRunBox.Checked) {
-                        LogMessage "[TEST MODE] Simulated print of $tmpFile completed."
+                        LogMessage "[TEST MODE] Simulated print of file $fileIdx/$totalF ($cleanName) completed."
                     } else {
                         $ext = [System.IO.Path]::GetExtension($tmpFile).ToLower()
                         if ($ext -match '\.(jpg|jpeg|png|webp|bmp)$') {
-                            # Reliable headless GDI+ .NET image printing (fits image to A4 printable area cleanly without blank page!)
+                            # Reliable headless GDI+ .NET image printing (memory stream + safe bounds)
                             try {
                                 Add-Type -AssemblyName System.Drawing
                                 $pdoc = New-Object System.Drawing.Printing.PrintDocument
+                                $pdoc.OriginAtMargins = $false
+                                $pdoc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(15, 15, 15, 15)
                                 if ($PrinterBox.Text -and $PrinterBox.Text -ne "Default Windows Printer") {
                                     $pdoc.PrinterSettings.PrinterName = $PrinterBox.Text
                                 }
-                                $script:printImg = [System.Drawing.Image]::FromFile($tmpFile)
+
+                                $rawBytes = [System.IO.File]::ReadAllBytes($tmpFile)
+                                $ms = New-Object System.IO.MemoryStream(,$rawBytes)
+                                $img = [System.Drawing.Bitmap]::FromStream($ms)
+
                                 $pdoc.add_PrintPage({
                                     param($sender, $ev)
-                                    $mb = $ev.MarginBounds
-                                    $w = $script:printImg.Width
-                                    $h = $script:printImg.Height
-                                    if ($w -gt 0 -and $h -gt 0) {
-                                        $scale = [Math]::Min($mb.Width / $w, $mb.Height / $h)
-                                        $dw = [int]($w * $scale)
-                                        $dh = [int]($h * $scale)
-                                        $dx = $mb.X + [int](($mb.Width - $dw) / 2)
-                                        $dy = $mb.Y + [int](($mb.Height - $dh) / 2)
-                                        $ev.Graphics.DrawImage($script:printImg, $dx, $dy, $dw, $dh)
+                                    try {
+                                        $paperW = [Math]::Max(100, $ev.PageBounds.Width)
+                                        $paperH = [Math]::Max(100, $ev.PageBounds.Height)
+                                        $margin = 20
+                                        $availW = [Math]::Max(50, $paperW - ($margin * 2))
+                                        $availH = [Math]::Max(50, $paperH - ($margin * 2))
+
+                                        $imgW = $img.Width
+                                        $imgH = $img.Height
+
+                                        if ($imgW -gt 0 -and $imgH -gt 0) {
+                                            $scale = [Math]::Min($availW / $imgW, $availH / $imgH)
+                                            $dw = [int]($imgW * $scale)
+                                            $dh = [int]($imgH * $scale)
+                                            $dx = [int](($paperW - $dw) / 2)
+                                            $dy = [int](($paperH - $dh) / 2)
+
+                                            $ev.Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+                                            $ev.Graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+                                            $ev.Graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+                                            $ev.Graphics.DrawImage($img, $dx, $dy, $dw, $dh)
+                                        }
+                                    } catch {
+                                        LogMessage "[PRINT ERROR] Image render error: $_"
                                     }
                                     $ev.HasMorePages = $false
                                 })
+
                                 $pdoc.Print()
-                                $script:printImg.Dispose()
-                                LogMessage "[SPOOL SUCCESS] Image printed cleanly to '$($PrinterBox.Text)' (File $fileIdx/$totalF: $safeDocName)."
+                                $ms.Dispose()
+                                $img.Dispose()
+                                LogMessage "[SPOOL SUCCESS] Image printed cleanly to '$($PrinterBox.Text)' (File $fileIdx/$totalF: $cleanName)."
+                                # Crucial: Wait 3 seconds so spooler finishes sending to printer driver before next job
+                                Start-Sleep -Seconds 3
                             } catch {
-                                Start-Process -FilePath $tmpFile -Verb Print -PassThru | Out-Null
-                                LogMessage "[SPOOL SUCCESS] Sent image #$orderNum to Windows printer."
+                                $proc = Start-Process -FilePath $tmpFile -Verb Print -PassThru
+                                if ($proc) {
+                                    $proc.WaitForExit(8000)
+                                }
+                                Start-Sleep -Seconds 3
+                                LogMessage "[SPOOL SUCCESS] Sent image $fileIdx/$totalF to Windows printer."
                             }
                         } else {
-                            # PDF document print
-                            Start-Process -FilePath $tmpFile -Verb Print -PassThru | Out-Null
-                            LogMessage "[SPOOL SUCCESS] Sent #$orderNum (File $fileIdx/$totalF: $safeDocName) to Windows printer."
+                            # PDF document print with process wait and spool separation
+                            try {
+                                $proc = Start-Process -FilePath $tmpFile -Verb Print -PassThru
+                                if ($proc) {
+                                    $proc.WaitForExit(10000)
+                                }
+                            } catch {
+                                [Diagnostics.Process]::Start($tmpFile) | Out-Null
+                            }
+                            # Crucial: 4-second spool settlement delay so Windows Spooler separates multi-page / multi-file jobs cleanly without blank paper!
+                            Start-Sleep -Seconds 4
+                            LogMessage "[SPOOL SUCCESS] Sent PDF $fileIdx/$totalF ($cleanName) to Windows printer."
                         }
                     }
 

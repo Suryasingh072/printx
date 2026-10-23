@@ -165,12 +165,11 @@ class WorkerThread(QThread):
                 print_success = True
             else:
                 print_success = self.dispatch_to_windows_spooler(tmp_path, target_pr, job)
+                # Spool settlement wait (gives Windows Print Spooler time to buffer the file before any subsequent job starts)
+                time.sleep(3)
 
-            # Cleanup temp file
-            try:
-                os.remove(tmp_path)
-            except Exception:
-                pass
+            # Keep temp file in workstation spool cache for 10 minutes so Windows spooler can finish reading
+            # (Instant deletion causes blank pages on physical printers!)
 
             if print_success:
                 # Step E: Report Printed Confirmation
@@ -197,11 +196,13 @@ class WorkerThread(QThread):
             }, headers=headers, timeout=10)
 
     def dispatch_to_windows_spooler(self, file_path, printer_name, job):
-        """Submit job to Windows Print Spooler"""
+        """Submit job to Windows Print Spooler with port separation"""
         if WIN32_AVAILABLE:
             try:
                 self.log_signal.emit(f"[Win32 Spooler] Submitting '{file_path}' to '{printer_name}'...")
                 win32api.ShellExecute(0, "printto", file_path, f'"{printer_name}"', ".", 0)
+                # Wait 2 seconds for shell process to hand off data to printer port
+                time.sleep(2)
                 return True
             except Exception as e:
                 self.log_signal.emit(f"[Win32 Error] {e}")
