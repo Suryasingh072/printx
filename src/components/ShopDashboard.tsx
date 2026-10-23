@@ -84,7 +84,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
   // Supabase Cloud State
   const [supabaseStatus, setSupabaseStatus] = useState<any>({
     connected: true,
-    url: 'https://skbwakxzlrsjkubmbzte.supabase.co',
+    url: 'https://ovyimgjzfzhysyubqycw.supabase.co',
     mode: 'active',
   });
   const [syncingSupabase, setSyncingSupabase] = useState(false);
@@ -1224,7 +1224,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                       </span>
                     </div>
                     <p className="text-xs text-slate-400 font-mono mt-0.5">
-                      https://skbwakxzlrsjkubmbzte.supabase.co
+                      {supabaseStatus?.url || 'https://ovyimgjzfzhysyubqycw.supabase.co'}
                     </p>
                   </div>
                 </div>
@@ -1274,7 +1274,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                   Your Supabase Project is Live & Connected!
                 </p>
                 <p className="text-slate-300 text-[11px] leading-relaxed">
-                  All shop details, rates, orders, customer print submissions, and connected Windows agents are automatically synced to your Supabase project (<strong>skbwakxzlrsjkubmbzte.supabase.co</strong>).
+                  All shop details, rates, orders, customer print submissions, and connected Windows agents are automatically synced to your Supabase project (<strong>{supabaseStatus?.url || 'https://ovyimgjzfzhysyubqycw.supabase.co'}</strong>).
                 </p>
               </div>
             </div>

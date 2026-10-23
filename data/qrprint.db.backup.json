@@ -89,6 +89,18 @@
       "createdAt": "2026-10-17T16:43:43.048Z",
       "updatedAt": "2026-10-17T16:43:43.050Z",
       "shopId": "shp-8aee248c"
+    },
+    {
+      "email": "bbd@gmail.com",
+      "passwordHash": "8bbda22312cc5a13036290a21500876d62bfe54c6e8d6d2f397bc438ebf7e8de",
+      "fullName": "BBD",
+      "whatsappNumber": "8956238954",
+      "whatsappVerified": true,
+      "role": "shop_owner",
+      "id": "usr-b975522b",
+      "createdAt": "2026-10-23T18:30:30.878Z",
+      "updatedAt": "2026-10-23T18:30:30.882Z",
+      "shopId": "shp-00b3028b"
     }
   ],
   "shops": [
@@ -177,6 +189,18 @@
       "id": "shp-4faf170a",
       "createdAt": "2026-10-17T16:45:48.692Z",
       "updatedAt": "2026-10-17T16:45:48.692Z"
+    },
+    {
+      "slug": "bbdniit",
+      "name": "BBD",
+      "ownerId": "usr-b975522b",
+      "phone": "8956238954",
+      "address": "BBD",
+      "city": "BBD",
+      "status": "active",
+      "id": "shp-00b3028b",
+      "createdAt": "2026-10-23T18:30:30.879Z",
+      "updatedAt": "2026-10-23T18:30:30.879Z"
     }
   ],
   "pricing": [
@@ -270,6 +294,19 @@
       "idCardSinglePrice": 15,
       "currency": "INR",
       "updatedAt": "2026-10-17T16:45:48.692Z"
+    },
+    {
+      "id": "prc-9f227b4e",
+      "shopId": "shp-00b3028b",
+      "bwSinglePrice": 2,
+      "bwDuplexPrice": 3,
+      "colorSinglePrice": 10,
+      "colorDuplexPrice": 18,
+      "legalExtra": 1,
+      "photo4x6Price": 20,
+      "idCardSinglePrice": 15,
+      "currency": "INR",
+      "updatedAt": "2026-10-23T18:30:30.879Z"
     }
   ],
   "approvalRules": [
@@ -342,6 +379,16 @@
       "requirePaymentBeforePrint": true,
       "notifyWhatsapp": true,
       "updatedAt": "2026-10-17T16:45:48.692Z"
+    },
+    {
+      "id": "rul-41d564d2",
+      "shopId": "shp-00b3028b",
+      "mode": "smart",
+      "maxAutoPages": 10,
+      "maxAutoAmount": 50,
+      "requirePaymentBeforePrint": true,
+      "notifyWhatsapp": true,
+      "updatedAt": "2026-10-23T18:30:30.879Z"
     }
   ],
   "agents": [
@@ -461,7 +508,7 @@
       "dryRunMode": false,
       "createdAt": "2026-10-16T13:57:35.549Z",
       "ipAddress": "127.0.0.1",
-      "lastSeenAt": "2026-10-21T15:24:52.652Z",
+      "lastSeenAt": "2026-10-23T11:12:28.487Z",
       "authTokenHash": "8744a50024aea635f2b837e0d35ddac4ef8f88223d9fce0b3d15c3bc23879f67",
       "defaultPrinter": "HP LaserJet 1020"
     },
@@ -536,6 +583,17 @@
       "appVersion": "2.4.0",
       "dryRunMode": false,
       "createdAt": "2026-10-17T16:45:48.692Z"
+    },
+    {
+      "id": "agt-971ac09b",
+      "shopId": "shp-00b3028b",
+      "deviceName": "Shop Windows PC",
+      "pairingCode": "234839",
+      "status": "offline",
+      "installedPrinters": [],
+      "appVersion": "2.4.0",
+      "dryRunMode": false,
+      "createdAt": "2026-10-23T18:30:30.880Z"
     }
   ],
   "orders": [
@@ -1983,6 +2041,14 @@
       "description": "Shop \"ekta communication\" registered by surya. Awaiting WhatsApp verification and Admin review.",
       "id": "log-4cb25252",
       "createdAt": "2026-10-10T07:04:19.861Z"
+    },
+    {
+      "shopId": "shp-00b3028b",
+      "userId": "usr-admin-001",
+      "actionType": "shop_registered",
+      "description": "Shop \"BBD\" registered and activated directly by Super Admin.",
+      "id": "log-6a56bce7",
+      "createdAt": "2026-10-23T18:30:30.883Z"
     }
   ]
 }

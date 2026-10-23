@@ -250,6 +250,68 @@ END $$;
         delete this.status.error;
         delete this.status.sqlFix;
         console.log(`[Supabase Cloud] Successfully synced ${databaseData?.shops?.length || 0} shops to cloud.`);
+
+        // Also automatically sync to relational tables (shops, orders, agents) so they show in Table Editor GUI
+        try {
+          if (Array.isArray(databaseData?.shops) && databaseData.shops.length > 0) {
+            const formattedShops = databaseData.shops.map((s: any) => ({
+              id: s.id,
+              owner_id: s.ownerId || null,
+              name: s.name,
+              slug: s.slug,
+              phone: s.phone || null,
+              whatsapp_number: s.whatsappNumber || null,
+              address: s.address || null,
+              city: s.city || null,
+              upi_id: s.upiId || null,
+              status: s.status || 'active',
+              updated_at: new Date().toISOString(),
+            }));
+            await this.client.from('shops').upsert(formattedShops, { onConflict: 'id' });
+          }
+
+          if (Array.isArray(databaseData?.orders) && databaseData.orders.length > 0) {
+            const formattedOrders = databaseData.orders.map((o: any) => ({
+              id: o.id,
+              order_number: o.orderNumber,
+              shop_id: o.shopId,
+              customer_name: o.customerName || 'Customer',
+              customer_phone: o.customerPhone || null,
+              document_name: o.documentName || 'Document',
+              document_type: o.documentType || 'application/pdf',
+              page_count: o.pageCount || 1,
+              copies: o.copies || 1,
+              color_mode: o.colorMode || 'bw',
+              duplex_mode: o.duplexMode || 'single',
+              paper_size: o.paperSize || 'A4',
+              total_amount: o.totalAmount || 0,
+              status: o.status || 'payment_pending',
+              payment_status: o.paymentStatus || 'unpaid',
+              custom_notes: o.customNotes || null,
+              created_at: o.createdAt || new Date().toISOString(),
+            }));
+            await this.client.from('orders').upsert(formattedOrders, { onConflict: 'id' });
+          }
+
+          if (Array.isArray(databaseData?.agents) && databaseData.agents.length > 0) {
+            const formattedAgents = databaseData.agents.map((a: any) => ({
+              id: a.id,
+              shop_id: a.shopId,
+              pairing_code: a.pairingCode || null,
+              utility_api_key: a.utilityApiKey || null,
+              default_printer: a.defaultPrinter || null,
+              bw_printer: a.bwPrinter || null,
+              color_printer: a.colorPrinter || null,
+              status: a.status || 'offline',
+              last_seen_at: a.lastSeenAt || null,
+              created_at: a.createdAt || new Date().toISOString(),
+            }));
+            await this.client.from('agents').upsert(formattedAgents, { onConflict: 'id' });
+          }
+        } catch (relErr: any) {
+          console.warn('[Supabase Cloud] Relational tables background sync:', relErr.message);
+        }
+
         return true;
       }
 
