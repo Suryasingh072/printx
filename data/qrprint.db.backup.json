@@ -444,7 +444,7 @@
       "shopId": "shp-00ff309e",
       "deviceName": "COUNTER-PC",
       "status": "online",
-      "authTokenHash": "e0751324e9b6d383616a482c0cf5530b767145d7af2d1fd65ee5acf09c5b368a",
+      "authTokenHash": "f36e5c8ff95b83fb748fd5fc540709963f195f96efcbeac233a3c80cd9ae2c91",
       "utilityApiKey": "adr_util_live_db74742faaf0ea766249170ef3f11a8c",
       "installedPrinters": [
         {
@@ -499,7 +499,7 @@
       "pairingCode": "293843",
       "pairingCodeExpiresAt": "2026-10-16T05:37:06.202Z",
       "ipAddress": "127.0.0.1",
-      "lastSeenAt": "2026-10-23T19:06:55.453Z"
+      "lastSeenAt": "2026-10-23T19:19:40.953Z"
     },
     {
       "id": "agt-7ce119ab",
@@ -651,7 +651,7 @@
       "appVersion": "2.4.0",
       "deviceName": "DESKTOP-EOHTQ2R",
       "dryRunMode": false,
-      "lastSeenAt": "2026-10-23T19:06:19.343Z",
+      "lastSeenAt": "2026-10-23T19:18:51.416Z",
       "pairingCode": "939800",
       "authTokenHash": "4f352de2c95a2373ce4c71008871abf8e341a06148c8d4ad04197c01da126876",
       "defaultPrinter": "Microsoft Print to PDF",
@@ -1571,17 +1571,17 @@
           "id": "680a8ec9-4a45-46ca-b88d-ea281865747f",
           "name": "test1.pdf",
           "type": "application/pdf",
-          "sizeBytes": 431,
           "filePath": "680a8ec9-4a45-46ca-b88d-ea281865747f.pdf",
-          "pageCount": 1
+          "pageCount": 1,
+          "sizeBytes": 431
         },
         {
           "id": "1fe63e60-c17d-4338-89da-3efde3f5b131",
           "name": "test2.pdf",
           "type": "application/pdf",
-          "sizeBytes": 431,
           "filePath": "1fe63e60-c17d-4338-89da-3efde3f5b131.pdf",
-          "pageCount": 1
+          "pageCount": 1,
+          "sizeBytes": 431
         }
       ],
       "id": "ord-76662210",
@@ -1662,25 +1662,25 @@
           "id": "12c75fde-1bd0-4b90-a3b5-f57c288fba90",
           "name": "Doc1.pdf",
           "type": "application/pdf",
-          "sizeBytes": 431,
           "filePath": "12c75fde-1bd0-4b90-a3b5-f57c288fba90.pdf",
-          "pageCount": 1
+          "pageCount": 1,
+          "sizeBytes": 431
         },
         {
           "id": "0dd526ba-c363-4296-9fce-2380463eb1ba",
           "name": "Doc2.pdf",
           "type": "application/pdf",
-          "sizeBytes": 431,
           "filePath": "0dd526ba-c363-4296-9fce-2380463eb1ba.pdf",
-          "pageCount": 1
+          "pageCount": 1,
+          "sizeBytes": 431
         },
         {
           "id": "d253cc0c-8d05-4882-82dc-0ea01e78bd50",
           "name": "Doc3.pdf",
           "type": "application/pdf",
-          "sizeBytes": 433,
           "filePath": "d253cc0c-8d05-4882-82dc-0ea01e78bd50.pdf",
-          "pageCount": 1
+          "pageCount": 1,
+          "sizeBytes": 433
         }
       ],
       "id": "ord-106e3115",
@@ -1690,25 +1690,268 @@
       "paymentCollectedAt": "2026-10-23T19:06:41.696Z",
       "paymentCollectorName": "Online UPI Gateway",
       "paymentMethod": "online_upi"
+    },
+    {
+      "id": "ord-b6e2e15a",
+      "files": [
+        {
+          "id": "92a8ab27-9958-4c7b-9215-eb6bbb7a5192",
+          "name": "Nazari_Naksha_9 (1).pdf",
+          "type": "application/pdf",
+          "edited": false,
+          "filePath": "92a8ab27-9958-4c7b-9215-eb6bbb7a5192.pdf",
+          "pageCount": 1,
+          "sizeBytes": 102816,
+          "previewUrl": "blob:https://printx-x5a2.vercel.app/e6fa27d8-1a94-4676-89e3-60a8277ac123"
+        },
+        {
+          "id": "c8d74275-8f3a-4539-bdea-3735570915bd",
+          "name": "Nazari_Naksha_9.pdf",
+          "type": "application/pdf",
+          "edited": false,
+          "filePath": "c8d74275-8f3a-4539-bdea-3735570915bd.pdf",
+          "pageCount": 1,
+          "sizeBytes": 102816,
+          "previewUrl": "blob:https://printx-x5a2.vercel.app/65ee69f9-0273-4c7c-998d-222766905b3d"
+        },
+        {
+          "id": "c88e8dd2-9e91-4ae5-8fdb-b617760e76b1",
+          "name": "WhatsApp Image 2026-10-22 at 12.26.55 PM.jpeg",
+          "type": "image/jpeg",
+          "edited": false,
+          "filePath": "c88e8dd2-9e91-4ae5-8fdb-b617760e76b1.jpg",
+          "pageCount": 1,
+          "sizeBytes": 147809,
+          "previewUrl": "blob:https://printx-x5a2.vercel.app/e17c5a60-b715-4126-acea-8b7c99bbc4db"
+        },
+        {
+          "id": "1422dfe3-6bb8-40a9-b2fd-60f692f3cb8f",
+          "name": "WhatsApp Image 2026-10-22 at 12.25.10 PM.jpeg",
+          "type": "image/jpeg",
+          "edited": false,
+          "filePath": "1422dfe3-6bb8-40a9-b2fd-60f692f3cb8f.jpg",
+          "pageCount": 1,
+          "sizeBytes": 71918,
+          "previewUrl": "blob:https://printx-x5a2.vercel.app/525a2c33-3c36-4249-bb9b-ec7b4ae30214"
+        }
+      ],
+      "copies": 1,
+      "shopId": "shp-bb74affd",
+      "status": "completed",
+      "filePath": "92a8ab27-9958-4c7b-9215-eb6bbb7a5192.pdf",
+      "colorMode": "bw",
+      "createdAt": "2026-10-23T19:09:16.879Z",
+      "orderType": "document",
+      "pageCount": 4,
+      "pageRange": "all",
+      "paperSize": "A4",
+      "printedAt": "2026-10-23T19:09:48.659Z",
+      "unitPrice": 2,
+      "updatedAt": "2026-10-23T19:09:40.747Z",
+      "duplexMode": "single",
+      "customNotes": "",
+      "orderNumber": "ORD-235835",
+      "totalAmount": 8,
+      "customerName": "Online Customer",
+      "documentName": "Nazari_Naksha_9 (1).pdf + 3 aur files (4 items)",
+      "documentType": "application/pdf",
+      "customerPhone": "",
+      "fileSizeBytes": 425359,
+      "paymentMethod": "online_upi",
+      "paymentStatus": "collected",
+      "gatewayOrderId": "IMB908516177567",
+      "gatewayCheckLink": "https://check.imb.org.in/paytm_status/UPI1194807093624501",
+      "gatewayPaymentUrl": "https://v1-api.newqr.info/99267ce92262e01e5ff52c3d213b56c9b06a5804cdb70b37b390e3010d47619e674f830d",
+      "paymentCollectedAt": "2026-10-23T19:09:20.885Z",
+      "paymentCollectorName": "Online UPI Gateway",
+      "isDocumentPurged": true,
+      "purgedAt": "2026-10-23T19:18:22.980Z"
+    },
+    {
+      "id": "ord-1946e25c",
+      "files": [
+        {
+          "id": "573c263c-0732-485a-b6a2-4a7dab4000c1",
+          "name": "WhatsApp Image 2026-10-22 at 12.26.55 PM.jpeg",
+          "type": "image/jpeg",
+          "edited": false,
+          "filePath": "573c263c-0732-485a-b6a2-4a7dab4000c1.jpg",
+          "pageCount": 1,
+          "sizeBytes": 147809,
+          "previewUrl": "blob:https://printx-x5a2.vercel.app/ad316898-ef4f-4348-b90d-3e222de0b146"
+        }
+      ],
+      "copies": 1,
+      "shopId": "shp-bb74affd",
+      "status": "completed",
+      "filePath": "573c263c-0732-485a-b6a2-4a7dab4000c1.jpg",
+      "colorMode": "bw",
+      "createdAt": "2026-10-23T19:11:07.148Z",
+      "orderType": "document",
+      "pageCount": 1,
+      "pageRange": "all",
+      "paperSize": "A4",
+      "printedAt": "2026-10-23T19:11:16.821Z",
+      "unitPrice": 2,
+      "updatedAt": "2026-10-23T19:11:10.233Z",
+      "duplexMode": "single",
+      "customNotes": "",
+      "orderNumber": "ORD-749299",
+      "totalAmount": 2,
+      "customerName": "Online Customer",
+      "documentName": "WhatsApp Image 2026-10-22 at 12.26.55 PM.jpeg",
+      "documentType": "image/jpeg",
+      "customerPhone": "",
+      "fileSizeBytes": 147809,
+      "paymentMethod": "online_upi",
+      "paymentStatus": "collected",
+      "gatewayOrderId": "IMB292558327405",
+      "gatewayCheckLink": "https://check.imb.org.in/paytm_status/UPI4564124685812047",
+      "gatewayPaymentUrl": "https://v1-api.newqr.info/99267ce9344e6c5f465f256d0a0cdabdbcec0a25e9661a7085ff39224af9ae83e326ed23",
+      "paymentCollectedAt": "2026-10-23T19:11:09.445Z",
+      "paymentCollectorName": "Online UPI Gateway",
+      "isDocumentPurged": true,
+      "purgedAt": "2026-10-23T19:18:22.980Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "customerName": "Surya Pratap Singh",
+      "customerPhone": "9876543210",
+      "documentName": "PAN_Card.jpeg",
+      "documentType": "image/jpeg",
+      "filePath": "d53f5359-7cc1-4c2f-9ce4-84dd2b5991d0.jpg",
+      "fileSizeBytes": 147809,
+      "pageCount": 1,
+      "copies": 1,
+      "colorMode": "color",
+      "duplexMode": "single",
+      "paperSize": "A4",
+      "orderType": "id_card",
+      "pageRange": "all",
+      "unitPrice": 15,
+      "totalAmount": 15,
+      "status": "printing",
+      "paymentStatus": "collected",
+      "gatewayPaymentUrl": "https://v1-api.newqr.info/99267ce904ec8c41324127bc9a12f39d3b35c3ab443cf7a8de1bce32d35ca83baf5510ec",
+      "gatewayOrderId": "IMB390350756555",
+      "gatewayCheckLink": "https://check.imb.org.in/paytm_status/UPI1732087438399337",
+      "files": [
+        {
+          "id": "d53f5359-7cc1-4c2f-9ce4-84dd2b5991d0",
+          "name": "PAN_Card.jpeg",
+          "type": "image/jpeg",
+          "sizeBytes": 147809,
+          "filePath": "d53f5359-7cc1-4c2f-9ce4-84dd2b5991d0.jpg",
+          "pageCount": 1
+        }
+      ],
+      "id": "ord-c5e58e72",
+      "orderNumber": "ORD-804340",
+      "createdAt": "2026-10-23T19:19:06.344Z",
+      "updatedAt": "2026-10-23T19:19:06.383Z",
+      "paymentCollectedAt": "2026-10-23T19:19:06.356Z",
+      "paymentCollectorName": "Online UPI Gateway",
+      "paymentMethod": "online_upi"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "customerName": "Surya Pratap Singh",
+      "customerPhone": "9876543210",
+      "documentName": "Doc_1.pdf + 3 aur files (4 items)",
+      "documentType": "application/pdf",
+      "filePath": "e108732d-ff23-4494-82b5-307bd6f78698.pdf",
+      "fileSizeBytes": 296488,
+      "pageCount": 4,
+      "copies": 1,
+      "colorMode": "color",
+      "duplexMode": "single",
+      "paperSize": "A4",
+      "orderType": "document",
+      "pageRange": "all",
+      "unitPrice": 10,
+      "totalAmount": 40,
+      "status": "printing",
+      "paymentStatus": "collected",
+      "gatewayPaymentUrl": "https://v1-api.newqr.info/99267ce9fa00a39c836d1b7197b38ebc57123151dea3c493dccec362d2eddcaaad5fa549",
+      "gatewayOrderId": "IMB478113341363",
+      "gatewayCheckLink": "https://check.imb.org.in/paytm_status/UPI6122621329085327",
+      "files": [
+        {
+          "id": "e108732d-ff23-4494-82b5-307bd6f78698",
+          "name": "Doc_1.pdf",
+          "type": "application/pdf",
+          "sizeBytes": 435,
+          "filePath": "e108732d-ff23-4494-82b5-307bd6f78698.pdf",
+          "pageCount": 1
+        },
+        {
+          "id": "52d26297-fe30-457a-9c5e-a9b194594b6a",
+          "name": "Pan_Card.jpeg",
+          "type": "image/jpeg",
+          "sizeBytes": 147809,
+          "filePath": "52d26297-fe30-457a-9c5e-a9b194594b6a.jpg",
+          "pageCount": 1
+        },
+        {
+          "id": "b8063031-8f09-4c42-be22-4c51d9fc9802",
+          "name": "Doc_2.pdf",
+          "type": "application/pdf",
+          "sizeBytes": 435,
+          "filePath": "b8063031-8f09-4c42-be22-4c51d9fc9802.pdf",
+          "pageCount": 1
+        },
+        {
+          "id": "51e12fa1-5abf-4580-82b3-3b51ce918195",
+          "name": "Pan_Card_Copy.jpeg",
+          "type": "image/jpeg",
+          "sizeBytes": 147809,
+          "filePath": "51e12fa1-5abf-4580-82b3-3b51ce918195.jpg",
+          "pageCount": 1
+        }
+      ],
+      "id": "ord-9bd4f600",
+      "orderNumber": "ORD-976947",
+      "createdAt": "2026-10-23T19:19:27.231Z",
+      "updatedAt": "2026-10-23T19:19:27.250Z",
+      "paymentCollectedAt": "2026-10-23T19:19:27.246Z",
+      "paymentCollectorName": "Online UPI Gateway",
+      "paymentMethod": "online_upi"
     }
   ],
   "orderHistory": [
     {
-      "id": "hst-98221da6",
-      "orderId": "ord-106e3115",
+      "id": "hst-bd9cafbb",
+      "orderId": "ord-c5e58e72",
       "newStatus": "payment_pending",
       "changedByName": "Customer Submission",
       "comment": "Order placed by customer via Shop QR Portal",
-      "createdAt": "2026-10-23T19:06:41.670Z"
+      "createdAt": "2026-10-23T19:19:06.344Z"
     },
     {
-      "id": "hst-092f70af",
-      "orderId": "ord-106e3115",
+      "id": "hst-24e5c1aa",
+      "orderId": "ord-c5e58e72",
       "previousStatus": "queued",
       "newStatus": "printing",
       "changedByName": "Auto-Print Spooler",
-      "comment": "Online payment received (₹6). Automatically spooled to \"HP LaserJet Pro M404dn\".",
-      "createdAt": "2026-10-23T19:06:41.699Z"
+      "comment": "Online payment received (₹15). Automatically spooled to \"Canon PIXMA G3010\".",
+      "createdAt": "2026-10-23T19:19:06.360Z"
+    },
+    {
+      "id": "hst-9910774a",
+      "orderId": "ord-9bd4f600",
+      "newStatus": "payment_pending",
+      "changedByName": "Customer Submission",
+      "comment": "Order placed by customer via Shop QR Portal",
+      "createdAt": "2026-10-23T19:19:27.231Z"
+    },
+    {
+      "id": "hst-e4291320",
+      "orderId": "ord-9bd4f600",
+      "previousStatus": "queued",
+      "newStatus": "printing",
+      "changedByName": "Auto-Print Spooler",
+      "comment": "Online payment received (₹40). Automatically spooled to \"Canon PIXMA G3010\".",
+      "createdAt": "2026-10-23T19:19:27.250Z"
     }
   ],
   "payments": [
@@ -1776,6 +2019,28 @@
       "collectedBy": "Online UPI Gateway",
       "notes": "Online payment verified. Ref: VERIFY-TXN-3FILES",
       "collectedAt": "2026-10-23T19:06:41.696Z"
+    },
+    {
+      "id": "pay-c97d30dd",
+      "orderId": "ord-c5e58e72",
+      "shopId": "shp-00ff309e",
+      "amount": 15,
+      "method": "online_upi",
+      "status": "collected",
+      "collectedBy": "Online UPI Gateway",
+      "notes": "Online payment verified. Ref: VERIFY-PAN-SINGLE",
+      "collectedAt": "2026-10-23T19:19:06.356Z"
+    },
+    {
+      "id": "pay-bfdc78cb",
+      "orderId": "ord-9bd4f600",
+      "shopId": "shp-00ff309e",
+      "amount": 40,
+      "method": "online_upi",
+      "status": "collected",
+      "collectedBy": "Online UPI Gateway",
+      "notes": "Online payment verified. Ref: VERIFY-4-FILES",
+      "collectedAt": "2026-10-23T19:19:27.246Z"
     }
   ],
   "printJobs": [
@@ -1956,9 +2221,120 @@
       "agentId": "agt-cf0f2f85",
       "claimToken": "claim_dc705997-7851-4e70-80d1-b4fd3fad6ca8",
       "claimedAt": "2026-10-23T19:06:41.753Z"
+    },
+    {
+      "id": "job-5e38c2c6",
+      "orderId": "ord-c5e58e72",
+      "shopId": "shp-00ff309e",
+      "printerName": "Canon PIXMA G3010",
+      "status": "claimed",
+      "retryCount": 0,
+      "filePath": "d53f5359-7cc1-4c2f-9ce4-84dd2b5991d0.jpg",
+      "documentName": "PAN_Card.jpeg",
+      "documentType": "image/jpeg",
+      "fileIndex": 1,
+      "totalFiles": 1,
+      "createdAt": "2026-10-23T19:19:06.358Z",
+      "agentId": "agt-cf0f2f85",
+      "claimToken": "claim_f3f4092c-b971-486e-821c-43a563bdd6c1",
+      "claimedAt": "2026-10-23T19:19:06.383Z"
+    },
+    {
+      "id": "job-e7a9eb3b",
+      "orderId": "ord-9bd4f600",
+      "shopId": "shp-00ff309e",
+      "printerName": "Canon PIXMA G3010",
+      "status": "pending",
+      "retryCount": 0,
+      "filePath": "e108732d-ff23-4494-82b5-307bd6f78698.pdf",
+      "documentName": "Doc_1.pdf",
+      "documentType": "application/pdf",
+      "fileIndex": 1,
+      "totalFiles": 4,
+      "createdAt": "2026-10-23T19:19:27.248Z"
+    },
+    {
+      "id": "job-f8432d14",
+      "orderId": "ord-9bd4f600",
+      "shopId": "shp-00ff309e",
+      "printerName": "Canon PIXMA G3010",
+      "status": "pending",
+      "retryCount": 0,
+      "filePath": "52d26297-fe30-457a-9c5e-a9b194594b6a.jpg",
+      "documentName": "Pan_Card.jpeg",
+      "documentType": "image/jpeg",
+      "fileIndex": 2,
+      "totalFiles": 4,
+      "createdAt": "2026-10-23T19:19:27.248Z"
+    },
+    {
+      "id": "job-3c67dca9",
+      "orderId": "ord-9bd4f600",
+      "shopId": "shp-00ff309e",
+      "printerName": "Canon PIXMA G3010",
+      "status": "pending",
+      "retryCount": 0,
+      "filePath": "b8063031-8f09-4c42-be22-4c51d9fc9802.pdf",
+      "documentName": "Doc_2.pdf",
+      "documentType": "application/pdf",
+      "fileIndex": 3,
+      "totalFiles": 4,
+      "createdAt": "2026-10-23T19:19:27.248Z"
+    },
+    {
+      "id": "job-b015861c",
+      "orderId": "ord-9bd4f600",
+      "shopId": "shp-00ff309e",
+      "printerName": "Canon PIXMA G3010",
+      "status": "pending",
+      "retryCount": 0,
+      "filePath": "51e12fa1-5abf-4580-82b3-3b51ce918195.jpg",
+      "documentName": "Pan_Card_Copy.jpeg",
+      "documentType": "image/jpeg",
+      "fileIndex": 4,
+      "totalFiles": 4,
+      "createdAt": "2026-10-23T19:19:27.248Z"
     }
   ],
   "activityLogs": [
+    {
+      "shopId": "shp-00ff309e",
+      "actionType": "payment_collected",
+      "description": "Order ORD-976947 paid ₹40 online. Instantly sent to printer.",
+      "id": "log-1487ac5d",
+      "createdAt": "2026-10-23T19:19:27.252Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "actionType": "order_submitted",
+      "description": "Order ORD-976947 placed by Surya Pratap Singh (Doc_1.pdf + 3 aur files (4 items), ₹40). Gateway session ready.",
+      "metadata": {
+        "orderNumber": "ORD-976947",
+        "amount": 40,
+        "gatewayOrderId": "IMB478113341363"
+      },
+      "id": "log-4304c3a7",
+      "createdAt": "2026-10-23T19:19:27.233Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "actionType": "payment_collected",
+      "description": "Order ORD-804340 paid ₹15 online. Instantly sent to printer.",
+      "id": "log-10303a01",
+      "createdAt": "2026-10-23T19:19:06.361Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "actionType": "order_submitted",
+      "description": "Order ORD-804340 placed by Surya Pratap Singh (PAN_Card.jpeg, ₹15). Gateway session ready.",
+      "metadata": {
+        "orderNumber": "ORD-804340",
+        "amount": 15,
+        "gatewayOrderId": "IMB390350756555"
+      },
+      "id": "log-40333fdb",
+      "createdAt": "2026-10-23T19:19:06.346Z"
+    },
     {
       "shopId": "shp-00ff309e",
       "actionType": "payment_collected",

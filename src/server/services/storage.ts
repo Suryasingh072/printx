@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { jsPDF } from 'jspdf';
 
 const isVercel = Boolean(process.env.VERCEL);
 const UPLOAD_ROOT = isVercel
@@ -102,6 +103,17 @@ export class StorageService {
 
     fs.writeFileSync(destinationPath, buffer);
 
+    // If file is an image (JPEG, PNG, WebP), generate companion A4 PDF immediately
+    if (finalMime.startsWith('image/')) {
+      try {
+        const companionPdfBuffer = this.convertImageToA4Pdf(buffer, finalMime);
+        const companionPdfPath = path.join(DOCS_DIR, `${fileId}.pdf`);
+        fs.writeFileSync(companionPdfPath, companionPdfBuffer);
+      } catch (err) {
+        console.warn('Could not generate companion A4 PDF for image:', err);
+      }
+    }
+
     // Calculate pages
     let pageCount = 1;
     if (finalMime === 'application/pdf') {
@@ -117,6 +129,73 @@ export class StorageService {
       pageCount,
       createdAt: new Date().toISOString(),
     };
+  }
+
+  /**
+   * Converts any image (JPEG/PNG/WebP) into a standard, perfectly centered A4 printable PDF
+   */
+  public convertImageToA4Pdf(imageBuffer: Buffer, mimeType = 'image/jpeg'): Buffer {
+    try {
+      const format = mimeType.includes('png') ? 'PNG' : 'JPEG';
+      const base64 = `data:${mimeType};base64,` + imageBuffer.toString('base64');
+      const doc = new jsPDF({ format: 'a4', unit: 'pt' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      const imgProps = doc.getImageProperties(base64);
+      const margin = 36; // 0.5 inch margins
+      const maxW = pageWidth - margin * 2;
+      const maxH = pageHeight - margin * 2;
+
+      const imgW = imgProps.width || 1200;
+      const imgH = imgProps.height || 800;
+
+      const scale = Math.min(maxW / imgW, maxH / imgH);
+      const w = imgW * scale;
+      const h = imgH * scale;
+      const x = (pageWidth - w) / 2;
+      const y = (pageHeight - h) / 2;
+
+      doc.addImage(base64, format, x, y, w, h);
+      return Buffer.from(doc.output('arraybuffer'));
+    } catch (err) {
+      console.error('convertImageToA4Pdf error:', err);
+      return imageBuffer;
+    }
+  }
+
+  /**
+   * Returns a ready-to-print A4 PDF path for any document or image.
+   * If it is an image, generates or retrieves the companion A4 PDF so printers never print blank pages!
+   */
+  public getOrCreatePrintablePdfPath(safeFilename: string): string {
+    const fullPath = this.getAbsolutePath(safeFilename);
+    if (!fs.existsSync(fullPath)) return fullPath;
+
+    if (safeFilename.toLowerCase().endsWith('.pdf')) {
+      return fullPath;
+    }
+
+    const base = path.basename(safeFilename.trim());
+    const dotIdx = base.lastIndexOf('.');
+    const nameWithoutExt = dotIdx > 0 ? base.substring(0, dotIdx) : base;
+    const companionPdfPath = path.join(DOCS_DIR, `${nameWithoutExt}.pdf`);
+
+    if (fs.existsSync(companionPdfPath) && fs.statSync(companionPdfPath).size > 0) {
+      return companionPdfPath;
+    }
+
+    // Generate companion A4 PDF on the fly and cache it
+    try {
+      const imgBuffer = fs.readFileSync(fullPath);
+      const ext = path.extname(fullPath).toLowerCase();
+      const mime = ext === '.png' ? 'image/png' : 'image/jpeg';
+      const pdfBuffer = this.convertImageToA4Pdf(imgBuffer, mime);
+      fs.writeFileSync(companionPdfPath, pdfBuffer);
+      return companionPdfPath;
+    } catch (e) {
+      return fullPath;
+    }
   }
 
   /**

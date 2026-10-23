@@ -377,45 +377,53 @@ $Timer.Add_Tick({
                     if ($DryRunBox.Checked) {
                         LogMessage "[TEST MODE] Simulated print of file $fileIdx/$totalF ($cleanName) completed."
                     } else {
+                        $targetPrinter = $PrinterBox.Text
                         $ext = [System.IO.Path]::GetExtension($tmpFile).ToLower()
                         if ($ext -match '\.(jpg|jpeg|png|webp|bmp)$') {
-                            # Reliable headless GDI+ .NET image printing (memory stream + safe bounds)
+                            # Reliable headless GDI+ .NET image printing (memory stream + safe bounds + Pixel units)
                             try {
                                 Add-Type -AssemblyName System.Drawing
                                 $pdoc = New-Object System.Drawing.Printing.PrintDocument
                                 $pdoc.OriginAtMargins = $false
                                 $pdoc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(15, 15, 15, 15)
-                                if ($PrinterBox.Text -and $PrinterBox.Text -ne "Default Windows Printer") {
-                                    $pdoc.PrinterSettings.PrinterName = $PrinterBox.Text
+                                if ($targetPrinter -and $targetPrinter -ne "Default Windows Printer") {
+                                    $pdoc.PrinterSettings.PrinterName = $targetPrinter
                                 }
 
                                 $rawBytes = [System.IO.File]::ReadAllBytes($tmpFile)
                                 $ms = New-Object System.IO.MemoryStream(,$rawBytes)
-                                $img = [System.Drawing.Bitmap]::FromStream($ms)
+                                $script:currentPrintImg = [System.Drawing.Bitmap]::FromStream($ms)
 
                                 $pdoc.add_PrintPage({
                                     param($sender, $ev)
                                     try {
-                                        $paperW = [Math]::Max(100, $ev.PageBounds.Width)
-                                        $paperH = [Math]::Max(100, $ev.PageBounds.Height)
-                                        $margin = 20
-                                        $availW = [Math]::Max(50, $paperW - ($margin * 2))
-                                        $availH = [Math]::Max(50, $paperH - ($margin * 2))
+                                        if ($script:currentPrintImg) {
+                                            $paperW = [Math]::Max(100, $ev.PageBounds.Width)
+                                            $paperH = [Math]::Max(100, $ev.PageBounds.Height)
+                                            $margin = 25
+                                            $availW = [Math]::Max(50, $paperW - ($margin * 2))
+                                            $availH = [Math]::Max(50, $paperH - ($margin * 2))
 
-                                        $imgW = $img.Width
-                                        $imgH = $img.Height
+                                            $imgW = $script:currentPrintImg.Width
+                                            $imgH = $script:currentPrintImg.Height
 
-                                        if ($imgW -gt 0 -and $imgH -gt 0) {
-                                            $scale = [Math]::Min($availW / $imgW, $availH / $imgH)
-                                            $dw = [int]($imgW * $scale)
-                                            $dh = [int]($imgH * $scale)
-                                            $dx = [int](($paperW - $dw) / 2)
-                                            $dy = [int](($paperH - $dh) / 2)
+                                            if ($imgW -gt 0 -and $imgH -gt 0) {
+                                                $scale = [Math]::Min($availW / $imgW, $availH / $imgH)
+                                                $dw = [int]($imgW * $scale)
+                                                $dh = [int]($imgH * $scale)
+                                                $dx = [int](($paperW - $dw) / 2)
+                                                $dy = [int](($paperH - $dh) / 2)
 
-                                            $ev.Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-                                            $ev.Graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
-                                            $ev.Graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
-                                            $ev.Graphics.DrawImage($img, $dx, $dy, $dw, $dh)
+                                                $destRect = New-Object System.Drawing.Rectangle($dx, $dy, $dw, $dh)
+
+                                                $ev.Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+                                                $ev.Graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+                                                $ev.Graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+
+                                                # CRITICAL FIX: Explicitly specify destination rectangle, source rectangle (0, 0, imgW, imgH) AND GraphicsUnit.Pixel
+                                                # This completely eliminates WhatsApp JFIF 1-DPI scaling bug that caused images to render off-screen / blank!
+                                                $ev.Graphics.DrawImage($script:currentPrintImg, $destRect, 0, 0, $imgW, $imgH, [System.Drawing.GraphicsUnit]::Pixel)
+                                            }
                                         }
                                     } catch {
                                         LogMessage "[PRINT ERROR] Image render error: $_"
@@ -425,27 +433,51 @@ $Timer.Add_Tick({
 
                                 $pdoc.Print()
                                 $ms.Dispose()
-                                $img.Dispose()
-                                LogMessage "[SPOOL SUCCESS] Image printed cleanly to '$($PrinterBox.Text)' (File $fileIdx/$totalF: $cleanName)."
-                                # Crucial: Wait 3 seconds so spooler finishes sending to printer driver before next job
+                                if ($script:currentPrintImg) {
+                                    $script:currentPrintImg.Dispose()
+                                    $script:currentPrintImg = $null
+                                }
+                                LogMessage "[SPOOL SUCCESS] Image printed cleanly to '$targetPrinter' (File $fileIdx/$totalF: $cleanName)."
                                 Start-Sleep -Seconds 3
                             } catch {
-                                $proc = Start-Process -FilePath $tmpFile -Verb Print -PassThru
-                                if ($proc) {
-                                    $proc.WaitForExit(8000)
+                                try {
+                                    $pinfo = New-Object System.Diagnostics.ProcessStartInfo
+                                    $pinfo.FileName = $tmpFile
+                                    if ($targetPrinter -and $targetPrinter -ne "Default Windows Printer") {
+                                        $pinfo.Verb = "PrintTo"
+                                        $pinfo.Arguments = "`"$targetPrinter`""
+                                    } else {
+                                        $pinfo.Verb = "Print"
+                                    }
+                                    $pinfo.CreateNoWindow = $true
+                                    $pinfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+                                    $proc = [System.Diagnostics.Process]::Start($pinfo)
+                                    if ($proc) { $proc.WaitForExit(10000) }
+                                } catch {
+                                    Start-Process -FilePath $tmpFile -Verb Print -PassThru | Out-Null
                                 }
                                 Start-Sleep -Seconds 3
                                 LogMessage "[SPOOL SUCCESS] Sent image $fileIdx/$totalF to Windows printer."
                             }
                         } else {
-                            # PDF document print with process wait and spool separation
+                            # PDF document print with target printer routing and spool separation
                             try {
-                                $proc = Start-Process -FilePath $tmpFile -Verb Print -PassThru
+                                $pinfo = New-Object System.Diagnostics.ProcessStartInfo
+                                $pinfo.FileName = $tmpFile
+                                if ($targetPrinter -and $targetPrinter -ne "Default Windows Printer") {
+                                    $pinfo.Verb = "PrintTo"
+                                    $pinfo.Arguments = "`"$targetPrinter`""
+                                } else {
+                                    $pinfo.Verb = "Print"
+                                }
+                                $pinfo.CreateNoWindow = $true
+                                $pinfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+                                $proc = [System.Diagnostics.Process]::Start($pinfo)
                                 if ($proc) {
                                     $proc.WaitForExit(10000)
                                 }
                             } catch {
-                                [Diagnostics.Process]::Start($tmpFile) | Out-Null
+                                Start-Process -FilePath $tmpFile -Verb Print -PassThru | Out-Null
                             }
                             # Crucial: 4-second spool settlement delay so Windows Spooler separates multi-page / multi-file jobs cleanly without blank paper!
                             Start-Sleep -Seconds 4

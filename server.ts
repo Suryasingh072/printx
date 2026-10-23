@@ -2299,9 +2299,19 @@ const handleAgentJobDownload = (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Document file missing on server. Print skipped to prevent blank paper.' });
     }
 
-    const fullPath = hasTarget
+    const rawFullPath = hasTarget
       ? storageService.getAbsolutePath(targetFilePath)
       : storageService.getAbsolutePath(order.filePath);
+
+    // Auto-synthesize or retrieve standard A4 printable PDF so physical printers never print blank pages!
+    const printablePath = storageService.getOrCreatePrintablePdfPath(hasTarget ? targetFilePath : order.filePath);
+    const fullPath = fs.existsSync(printablePath) && fs.statSync(printablePath).size > 0 ? printablePath : rawFullPath;
+
+    const isPdf = fullPath.toLowerCase().endsWith('.pdf');
+    const effectiveMime = isPdf ? 'application/pdf' : docType;
+    const effectiveDocName = isPdf && !docName.toLowerCase().endsWith('.pdf')
+      ? `${docName.replace(/\.[^/.]+$/, '')}.pdf`
+      : docName;
 
     const stat = fs.statSync(fullPath);
     if (!stat || stat.size === 0) {
@@ -2309,15 +2319,15 @@ const handleAgentJobDownload = (req: Request, res: Response) => {
       return res.status(404).json({ error: 'File is 0 bytes on server. Print skipped to prevent blank paper.' });
     }
 
-    console.log(`[Agent Spooler] Streaming file for job ${jobId} (#${order.orderNumber}, file ${job.fileIndex || 1}/${job.totalFiles || 1}: ${docName}, ${stat.size} bytes)`);
+    console.log(`[Agent Spooler] Streaming file for job ${jobId} (#${order.orderNumber}, file ${job.fileIndex || 1}/${job.totalFiles || 1}: ${effectiveDocName}, ${stat.size} bytes, isPdf: ${isPdf})`);
 
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Content-Type', docType);
+    res.setHeader('Content-Type', effectiveMime);
     res.setHeader('Content-Length', stat.size);
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(docName)}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(effectiveDocName)}"`);
 
     fs.createReadStream(fullPath).pipe(res);
   } catch (err: any) {
