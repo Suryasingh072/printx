@@ -13,7 +13,7 @@ export type OrderStatus =
   | 'archived';
 
 export type PaymentStatus = 'unpaid' | 'collected' | 'refunded';
-export type PaymentMethod = 'counter_upi' | 'online_upi' | 'other';
+export type PaymentMethod = 'counter_upi' | 'online_upi' | 'razorpay' | 'other';
 
 export type ColorMode = 'bw' | 'color';
 export type DuplexMode = 'single' | 'duplex';
@@ -43,6 +43,8 @@ export interface Shop {
   activatedAt?: string;
   qrCodeUrl?: string;
   paymentGatewayUrl?: string;
+  razorpayKeyId?: string;
+  razorpayKeySecret?: string;
   agentOnline?: boolean;
   createdAt: string;
 }
@@ -139,6 +141,9 @@ export interface Order {
   gatewayPaymentUrl?: string;
   gatewayOrderId?: string;
   gatewayCheckLink?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
   files?: OrderFileItem[];
   approvedAt?: string;
   printedAt?: string;

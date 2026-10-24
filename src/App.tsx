@@ -6,6 +6,8 @@ import { CustomerPortal } from './components/CustomerPortal.js';
 import { ShopDashboard } from './components/ShopDashboard.js';
 import { AdminDashboard } from './components/AdminDashboard.js';
 
+import { PolicyPages, PolicyType } from './components/PolicyPages.js';
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentShop, setCurrentShop] = useState<Shop | null>(null);
@@ -25,7 +27,81 @@ export default function App() {
   const navigateTo = (path: string) => {
     window.history.pushState({}, '', path);
     setCurrentPath(path);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Route matches for Legal & Policy Pages
+  if (currentPath === '/privacy-policy') {
+    return (
+      <PolicyPages
+        initialPolicy="privacy"
+        onNavigateHome={() => navigateTo('/')}
+        onNavigatePolicy={(p) => {
+          const map: Record<PolicyType, string> = {
+            privacy: '/privacy-policy',
+            refund: '/refund-policy',
+            terms: '/terms-and-conditions',
+            contact: '/contact',
+          };
+          navigateTo(map[p]);
+        }}
+      />
+    );
+  }
+
+  if (currentPath === '/refund-policy') {
+    return (
+      <PolicyPages
+        initialPolicy="refund"
+        onNavigateHome={() => navigateTo('/')}
+        onNavigatePolicy={(p) => {
+          const map: Record<PolicyType, string> = {
+            privacy: '/privacy-policy',
+            refund: '/refund-policy',
+            terms: '/terms-and-conditions',
+            contact: '/contact',
+          };
+          navigateTo(map[p]);
+        }}
+      />
+    );
+  }
+
+  if (currentPath === '/terms-and-conditions' || currentPath === '/terms') {
+    return (
+      <PolicyPages
+        initialPolicy="terms"
+        onNavigateHome={() => navigateTo('/')}
+        onNavigatePolicy={(p) => {
+          const map: Record<PolicyType, string> = {
+            privacy: '/privacy-policy',
+            refund: '/refund-policy',
+            terms: '/terms-and-conditions',
+            contact: '/contact',
+          };
+          navigateTo(map[p]);
+        }}
+      />
+    );
+  }
+
+  if (currentPath === '/contact') {
+    return (
+      <PolicyPages
+        initialPolicy="contact"
+        onNavigateHome={() => navigateTo('/')}
+        onNavigatePolicy={(p) => {
+          const map: Record<PolicyType, string> = {
+            privacy: '/privacy-policy',
+            refund: '/refund-policy',
+            terms: '/terms-and-conditions',
+            contact: '/contact',
+          };
+          navigateTo(map[p]);
+        }}
+      />
+    );
+  }
 
   // Initial Auth Check
   useEffect(() => {
@@ -189,6 +265,7 @@ export default function App() {
     <LandingPage
       onOpenCustomerPortal={(slug) => navigateTo(`/shop/${slug}`)}
       onLoginSuccess={handleLoginSuccess}
+      onNavigatePolicy={(path) => navigateTo(path)}
     />
   );
 }

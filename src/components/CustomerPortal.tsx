@@ -109,20 +109,119 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
   const [isPayingOnline, setIsPayingOnline] = useState(false);
   const [onlineUpiSuccess, setOnlineUpiSuccess] = useState(false);
 
-  // Payment Gateway (IMB Payment) State
-  const defaultGatewayUrl = 'https://merchant.imbpayment.co.in/pay/pp_gtnQHY1RYx';
-  const baseGatewayUrl = shop?.paymentGatewayUrl || defaultGatewayUrl;
+  // Razorpay Payment Gateway State
   const [transactionRef, setTransactionRef] = useState<string>('');
-  const [copiedGatewayLink, setCopiedGatewayLink] = useState(false);
-  const [gatewayQrDataUrl, setGatewayQrDataUrl] = useState<string>('');
-  const [hasOpenedGateway, setHasOpenedGateway] = useState(false);
-  const [isCheckingGatewayStatus, setIsCheckingGatewayStatus] = useState(false);
+  const [isCheckingPaymentStatus, setIsCheckingPaymentStatus] = useState(false);
+
+  // Dynamically load Razorpay SDK
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+      const existingScript = document.getElementById('razorpay-checkout-script');
+      if (existingScript) {
+        existingScript.addEventListener('load', () => resolve(true));
+        existingScript.addEventListener('error', () => resolve(false));
+        return;
+      }
+      const script = document.createElement('script');
+      script.id = 'razorpay-checkout-script';
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleOpenRazorpayCheckout = async (orderToPay?: Order) => {
+    const targetOrder = orderToPay || placedOrder;
+    if (!targetOrder) return;
+
+    setIsPayingOnline(true);
+    try {
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error('Razorpay secure checkout could not be loaded. Please check your internet connection.');
+      }
+
+      // Create or retrieve Razorpay order details from server
+      const rzpData = await api.createRazorpayOrder(targetOrder.orderNumber);
+
+      const rzpOptions: any = {
+        key: rzpData.keyId,
+        amount: rzpData.amountInPaise,
+        currency: rzpData.currency || 'INR',
+        name: shop?.name || 'printx Cloud Printing',
+        description: `Print Order #${targetOrder.orderNumber} (${targetOrder.pageCount} pgs)`,
+        order_id: rzpData.razorpayOrderId && rzpData.razorpayOrderId.startsWith('order_') ? rzpData.razorpayOrderId : undefined,
+        prefill: {
+          name: customerName || targetOrder.customerName || '',
+          contact: customerPhone || targetOrder.customerPhone || '',
+        },
+        notes: {
+          orderNumber: targetOrder.orderNumber,
+          shopSlug: shopSlug,
+        },
+        theme: {
+          color: '#0284c7', // Professional Razorpay brand blue/cyan
+        },
+        handler: async (response: any) => {
+          try {
+            setIsPayingOnline(true);
+            const verifyRes = await api.verifyRazorpayPayment(targetOrder.orderNumber, {
+              razorpay_order_id: response.razorpay_order_id || rzpData.razorpayOrderId,
+              razorpay_payment_id: response.razorpay_payment_id || `pay_${Date.now()}`,
+              razorpay_signature: response.razorpay_signature || '',
+            });
+
+            if (verifyRes.success && verifyRes.order) {
+              setPlacedOrder(verifyRes.order);
+              setOnlineUpiSuccess(true);
+              confetti({
+                particleCount: 150,
+                spread: 90,
+                origin: { y: 0.6 },
+              });
+              setFileQueue([]);
+              setCustomerName('');
+              setCustomerPhone('');
+              setCustomNotes('');
+              setCopies(1);
+            }
+          } catch (err: any) {
+            alert(err.message || 'Payment verification failed. Please check payment status.');
+          } finally {
+            setIsPayingOnline(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setIsPayingOnline(false);
+          },
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(rzpOptions);
+      rzp.on('payment.failed', (failResp: any) => {
+        alert(`Payment failed: ${failResp.error?.description || 'Transaction unsuccessful'}`);
+        setIsPayingOnline(false);
+      });
+      rzp.open();
+    } catch (err: any) {
+      alert(err.message || 'Could not launch Razorpay Checkout.');
+    } finally {
+      setIsPayingOnline(false);
+    }
+  };
 
   const handlePayOnlineNow = async (customRef?: string) => {
     if (!placedOrder) return;
     setIsPayingOnline(true);
     try {
-      const refVal = customRef || transactionRef || 'IMB-Gateway-Auto';
+      const refVal = customRef || transactionRef || 'Razorpay-Auto';
       const res = await api.payOnline(placedOrder.orderNumber, refVal);
       setPlacedOrder(res.order);
       setOnlineUpiSuccess(true);
@@ -613,39 +712,15 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
   const { totalPages, total } = calculateTotal();
   const isPaid = placedOrder ? placedOrder.paymentStatus === 'collected' || onlineUpiSuccess : false;
 
-  // Active IMB Gateway URL: If placed order has dynamic session URL generated by backend with exact amount, use it.
-  // Otherwise use the merchant gateway URL with ?amount=${amount} pre-loaded.
-  const activeGatewayUrl = useMemo(() => {
-    if (placedOrder?.gatewayPaymentUrl) {
-      return placedOrder.gatewayPaymentUrl;
-    }
-    const cleanBase = baseGatewayUrl.split('?')[0].replace(/\/$/, '');
-    const amountVal = placedOrder ? placedOrder.totalAmount : total;
-    return `${cleanBase}?amount=${amountVal > 0 ? amountVal : 10}`;
-  }, [placedOrder, baseGatewayUrl, total]);
-
-  // Generate QR Code for the active dynamic gateway URL with exact amount
-  useEffect(() => {
-    if (activeGatewayUrl) {
-      QRCode.toDataURL(activeGatewayUrl, {
-        margin: 1,
-        width: 260,
-        color: { dark: '#000000', light: '#ffffff' },
-      })
-        .then((url) => setGatewayQrDataUrl(url))
-        .catch(() => {});
-    }
-  }, [activeGatewayUrl]);
-
-  // Real-time automatic polling of IMB Payment status
+  // Real-time automatic polling of Razorpay payment status
   useEffect(() => {
     if (!placedOrder || isPaid) return;
 
     let isSubscribed = true;
     const checkPayment = async () => {
       try {
-        setIsCheckingGatewayStatus(true);
-        const res = await api.checkImbPaymentStatus(placedOrder.orderNumber);
+        setIsCheckingPaymentStatus(true);
+        const res = await api.checkPaymentStatus(placedOrder.orderNumber);
         if (!isSubscribed) return;
 
         if (res.paid && res.order) {
@@ -666,12 +741,12 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
       } catch (e: any) {
         // silent polling catch
       } finally {
-        if (isSubscribed) setIsCheckingGatewayStatus(false);
+        if (isSubscribed) setIsCheckingPaymentStatus(false);
       }
     };
 
-    const initialTimer = setTimeout(checkPayment, 1000);
-    const interval = setInterval(checkPayment, 2000);
+    const initialTimer = setTimeout(checkPayment, 1200);
+    const interval = setInterval(checkPayment, 2500);
 
     return () => {
       isSubscribed = false;
@@ -679,14 +754,6 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
       clearInterval(interval);
     };
   }, [placedOrder, isPaid]);
-
-  const handleCopyGatewayLink = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(activeGatewayUrl);
-      setCopiedGatewayLink(true);
-      setTimeout(() => setCopiedGatewayLink(false), 2500);
-    }
-  };
 
   if (loading) {
     return (
@@ -796,12 +863,12 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
               </div>
             </div>
 
-            {/* Payment Row / IMB Gateway Box */}
+            {/* Payment Row / Razorpay Gateway Box */}
             {isPaid ? (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-emerald-950/30 border border-emerald-500/40 p-4 sm:p-5 rounded-2xl">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-emerald-400 font-black text-sm">
-                    <Check className="w-5 h-5 stroke-[3]" /> Payment Verified via IMB Gateway & Dispatched to Printer!
+                    <Check className="w-5 h-5 stroke-[3]" /> Payment Verified via Razorpay & Dispatched to Printer!
                   </div>
                   <p className="text-[11px] text-slate-300">
                     Aapka order printer queue me chala gaya hai. Print machine se turant collect karein.
@@ -822,22 +889,22 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                 </button>
               </div>
             ) : (
-              <div className="space-y-4 bg-gradient-to-br from-[#0b1528] via-[#0f172a] to-[#0a1120] p-5 sm:p-6 rounded-2xl border-2 border-emerald-500/40 shadow-[0_8px_30px_rgba(16,185,129,0.15)]">
+              <div className="space-y-4 bg-gradient-to-br from-[#0b1528] via-[#0f172a] to-[#0a1120] p-5 sm:p-6 rounded-2xl border-2 border-sky-500/40 shadow-[0_8px_30px_rgba(2,132,199,0.18)]">
                 {/* Gateway Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
                   <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30 shrink-0">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/30 shrink-0">
                       <CreditCard className="w-6 h-6 stroke-[2.5]" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="text-base font-black text-white font-head">IMB Payment Gateway</h4>
-                        <span className="badge text-[10px] font-black uppercase tracking-wider py-0.5 px-2.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                          100% Online Payment
+                        <h4 className="text-base font-black text-white font-head">Razorpay Secure Payment</h4>
+                        <span className="badge text-[10px] font-black uppercase tracking-wider py-0.5 px-2.5 bg-sky-500/20 text-sky-300 border border-sky-500/40">
+                          Instant Auto-Print
                         </span>
                       </div>
                       <p className="text-xs text-slate-300 mt-0.5">
-                        UPI • Google Pay • PhonePe • Paytm • BHIM • Debit / RuPay Cards
+                        UPI • Google Pay • PhonePe • Paytm • BHIM • RuPay / Cards • NetBanking
                       </p>
                     </div>
                   </div>
@@ -850,61 +917,49 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
 
                 {/* Gateway Action Center */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center pt-1">
-                  {/* Left Column: Direct One-Tap Gateway Link & Verification */}
+                  {/* Left Column: Direct One-Tap Razorpay Checkout & Verification */}
                   <div className="md:col-span-8 space-y-4">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <label className="text-xs font-bold text-slate-200">
-                          Pay ₹{placedOrder.totalAmount.toFixed(2)} directly via Gateway:
+                          Click below to pay securely via Razorpay:
                         </label>
-                        <span className="text-[11px] text-emerald-400 font-medium">Amount pre-loaded automatically</span>
+                        <span className="text-[11px] text-sky-400 font-medium">All UPI apps & Cards supported</span>
                       </div>
-                      <div className="flex flex-col sm:flex-row gap-2.5">
-                        <a
-                          href={activeGatewayUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={() => setHasOpenedGateway(true)}
-                          className="btn bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-black py-4 px-6 rounded-2xl shadow-[0_8px_25px_rgba(16,185,129,0.35)] flex items-center justify-center gap-2.5 text-sm font-head cursor-pointer flex-1 transition transform hover:scale-[1.01] active:scale-[0.99]"
-                        >
-                          <ExternalLink className="w-5 h-5 stroke-[2.5]" />
-                          <span>Pay ₹{placedOrder.totalAmount.toFixed(2)} on IMB Payment Gateway</span>
-                        </a>
-
-                        <button
-                          type="button"
-                          onClick={handleCopyGatewayLink}
-                          className="py-3 px-4 bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 rounded-2xl text-xs font-bold text-slate-200 hover:text-white transition flex items-center justify-center gap-2 shrink-0 cursor-pointer"
-                          title="Payment Gateway Link copy karein"
-                        >
-                          {copiedGatewayLink ? (
-                            <>
-                              <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
-                              <span className="text-emerald-400 font-black">Link Copied!</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-4 h-4 text-slate-400" />
-                              <span>Copy Link</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
+                      
+                      <button
+                        type="button"
+                        onClick={() => handleOpenRazorpayCheckout()}
+                        disabled={isPayingOnline}
+                        className="btn bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-black py-4 px-6 rounded-2xl shadow-[0_8px_25px_rgba(2,132,199,0.35)] flex items-center justify-center gap-2.5 text-sm font-head cursor-pointer w-full transition transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
+                      >
+                        {isPayingOnline ? (
+                          <>
+                            <RefreshCw className="w-5 h-5 animate-spin" />
+                            <span>Opening Razorpay Secure Checkout...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-5 h-5 fill-white stroke-[2.5]" />
+                            <span>Pay ₹{placedOrder.totalAmount.toFixed(2)} via Razorpay (UPI / QR / Cards)</span>
+                          </>
+                        )}
+                      </button>
                     </div>
 
-                    {/* Real-time Gateway Polling Banner */}
-                    <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-xs">
+                    {/* Real-time Razorpay Polling Banner */}
+                    <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-sky-500/10 border border-sky-500/25 text-sky-300 text-xs">
                       <div className="relative flex items-center justify-center shrink-0">
-                        <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping absolute" />
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 relative" />
+                        <span className="w-3 h-3 rounded-full bg-sky-400 animate-ping absolute" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-sky-400 relative" />
                       </div>
                       <div className="flex-1">
                         <p className="font-bold text-white text-xs">
-                          {isCheckingGatewayStatus
-                            ? 'Checking payment status with IMB Gateway...'
-                            : 'IMB Gateway auto-verification active'}
+                          {isCheckingPaymentStatus
+                            ? 'Checking payment status with Razorpay...'
+                            : 'Razorpay auto-verification active'}
                         </p>
-                        <p className="text-[11px] text-emerald-400/80 mt-0.5">
+                        <p className="text-[11px] text-sky-300/80 mt-0.5">
                           Payment complete hote hi printer automatic chalu ho jayega (No counter confirmation needed).
                         </p>
                       </div>
@@ -916,21 +971,21 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                         <label className="text-[11px] font-bold text-slate-300">
                           Payment kar diya hai? Turant print shuru karein:
                         </label>
-                        <span className="text-[10px] text-emerald-400 font-mono">Instant Auto-Spool</span>
+                        <span className="text-[10px] text-sky-400 font-mono">Instant Auto-Spool</span>
                       </div>
                       <div className="flex flex-col sm:flex-row gap-2">
                         <input
                           type="text"
-                          placeholder="UPI Ref ID / UTR No. (Optional)"
+                          placeholder="UPI Ref ID / UTR / Razorpay ID (Optional)"
                           value={transactionRef}
                           onChange={(e) => setTransactionRef(e.target.value)}
-                          className="flex-1 py-2.5 px-3 bg-white/[0.05] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-emerald-500"
+                          className="flex-1 py-2.5 px-3 bg-white/[0.05] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-sky-500"
                         />
                         <button
                           type="button"
                           onClick={() => handlePayOnlineNow()}
                           disabled={isPayingOnline}
-                          className="btn bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 px-5 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shrink-0 shadow-lg shadow-emerald-600/30 cursor-pointer disabled:opacity-50"
+                          className="btn bg-sky-600 hover:bg-sky-500 text-white py-2.5 px-5 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shrink-0 shadow-lg shadow-sky-600/30 cursor-pointer disabled:opacity-50"
                         >
                           <Zap className="w-4 h-4 fill-white" />
                           {isPayingOnline ? 'Confirming...' : 'Maine Pay Kar Diya (Print Shuru Karein)'}
@@ -939,33 +994,30 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                     </div>
                   </div>
 
-                  {/* Right Column: Instant Phone Scan QR Code with exact amount */}
-                  <div className="md:col-span-4 flex flex-col items-center justify-center p-4 bg-white/[0.03] border border-white/10 rounded-2xl text-center space-y-2.5">
-                    {gatewayQrDataUrl ? (
-                      <div className="p-3 bg-white rounded-2xl shadow-xl shadow-black/50">
-                        <img
-                          src={gatewayQrDataUrl}
-                          alt="IMB Payment Gateway QR"
-                          className="w-36 h-36 object-contain"
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-36 h-36 bg-white/5 rounded-2xl flex items-center justify-center">
-                        <QrCode className="w-10 h-10 text-slate-500" />
-                      </div>
-                    )}
+                  {/* Right Column: Supported Payment Methods Card */}
+                  <div className="md:col-span-4 flex flex-col items-center justify-center p-4 bg-white/[0.03] border border-white/10 rounded-2xl text-center space-y-3">
+                    <div className="w-14 h-14 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+                      <ShieldCheck className="w-8 h-8" />
+                    </div>
                     <div>
-                      <p className="text-xs font-bold text-white flex items-center justify-center gap-1.5">
-                        <QrCode className="w-3.5 h-3.5 text-pink-400" /> Scan to Pay ₹{placedOrder.totalAmount.toFixed(2)}
+                      <p className="text-xs font-bold text-white">Razorpay 100% Secure</p>
+                      <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                        256-bit SSL encrypted • RBI regulated payment gateway • Direct counter print
                       </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Any UPI App / Phone Camera se scan karein</p>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1 text-[10px] font-semibold text-slate-300">
+                      <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10">GPay</span>
+                      <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10">PhonePe</span>
+                      <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10">Paytm</span>
+                      <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10">BHIM</span>
+                      <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10">Cards</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Assurance Footer — Strictly No Counter */}
                 <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-2 text-xs text-slate-400">
-                  <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
+                  <span className="flex items-center gap-1.5 text-sky-400 font-bold">
                     <ShieldCheck className="w-4 h-4 shrink-0" /> 100% Online Direct Print
                   </span>
                   <span className="text-[11px] text-slate-400 text-right">
@@ -1398,7 +1450,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                 <button
                   type="submit"
                   disabled={fileQueue.length === 0 || isSubmitting || isBulkUploading}
-                  className={`btn btn-primary w-full py-4 text-sm font-black disabled:opacity-40 disabled:pointer-events-none cursor-pointer`}
+                  className={`btn btn-primary w-full py-4 text-sm font-black disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex items-center justify-center gap-2`}
                 >
                   {isSubmitting ? (
                     <>
@@ -1406,7 +1458,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                     </>
                   ) : (
                     <>
-                      <FileCheck className="w-5 h-5 stroke-[2.5]" /> Place Order & Pay Online via IMB • ₹{total.toFixed(2)}
+                      <Zap className="w-5 h-5 fill-white stroke-[2.5]" /> Place Order & Pay via Razorpay • ₹{total.toFixed(2)}
                     </>
                   )}
                 </button>
@@ -1448,18 +1500,18 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                   </div>
 
                   {/* Payment Gateway Badge */}
-                  <div className="p-3 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 rounded-2xl border border-emerald-500/20 space-y-1.5">
+                  <div className="p-3 bg-gradient-to-r from-sky-500/10 via-blue-500/10 to-indigo-500/10 rounded-2xl border border-sky-500/20 space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-xs font-black text-emerald-300">
-                        <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
-                        IMB Payment Gateway
+                      <span className="flex items-center gap-1.5 text-xs font-black text-sky-300">
+                        <CreditCard className="w-3.5 h-3.5 text-sky-400" />
+                        Razorpay Gateway
                       </span>
-                      <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                        100% Online Payment
+                      <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                        100% Online
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-300 leading-snug">
-                      IMB UPI / GPay / PhonePe / Paytm / Cards se online pay karein. Amount automatically load hoga — no counter cash needed.
+                      Razorpay UPI (GPay, PhonePe, Paytm, BHIM) ya Cards se online pay karein. Instant auto-spool to printer.
                     </p>
                   </div>
                 </div>
@@ -1487,7 +1539,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
 
       {/* Mobile Floating Sticky Checkout Bar (Zero-friction mobile checkout) */}
       {!placedOrder && fileQueue.length > 0 && (
-        <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#080d1a]/95 backdrop-blur-xl border-t border-emerald-500/30 p-3.5 shadow-[0_-10px_35px_rgba(0,0,0,0.85)]">
+        <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#080d1a]/95 backdrop-blur-xl border-t border-sky-500/30 p-3.5 shadow-[0_-10px_35px_rgba(0,0,0,0.85)]">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[10px] uppercase font-bold text-slate-400">Total ({totalPages} pgs)</p>
@@ -1500,7 +1552,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                 if (form) form.requestSubmit();
               }}
               disabled={fileQueue.length === 0 || isSubmitting || isBulkUploading}
-              className="btn bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white font-black py-3 px-5 text-xs rounded-xl shadow-lg shadow-emerald-500/30 flex items-center gap-2 cursor-pointer disabled:opacity-40"
+              className="btn bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 text-white font-black py-3 px-5 text-xs rounded-xl shadow-lg shadow-sky-500/30 flex items-center gap-2 cursor-pointer disabled:opacity-40"
             >
               {isSubmitting ? (
                 <>
@@ -1508,7 +1560,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                 </>
               ) : (
                 <>
-                  <CreditCard className="w-4 h-4" /> Pay via IMB • ₹{total.toFixed(2)}
+                  <Zap className="w-4 h-4 fill-white" /> Pay via Razorpay • ₹{total.toFixed(2)}
                 </>
               )}
             </button>

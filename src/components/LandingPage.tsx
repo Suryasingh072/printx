@@ -40,9 +40,10 @@ import { api } from '../lib/api.js';
 interface LandingPageProps {
   onOpenCustomerPortal: (slug: string) => void;
   onLoginSuccess: (user: any, shop?: any) => void;
+  onNavigatePolicy?: (path: string) => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, onLoginSuccess }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, onLoginSuccess, onNavigatePolicy }) => {
   useEffect(() => {
     document.documentElement.dataset.theme = 'dark';
     try {
@@ -815,7 +816,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
             Questions about setup, your shop, or the platform? Reach out through any channel below.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto text-left pt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto text-left pt-4">
+            <a
+              href="/contact"
+              onClick={(e) => {
+                e.preventDefault();
+                if (onNavigatePolicy) onNavigatePolicy('/contact');
+                else window.history.pushState({}, '', '/contact');
+              }}
+              className="p-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/15 transition flex items-center gap-3.5 cursor-pointer group"
+            >
+              <span className="text-2xl">📬</span>
+              <div>
+                <h4 className="text-xs font-bold text-white group-hover:text-rose-300">Support Desk</h4>
+                <p className="text-[11px] text-slate-300">support@printx.in</p>
+              </div>
+            </a>
+
             <a
               href="https://github.com/Suryasingh072"
               target="_blank"
@@ -888,21 +905,81 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
               <p><a href="#faq" className="text-slate-400 hover:text-white transition">FAQ</a></p>
             </div>
 
-            {/* Col 3: Legal */}
+            {/* Col 3: Legal & Policies */}
             <div className="space-y-2 text-xs">
-              <h5 className="font-['Sora'] font-bold text-slate-300 uppercase tracking-wider text-[11px] mb-3">Legal</h5>
-              <p><button onClick={() => setLegalModal('privacy')} className="text-slate-400 hover:text-white transition cursor-pointer">Privacy Policy</button></p>
-              <p><button onClick={() => setLegalModal('terms')} className="text-slate-400 hover:text-white transition cursor-pointer">Terms of Use</button></p>
-              <p><button onClick={() => setLegalModal('refund')} className="text-slate-400 hover:text-white transition cursor-pointer">Refund Policy</button></p>
+              <h5 className="font-['Sora'] font-bold text-slate-300 uppercase tracking-wider text-[11px] mb-3">Legal & Policies</h5>
+              <p>
+                <a
+                  href="/privacy-policy"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (onNavigatePolicy) onNavigatePolicy('/privacy-policy');
+                    else window.history.pushState({}, '', '/privacy-policy');
+                  }}
+                  className="text-slate-400 hover:text-white transition cursor-pointer"
+                >
+                  Privacy Policy
+                </a>
+              </p>
+              <p>
+                <a
+                  href="/refund-policy"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (onNavigatePolicy) onNavigatePolicy('/refund-policy');
+                    else window.history.pushState({}, '', '/refund-policy');
+                  }}
+                  className="text-slate-400 hover:text-white transition cursor-pointer"
+                >
+                  Refund & Cancellation Policy
+                </a>
+              </p>
+              <p>
+                <a
+                  href="/terms-and-conditions"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (onNavigatePolicy) onNavigatePolicy('/terms-and-conditions');
+                    else window.history.pushState({}, '', '/terms-and-conditions');
+                  }}
+                  className="text-slate-400 hover:text-white transition cursor-pointer"
+                >
+                  Terms & Conditions
+                </a>
+              </p>
+              <p>
+                <a
+                  href="/contact"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (onNavigatePolicy) onNavigatePolicy('/contact');
+                    else window.history.pushState({}, '', '/contact');
+                  }}
+                  className="text-slate-400 hover:text-white transition cursor-pointer"
+                >
+                  Contact Us
+                </a>
+              </p>
             </div>
 
-            {/* Col 4: Shop Access */}
+            {/* Col 4: Shop Access & Support */}
             <div className="space-y-2 text-xs">
               <h5 className="font-['Sora'] font-bold text-slate-300 uppercase tracking-wider text-[11px] mb-3">Shop Access</h5>
               <p><button onClick={() => setShowLoginModal(true)} className="text-slate-400 hover:text-white transition cursor-pointer">Shop Sign In</button></p>
               <p><a href="#for-shops" className="text-slate-400 hover:text-white transition">Shop Benefits</a></p>
-              <p><a href="#how-it-works" className="text-slate-400 hover:text-white transition">How it works</a></p>
-              <p><a href="#contact" className="text-slate-400 hover:text-white transition">Contact</a></p>
+              <p>
+                <a
+                  href="/contact"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (onNavigatePolicy) onNavigatePolicy('/contact');
+                    else window.history.pushState({}, '', '/contact');
+                  }}
+                  className="text-slate-400 hover:text-white transition cursor-pointer"
+                >
+                  Help & Contact Support
+                </a>
+              </p>
             </div>
           </div>
 

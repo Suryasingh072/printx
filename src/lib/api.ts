@@ -291,25 +291,51 @@ export const api = {
     });
   },
 
-  async createImbSession(orderNumber: string): Promise<{
+  async createRazorpayOrder(orderNumber: string): Promise<{
     success: boolean;
-    paymentUrl: string;
-    orderId?: string;
-    checkLink?: string;
+    orderNumber: string;
+    razorpayOrderId: string;
     amount: number;
+    amountInPaise: number;
+    currency: string;
+    keyId: string;
+    isTestMode: boolean;
+    shopName: string;
   }> {
-    return this.request(`/api/orders/${orderNumber}/imb-session`, {
+    return this.request(`/api/payments/razorpay/create-order`, {
       method: 'POST',
+      body: JSON.stringify({ orderNumber }),
     });
   },
 
-  async checkImbPaymentStatus(orderNumber: string): Promise<{
+  async verifyRazorpayPayment(
+    orderNumber: string,
+    payload: {
+      razorpay_order_id: string;
+      razorpay_payment_id: string;
+      razorpay_signature?: string;
+    }
+  ): Promise<{
+    success: boolean;
+    order: any;
+    message: string;
+  }> {
+    return this.request(`/api/payments/razorpay/verify`, {
+      method: 'POST',
+      body: JSON.stringify({
+        orderNumber,
+        ...payload,
+      }),
+    });
+  },
+
+  async checkPaymentStatus(orderNumber: string): Promise<{
     paid: boolean;
-    status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'UNKNOWN';
-    rawStatus?: string;
+    paymentStatus: string;
+    orderStatus: string;
     order?: any;
   }> {
-    return this.request(`/api/orders/${orderNumber}/check-imb-payment`, {
+    return this.request(`/api/orders/${orderNumber}/payment-status`, {
       method: 'GET',
     });
   },
