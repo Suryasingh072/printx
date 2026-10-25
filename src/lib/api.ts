@@ -291,55 +291,6 @@ export const api = {
     });
   },
 
-  async createRazorpayOrder(orderNumber: string): Promise<{
-    success: boolean;
-    orderNumber: string;
-    razorpayOrderId: string;
-    amount: number;
-    amountInPaise: number;
-    currency: string;
-    keyId: string;
-    isTestMode: boolean;
-    shopName: string;
-  }> {
-    return this.request(`/api/payments/razorpay/create-order`, {
-      method: 'POST',
-      body: JSON.stringify({ orderNumber }),
-    });
-  },
-
-  async verifyRazorpayPayment(
-    orderNumber: string,
-    payload: {
-      razorpay_order_id: string;
-      razorpay_payment_id: string;
-      razorpay_signature?: string;
-    }
-  ): Promise<{
-    success: boolean;
-    order: any;
-    message: string;
-  }> {
-    return this.request(`/api/payments/razorpay/verify`, {
-      method: 'POST',
-      body: JSON.stringify({
-        orderNumber,
-        ...payload,
-      }),
-    });
-  },
-
-  async checkPaymentStatus(orderNumber: string): Promise<{
-    paid: boolean;
-    paymentStatus: string;
-    orderStatus: string;
-    order?: any;
-  }> {
-    return this.request(`/api/orders/${orderNumber}/payment-status`, {
-      method: 'GET',
-    });
-  },
-
   async collectPayment(orderId: string, method: 'counter_upi' | 'online_upi', notes?: string): Promise<any> {
     return this.request(`/api/shop/orders/${orderId}/collect-payment`, {
       method: 'POST',
@@ -423,4 +374,48 @@ export const api = {
       body: JSON.stringify(config),
     });
   },
+
+  // Razorpay Standard Checkout
+  async getRazorpayConfig(): Promise<{ key_id: string; enabled: boolean }> {
+    return this.request('/api/razorpay/config');
+  },
+
+  async createRazorpayOrder(amountInPaise: number, currency = 'INR', receipt?: string, notes?: Record<string, any>): Promise<{
+    order_id: string;
+    id: string;
+    amount: number;
+    currency: string;
+    receipt?: string;
+    key_id: string;
+  }> {
+    return this.request('/api/create-order', {
+      method: 'POST',
+      body: JSON.stringify({
+        amount: amountInPaise,
+        currency,
+        receipt,
+        notes,
+      }),
+    });
+  },
+
+  async verifyRazorpayPayment(payload: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+    orderNumber?: string;
+    receipt?: string;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    order_id: string;
+    payment_id: string;
+    order?: any;
+  }> {
+    return this.request('/api/verify-payment', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
 };
+

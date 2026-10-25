@@ -1301,19 +1301,21 @@ export class Database {
 
     for (const job of jobs) {
       const order = this.getOrderById(job.orderId);
-      if (order && order.status !== 'rejected' && order.status !== 'archived') {
-        // Enforce approval and payment checks before handing to printer!
-        const rules = this.getShopApprovalRules(shopId);
-        const isApproved =
-          order.status === 'queued' ||
-          order.status === 'approved' ||
-          order.status === 'printing' ||
-          order.status === 'completed';
-        const isPaymentSatisfied = !rules.requirePaymentBeforePrint || order.paymentStatus === 'collected';
+      if (!order) continue;
 
-        if (isApproved && isPaymentSatisfied) {
-          result.push({ job, order });
-        }
+      // Auto-clean: If order was already completed, mark leftover pending job as printed
+      if (order.status === 'completed' || order.status === 'rejected' || order.status === 'archived') {
+        job.status = 'printed';
+        job.completedAt = job.completedAt || new Date().toISOString();
+        continue;
+      }
+
+      // STRICT REQUIREMENT: Only print when customer has uploaded AND paid!
+      const isPaid = order.paymentStatus === 'collected';
+      const isReadyToPrint = order.status === 'printing' || order.status === 'queued' || order.status === 'approved';
+
+      if (isPaid && isReadyToPrint) {
+        result.push({ job, order });
       }
     }
     return result;

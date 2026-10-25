@@ -1,8 +1,10 @@
+import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import multer from 'multer';
+import Razorpay from 'razorpay';
 import { db } from './src/server/db/database.js';
 import { storageService } from './src/server/services/storage.js';
 import { whatsAppService } from './src/server/services/whatsapp.js';
@@ -877,7 +879,7 @@ app.get(['/api/shops/:slug', '/api/s/:slug'], (req, res) => {
       address: shop.address,
       city: shop.city,
       status: shop.status,
-      paymentGatewayUrl: shop.paymentGatewayUrl || 'https://merchant.imbpayment.co.in/pay/pp_gtnQHY1RYx',
+      paymentGatewayUrl: shop.paymentGatewayUrl || '',
       agentOnline,
     },
     pricing: {
@@ -941,93 +943,7 @@ app.post('/api/orders/upload', (req, res) => {
   });
 });
 
-// ==========================================
-// RAZORPAY PAYMENT GATEWAY ENGINE
-// ==========================================
-const DEFAULT_RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || '';
-const DEFAULT_RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || '';
-
-// Helper to retrieve effective Razorpay credentials for a shop
-function getShopRazorpayCredentials(shopId?: string) {
-  const shop = shopId ? db.getShopById(shopId) : undefined;
-  const keyId = (shop?.razorpayKeyId || DEFAULT_RAZORPAY_KEY_ID || '').trim();
-  const keySecret = (shop?.razorpayKeySecret || DEFAULT_RAZORPAY_KEY_SECRET || '').trim();
-  const isConfigured = Boolean(keyId && keySecret && !keyId.includes('placeholder'));
-
-  // Default public test key if keys are not yet provided in shop profile
-  const effectiveKeyId = keyId || 'rzp_test_printx_counter';
-  return { keyId: effectiveKeyId, keySecret, isConfigured };
-}
-
-// Helper to create a Razorpay Order ID for an order amount
-async function createRazorpayGatewayOrder(
-  shopId: string,
-  amount: number,
-  orderNumber?: string
-): Promise<{
-  success: boolean;
-  razorpayOrderId: string;
-  amountInPaise: number;
-  keyId: string;
-  isTestMode: boolean;
-}> {
-  const { keyId, keySecret, isConfigured } = getShopRazorpayCredentials(shopId);
-  const amountInPaise = Math.max(100, Math.round(amount * 100)); // Minimum ₹1.00 (100 paise)
-
-  if (isConfigured) {
-    try {
-      const authHeader = `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString('base64')}`;
-      const rzpRes = await fetch('https://api.razorpay.com/v1/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: authHeader,
-        },
-        body: JSON.stringify({
-          amount: amountInPaise,
-          currency: 'INR',
-          receipt: orderNumber || `RCPT_${Date.now()}`,
-          notes: {
-            orderNumber: orderNumber || '',
-            shopId: shopId || '',
-            platform: 'printx',
-          },
-        }),
-        signal: AbortSignal.timeout(6000),
-      });
-
-      if (rzpRes.ok) {
-        const data = await rzpRes.json();
-        if (data && data.id) {
-          return {
-            success: true,
-            razorpayOrderId: data.id,
-            amountInPaise: data.amount,
-            keyId,
-            isTestMode: false,
-          };
-        }
-      } else {
-        const errText = await rzpRes.text();
-        console.warn(`[Razorpay Order API Notice] ${rzpRes.status}:`, errText);
-      }
-    } catch (err: any) {
-      console.warn(`[Razorpay API Timeout / Error]`, err.message);
-    }
-  }
-
-  // Simulated test order ID when live keys are not yet entered (instant friction-free checkout)
-  const simulatedOrderId = `order_${crypto.randomUUID().replace(/-/g, '').slice(0, 14)}`;
-  return {
-    success: true,
-    razorpayOrderId: simulatedOrderId,
-    amountInPaise,
-    keyId: keyId || 'rzp_test_printx_counter',
-    isTestMode: true,
-  };
-}
-
-// Customer Order Submission (100% Online Payment Portal)
+// Customer Order Submission (100% Online Payment Portal with Razorpay)
 app.post('/api/orders', async (req, res) => {
   const {
     shopSlug,
@@ -1098,9 +1014,6 @@ app.post('/api/orders', async (req, res) => {
     initialStatus = 'payment_pending';
   }
 
-  // Automatically create dynamic Razorpay Gateway order with exact amount
-  const rzpOrderInfo = await createRazorpayGatewayOrder(shop.id, priceCalc.totalAmount, undefined);
-
   const order = db.createOrder({
     shopId: shop.id,
     customerName: customerName ? customerName.trim() : 'Online Customer',
@@ -1121,20 +1034,14 @@ app.post('/api/orders', async (req, res) => {
     totalAmount: priceCalc.totalAmount,
     status: initialStatus,
     paymentStatus: 'unpaid',
-    gatewayPaymentUrl: undefined,
-    gatewayOrderId: rzpOrderInfo.razorpayOrderId,
-    gatewayCheckLink: undefined,
     files: Array.isArray(req.body.files) ? req.body.files : undefined,
   });
-
-  (order as any).razorpayOrderId = rzpOrderInfo.razorpayOrderId;
-  db.save();
 
   db.logActivity({
     shopId: shop.id,
     actionType: 'order_submitted',
-    description: `Order ${order.orderNumber} placed by ${order.customerName} (${order.documentName}, ₹${order.totalAmount}). Razorpay order ready.`,
-    metadata: { orderNumber: order.orderNumber, amount: order.totalAmount, razorpayOrderId: rzpOrderInfo.razorpayOrderId },
+    description: `Order ${order.orderNumber} placed by ${order.customerName} (${order.documentName}, ₹${order.totalAmount}). Razorpay checkout ready.`,
+    metadata: { orderNumber: order.orderNumber, amount: order.totalAmount },
   });
 
   res.status(201).json({
@@ -1206,175 +1113,6 @@ app.get('/api/orders/:orderNumber', (req, res) => {
   });
 });
 
-// ==========================================
-// RAZORPAY PAYMENT ROUTES
-// ==========================================
-
-// 1. Create Razorpay Order
-app.post('/api/payments/razorpay/create-order', async (req, res) => {
-  const { orderNumber } = req.body;
-  const order = db.getOrderByNumber(orderNumber);
-  if (!order) {
-    return res.status(404).json({ error: 'Order not found.' });
-  }
-
-  const shop = db.getShopById(order.shopId);
-  const rzpOrderInfo = await createRazorpayGatewayOrder(order.shopId, order.totalAmount, order.orderNumber);
-
-  (order as any).razorpayOrderId = rzpOrderInfo.razorpayOrderId;
-  db.save();
-
-  res.json({
-    success: true,
-    orderNumber: order.orderNumber,
-    razorpayOrderId: rzpOrderInfo.razorpayOrderId,
-    amount: order.totalAmount,
-    amountInPaise: rzpOrderInfo.amountInPaise,
-    currency: 'INR',
-    keyId: rzpOrderInfo.keyId,
-    isTestMode: rzpOrderInfo.isTestMode,
-    shopName: shop?.name || 'printx Cloud Printing',
-  });
-});
-
-// 2. Verify Razorpay Payment (Client Callback)
-app.post('/api/payments/razorpay/verify', async (req, res) => {
-  const { orderNumber, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-  const order = db.getOrderByNumber(orderNumber);
-  if (!order) {
-    return res.status(404).json({ error: 'Order not found.' });
-  }
-
-  const { keySecret, isConfigured } = getShopRazorpayCredentials(order.shopId);
-
-  // If live keys are configured and a signature was returned by Razorpay Checkout, verify HMAC SHA256
-  if (isConfigured && razorpay_signature && keySecret) {
-    const body = `${razorpay_order_id}|${razorpay_payment_id}`;
-    const expectedSignature = crypto
-      .createHmac('sha256', keySecret)
-      .update(body)
-      .digest('hex');
-
-    if (expectedSignature !== razorpay_signature) {
-      console.warn(`[Razorpay Signature Verification Failed] for ${orderNumber}`);
-      return res.status(400).json({ error: 'Payment signature verification failed.' });
-    }
-  }
-
-  (order as any).razorpayOrderId = razorpay_order_id;
-  (order as any).razorpayPaymentId = razorpay_payment_id;
-  (order as any).razorpaySignature = razorpay_signature;
-
-  // Mark payment collected
-  db.recordPayment({
-    orderId: order.id,
-    shopId: order.shopId,
-    amount: order.totalAmount,
-    method: 'razorpay' as any,
-    collectorName: 'Razorpay Payment Gateway',
-    notes: `Online payment verified via Razorpay (Payment ID: ${razorpay_payment_id || 'UPI'}).`,
-  });
-
-  const agent = db.getAgentByShopId(order.shopId);
-  const targetPrinter =
-    (order.colorMode === 'color' ? agent?.colorPrinter : agent?.bwPrinter) ||
-    agent?.defaultPrinter ||
-    'Default Windows Printer';
-
-  db.createPrintJobsForOrder(order.id, targetPrinter);
-  db.updateOrderStatus(
-    order.id,
-    'printing',
-    'Auto-Print Spooler',
-    undefined,
-    `Razorpay payment verified (₹${order.totalAmount}). Automatically spooled to "${targetPrinter}".`
-  );
-
-  db.logActivity({
-    shopId: order.shopId,
-    actionType: 'payment_collected',
-    description: `Order ${order.orderNumber} paid ₹${order.totalAmount} via Razorpay. Automatically sent to printer.`,
-  });
-
-  res.json({
-    success: true,
-    order: db.getOrderById(order.id),
-    message: 'Payment verified successfully via Razorpay! Print job spooled.',
-  });
-});
-
-// 3. Webhook handler for Razorpay (Server-to-Server capture verification)
-app.post('/api/payments/razorpay/webhook', (req, res) => {
-  try {
-    const payload = req.body;
-    const event = payload?.event;
-    if (event === 'payment.captured' || event === 'order.paid') {
-      const payment = payload?.payload?.payment?.entity;
-      const orderNotes = payment?.notes || {};
-      const orderNum = orderNotes?.orderNumber;
-      if (orderNum) {
-        const order = db.getOrderByNumber(orderNum);
-        if (order && order.paymentStatus !== 'collected') {
-          db.recordPayment({
-            orderId: order.id,
-            shopId: order.shopId,
-            amount: order.totalAmount,
-            method: 'razorpay' as any,
-            collectorName: 'Razorpay Webhook',
-            notes: `Captured via Razorpay Webhook (Payment ID: ${payment?.id}).`,
-          });
-          const agent = db.getAgentByShopId(order.shopId);
-          const targetPrinter = (order.colorMode === 'color' ? agent?.colorPrinter : agent?.bwPrinter) || agent?.defaultPrinter || 'Default Windows Printer';
-          db.createPrintJobsForOrder(order.id, targetPrinter);
-          db.updateOrderStatus(order.id, 'printing', 'Razorpay Webhook', undefined, `Order spooled to "${targetPrinter}".`);
-        }
-      }
-    }
-  } catch (e) {}
-  res.json({ status: 'ok' });
-});
-
-// 4. Real-time Payment Status Checker (polled by Customer Portal)
-app.get('/api/orders/:orderNumber/payment-status', (req, res) => {
-  const { orderNumber } = req.params;
-  const order = db.getOrderByNumber(orderNumber);
-  if (!order) {
-    return res.status(404).json({ error: 'Order not found.' });
-  }
-
-  res.json({
-    paid: order.paymentStatus === 'collected',
-    paymentStatus: order.paymentStatus,
-    orderStatus: order.status,
-    order: db.getOrderById(order.id),
-  });
-});
-
-// Backwards-compatibility aliases for any cached tabs
-app.post('/api/orders/:orderNumber/imb-session', async (req, res) => {
-  const { orderNumber } = req.params;
-  const order = db.getOrderByNumber(orderNumber);
-  if (!order) return res.status(404).json({ error: 'Order not found.' });
-  const rzp = await createRazorpayGatewayOrder(order.shopId, order.totalAmount, order.orderNumber);
-  res.json({
-    success: true,
-    paymentUrl: '#razorpay',
-    orderId: rzp.razorpayOrderId,
-    amount: order.totalAmount,
-  });
-});
-
-app.get('/api/orders/:orderNumber/check-imb-payment', (req, res) => {
-  const { orderNumber } = req.params;
-  const order = db.getOrderByNumber(orderNumber);
-  if (!order) return res.status(404).json({ error: 'Order not found.' });
-  res.json({
-    paid: order.paymentStatus === 'collected',
-    status: order.paymentStatus === 'collected' ? 'SUCCESS' : 'PENDING',
-    order: db.getOrderById(order.id),
-  });
-});
-
 // Customer Complete Online Payment (Instant Print Trigger - No Manual Approval Needed)
 app.post('/api/orders/:orderNumber/pay-online', (req, res) => {
   const { orderNumber } = req.params;
@@ -1413,6 +1151,190 @@ app.post('/api/orders/:orderNumber/pay-online', (req, res) => {
     message: 'Payment completed successfully! Your document is printing directly on the shop printer.',
     order: db.getOrderById(order.id),
   });
+});
+
+// ==========================================
+// RAZORPAY STANDARD WEB CHECKOUT ENDPOINTS
+// ==========================================
+
+// Safely expose client public key (Never secret)
+app.get(['/api/razorpay/config', '/api/razorpay-key'], (_req, res) => {
+  const key_id = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || '';
+  res.json({
+    key_id,
+    enabled: Boolean(key_id && process.env.RAZORPAY_KEY_SECRET),
+  });
+});
+
+// STEP 1: BACKEND - Create Order
+// Endpoint: POST /api/create-order
+// Request: { amount (paise), currency, receipt }
+// Return: { order_id, amount, currency }
+// Minimum amount: 100 paise
+app.post('/api/create-order', async (req, res) => {
+  try {
+    const key_id = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID;
+    const key_secret = process.env.RAZORPAY_KEY_SECRET;
+
+    if (!key_id || !key_secret) {
+      return res.status(401).json({
+        error: 'Razorpay API credentials not configured or unauthorized. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env.',
+      });
+    }
+
+    const { amount, currency = 'INR', receipt, notes } = req.body || {};
+
+    // Validate amount >= 100 paise
+    const numericAmount = Number(amount);
+    if (!amount || isNaN(numericAmount) || numericAmount < 100) {
+      return res.status(400).json({
+        error: 'Invalid amount. Minimum amount is 100 paise (₹1.00).',
+      });
+    }
+
+    const razorpay = new Razorpay({
+      key_id,
+      key_secret,
+    });
+
+    const orderPayload = {
+      amount: Math.round(numericAmount),
+      currency: String(currency || 'INR').toUpperCase(),
+      receipt: receipt ? String(receipt).slice(0, 40) : `rcpt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      notes: typeof notes === 'object' && notes !== null ? notes : {},
+    };
+
+    const razorpayOrder = await razorpay.orders.create(orderPayload);
+
+    return res.status(200).json({
+      order_id: razorpayOrder.id,
+      id: razorpayOrder.id,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
+      receipt: razorpayOrder.receipt,
+      key_id,
+    });
+  } catch (err: any) {
+    console.error('[Razorpay] Create order error:', err);
+    const isAuthError =
+      err?.statusCode === 401 ||
+      err?.status === 401 ||
+      (err?.error?.code === 'BAD_REQUEST_ERROR' && String(err?.error?.description).toLowerCase().includes('auth'));
+
+    const statusCode = isAuthError ? 401 : 500;
+    return res.status(statusCode).json({
+      error: err?.error?.description || err?.message || 'Razorpay order creation failed',
+      code: err?.error?.code,
+    });
+  }
+});
+
+// STEP 3: BACKEND - Verify Signature
+// Endpoint: POST /api/verify-payment
+// Algorithm: HMAC-SHA256(order_id + "|" + payment_id, KEY_SECRET)
+// Compare generated signature with razorpay_signature
+// Return success only if signatures match
+app.post('/api/verify-payment', (req, res) => {
+  try {
+    const order_id = req.body.razorpay_order_id || req.body.order_id;
+    const payment_id = req.body.razorpay_payment_id || req.body.payment_id;
+    const razorpay_signature = req.body.razorpay_signature || req.body.signature;
+
+    // Missing fields: return 400
+    if (!order_id || !payment_id || !razorpay_signature) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: order_id, payment_id, and signature are required.',
+      });
+    }
+
+    const key_secret = process.env.RAZORPAY_KEY_SECRET;
+    if (!key_secret) {
+      return res.status(401).json({
+        success: false,
+        error: 'Razorpay KEY_SECRET is not configured on the server.',
+      });
+    }
+
+    // Algorithm: HMAC-SHA256(order_id + "|" + payment_id, KEY_SECRET)
+    const generatedSignature = crypto
+      .createHmac('sha256', key_secret)
+      .update(`${order_id}|${payment_id}`)
+      .digest('hex');
+
+    const expectedBuffer = Buffer.from(generatedSignature, 'utf8');
+    const signatureBuffer = Buffer.from(String(razorpay_signature), 'utf8');
+
+    const isMatch =
+      expectedBuffer.length === signatureBuffer.length &&
+      crypto.timingSafeEqual(expectedBuffer, signatureBuffer);
+
+    // Signature mismatch: return 400, do NOT mark as paid
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        error: 'Signature verification failed. Signatures do not match.',
+      });
+    }
+
+    // If payment belongs to a print shop order, mark it as collected and auto-spool to printer!
+    const orderRef = req.body.orderNumber || req.body.orderRef || req.body.receipt;
+    let orderRecord = null;
+    if (orderRef) {
+      const existingOrder = db.getOrderByNumber(orderRef) || db.getOrderById(orderRef);
+      if (existingOrder) {
+        if (existingOrder.paymentStatus !== 'collected') {
+          db.recordPayment({
+            orderId: existingOrder.id,
+            shopId: existingOrder.shopId,
+            amount: existingOrder.totalAmount,
+            method: 'online_upi',
+            collectorName: 'Razorpay Standard Checkout',
+            notes: `Razorpay Payment Verified: ${payment_id} | Order: ${order_id}`,
+          });
+
+          const agent = db.getAgentByShopId(existingOrder.shopId);
+          const targetPrinter =
+            (existingOrder.colorMode === 'color' ? agent?.colorPrinter : agent?.bwPrinter) ||
+            agent?.defaultPrinter ||
+            'Default Windows Printer';
+
+          db.createPrintJobsForOrder(existingOrder.id, targetPrinter);
+          db.updateOrderStatus(
+            existingOrder.id,
+            'printing',
+            'Razorpay Auto-Spooler',
+            undefined,
+            `Razorpay verified (₹${existingOrder.totalAmount}). Automatically spooled to "${targetPrinter}".`
+          );
+
+          db.logActivity({
+            shopId: existingOrder.shopId,
+            actionType: 'payment_collected',
+            description: `Order ${existingOrder.orderNumber} paid ₹${existingOrder.totalAmount} via Razorpay. Dispatched to printer.`,
+            metadata: { razorpay_payment_id: payment_id, razorpay_order_id: order_id },
+          });
+
+          db.save();
+        }
+        orderRecord = db.getOrderById(existingOrder.id);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Payment verified successfully',
+      order_id,
+      payment_id,
+      order: orderRecord,
+    });
+  } catch (err: any) {
+    console.error('[Razorpay] Signature verification error:', err);
+    return res.status(500).json({
+      success: false,
+      error: err?.message || 'Internal server error during signature verification',
+    });
+  }
 });
 
 // Shop / Admin Delete Order Permanently

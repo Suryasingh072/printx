@@ -126,9 +126,11 @@
       "status": "active",
       "id": "shp-00ff309e",
       "createdAt": "2026-10-10T07:04:19.860Z",
-      "updatedAt": "2026-10-10T07:06:39.518Z",
+      "updatedAt": "2026-10-24T22:16:34.056Z",
       "activatedAt": "2026-10-10T07:06:39.518Z",
-      "activatedBy": "usr-admin-001"
+      "activatedBy": "usr-admin-001",
+      "upiId": "surya286351@gmail.com",
+      "requiresCounterPayment": false
     },
     {
       "slug": "test-cyber-shop",
@@ -442,23 +444,11 @@
     {
       "id": "agt-cf0f2f85",
       "shopId": "shp-00ff309e",
-      "deviceName": "COUNTER-PC",
+      "deviceName": "DESKTOP-EOHTQ2R",
       "status": "online",
-      "authTokenHash": "f36e5c8ff95b83fb748fd5fc540709963f195f96efcbeac233a3c80cd9ae2c91",
+      "authTokenHash": "6bb0d1a57f1e55105f6038c0e45c09a9d13eab31b561dd376c78ad2b67cf7e03",
       "utilityApiKey": "adr_util_live_db74742faaf0ea766249170ef3f11a8c",
       "installedPrinters": [
-        {
-          "name": "HP LaserJet 1020",
-          "status": "Ready",
-          "isDefault": true,
-          "supportsColor": false
-        },
-        {
-          "name": "HP Laser 103 107 108 (Copy 1)",
-          "status": "Ready",
-          "isDefault": false,
-          "supportsColor": false
-        },
         {
           "name": "Send To OneNote 2010",
           "status": "Ready",
@@ -480,8 +470,20 @@
         {
           "name": "Microsoft Print to PDF",
           "status": "Ready",
-          "isDefault": false,
+          "isDefault": true,
           "supportsColor": true
+        },
+        {
+          "name": "HP LaserJet 1020",
+          "status": "Ready",
+          "isDefault": false,
+          "supportsColor": false
+        },
+        {
+          "name": "HP Laser 103 107 108 (Copy 1)",
+          "status": "Ready",
+          "isDefault": false,
+          "supportsColor": false
         },
         {
           "name": "Fax",
@@ -490,7 +492,7 @@
           "supportsColor": false
         }
       ],
-      "defaultPrinter": "HP LaserJet 1020",
+      "defaultPrinter": "Microsoft Print to PDF",
       "bwPrinter": "HP LaserJet Pro M404dn",
       "colorPrinter": "Canon PIXMA G3010",
       "appVersion": "1.2.0",
@@ -499,7 +501,7 @@
       "pairingCode": "293843",
       "pairingCodeExpiresAt": "2026-10-16T05:37:06.202Z",
       "ipAddress": "127.0.0.1",
-      "lastSeenAt": "2026-10-23T19:19:40.953Z"
+      "lastSeenAt": "2026-10-25T14:07:40.113Z"
     },
     {
       "id": "agt-7ce119ab",
@@ -555,7 +557,7 @@
       "dryRunMode": false,
       "createdAt": "2026-10-16T13:57:35.549Z",
       "ipAddress": "127.0.0.1",
-      "lastSeenAt": "2026-10-23T11:12:28.487Z",
+      "lastSeenAt": "2026-10-25T03:19:29.260Z",
       "authTokenHash": "8744a50024aea635f2b837e0d35ddac4ef8f88223d9fce0b3d15c3bc23879f67",
       "defaultPrinter": "HP LaserJet 1020"
     },
@@ -651,7 +653,7 @@
       "appVersion": "2.4.0",
       "deviceName": "DESKTOP-EOHTQ2R",
       "dryRunMode": false,
-      "lastSeenAt": "2026-10-23T19:18:51.416Z",
+      "lastSeenAt": "2026-10-24T22:17:17.574Z",
       "pairingCode": "939800",
       "authTokenHash": "4f352de2c95a2373ce4c71008871abf8e341a06148c8d4ad04197c01da126876",
       "defaultPrinter": "Microsoft Print to PDF",
@@ -1840,9 +1842,9 @@
           "id": "d53f5359-7cc1-4c2f-9ce4-84dd2b5991d0",
           "name": "PAN_Card.jpeg",
           "type": "image/jpeg",
-          "sizeBytes": 147809,
           "filePath": "d53f5359-7cc1-4c2f-9ce4-84dd2b5991d0.jpg",
-          "pageCount": 1
+          "pageCount": 1,
+          "sizeBytes": 147809
         }
       ],
       "id": "ord-c5e58e72",
@@ -1870,7 +1872,7 @@
       "pageRange": "all",
       "unitPrice": 10,
       "totalAmount": 40,
-      "status": "printing",
+      "status": "completed",
       "paymentStatus": "collected",
       "gatewayPaymentUrl": "https://v1-api.newqr.info/99267ce9fa00a39c836d1b7197b38ebc57123151dea3c493dccec362d2eddcaaad5fa549",
       "gatewayOrderId": "IMB478113341363",
@@ -1880,80 +1882,87 @@
           "id": "e108732d-ff23-4494-82b5-307bd6f78698",
           "name": "Doc_1.pdf",
           "type": "application/pdf",
-          "sizeBytes": 435,
           "filePath": "e108732d-ff23-4494-82b5-307bd6f78698.pdf",
-          "pageCount": 1
+          "pageCount": 1,
+          "sizeBytes": 435
         },
         {
           "id": "52d26297-fe30-457a-9c5e-a9b194594b6a",
           "name": "Pan_Card.jpeg",
           "type": "image/jpeg",
-          "sizeBytes": 147809,
           "filePath": "52d26297-fe30-457a-9c5e-a9b194594b6a.jpg",
-          "pageCount": 1
+          "pageCount": 1,
+          "sizeBytes": 147809
         },
         {
           "id": "b8063031-8f09-4c42-be22-4c51d9fc9802",
           "name": "Doc_2.pdf",
           "type": "application/pdf",
-          "sizeBytes": 435,
           "filePath": "b8063031-8f09-4c42-be22-4c51d9fc9802.pdf",
-          "pageCount": 1
+          "pageCount": 1,
+          "sizeBytes": 435
         },
         {
           "id": "51e12fa1-5abf-4580-82b3-3b51ce918195",
           "name": "Pan_Card_Copy.jpeg",
           "type": "image/jpeg",
-          "sizeBytes": 147809,
           "filePath": "51e12fa1-5abf-4580-82b3-3b51ce918195.jpg",
-          "pageCount": 1
+          "pageCount": 1,
+          "sizeBytes": 147809
         }
       ],
       "id": "ord-9bd4f600",
       "orderNumber": "ORD-976947",
       "createdAt": "2026-10-23T19:19:27.231Z",
-      "updatedAt": "2026-10-23T19:19:27.250Z",
+      "updatedAt": "2026-10-24T22:18:10.803Z",
       "paymentCollectedAt": "2026-10-23T19:19:27.246Z",
       "paymentCollectorName": "Online UPI Gateway",
-      "paymentMethod": "online_upi"
+      "paymentMethod": "online_upi",
+      "purgedAt": "2026-10-24T22:23:39.687Z",
+      "printedAt": "2026-10-24T22:18:22.005Z",
+      "isDocumentPurged": true
+    },
+    {
+      "id": "ord-042dd4e3",
+      "files": [
+        {
+          "id": "b1515164-61b0-4f52-945a-5fce24378211",
+          "name": "bbd-2-printx-Poster (1).pdf",
+          "type": "application/pdf",
+          "edited": false,
+          "filePath": "b1515164-61b0-4f52-945a-5fce24378211.pdf",
+          "pageCount": 1,
+          "sizeBytes": 1091252,
+          "previewUrl": "blob:https://printx-x5a2.vercel.app/2699e956-01f1-4fd1-bd06-ad659f0f45a5"
+        }
+      ],
+      "copies": 1,
+      "shopId": "shp-00ff309e",
+      "status": "payment_pending",
+      "filePath": "b1515164-61b0-4f52-945a-5fce24378211.pdf",
+      "colorMode": "bw",
+      "createdAt": "2026-10-24T22:19:36.120Z",
+      "orderType": "document",
+      "pageCount": 1,
+      "pageRange": "all",
+      "paperSize": "A4",
+      "unitPrice": 2,
+      "updatedAt": "2026-10-24T22:19:36.120Z",
+      "duplexMode": "single",
+      "customNotes": "",
+      "orderNumber": "ORD-933027",
+      "totalAmount": 2,
+      "customerName": "Online Customer",
+      "documentName": "bbd-2-printx-Poster (1).pdf",
+      "documentType": "application/pdf",
+      "customerPhone": "",
+      "fileSizeBytes": 1091252,
+      "paymentStatus": "unpaid",
+      "gatewayOrderId": "order_563dcf946d5d41",
+      "razorpayOrderId": "order_845ad39f293548"
     }
   ],
-  "orderHistory": [
-    {
-      "id": "hst-bd9cafbb",
-      "orderId": "ord-c5e58e72",
-      "newStatus": "payment_pending",
-      "changedByName": "Customer Submission",
-      "comment": "Order placed by customer via Shop QR Portal",
-      "createdAt": "2026-10-23T19:19:06.344Z"
-    },
-    {
-      "id": "hst-24e5c1aa",
-      "orderId": "ord-c5e58e72",
-      "previousStatus": "queued",
-      "newStatus": "printing",
-      "changedByName": "Auto-Print Spooler",
-      "comment": "Online payment received (₹15). Automatically spooled to \"Canon PIXMA G3010\".",
-      "createdAt": "2026-10-23T19:19:06.360Z"
-    },
-    {
-      "id": "hst-9910774a",
-      "orderId": "ord-9bd4f600",
-      "newStatus": "payment_pending",
-      "changedByName": "Customer Submission",
-      "comment": "Order placed by customer via Shop QR Portal",
-      "createdAt": "2026-10-23T19:19:27.231Z"
-    },
-    {
-      "id": "hst-e4291320",
-      "orderId": "ord-9bd4f600",
-      "previousStatus": "queued",
-      "newStatus": "printing",
-      "changedByName": "Auto-Print Spooler",
-      "comment": "Online payment received (₹40). Automatically spooled to \"Canon PIXMA G3010\".",
-      "createdAt": "2026-10-23T19:19:27.250Z"
-    }
-  ],
+  "orderHistory": [],
   "payments": [
     {
       "id": "pay-001",
@@ -2050,9 +2059,10 @@
       "shopId": "shp-apex-001",
       "agentId": "agt-apex-001",
       "printerName": "Canon PIXMA G3010",
-      "status": "pending",
+      "status": "printed",
       "retryCount": 0,
-      "createdAt": "2026-10-10T06:52:21.443Z"
+      "createdAt": "2026-10-10T06:52:21.443Z",
+      "completedAt": "2026-10-25T14:12:00.822Z"
     },
     {
       "id": "job-2a3e836d",
@@ -2072,45 +2082,50 @@
       "orderId": "ord-10f046cc",
       "shopId": "shp-00ff309e",
       "printerName": "Default Windows Printer",
-      "status": "pending",
+      "status": "printed",
       "retryCount": 0,
-      "createdAt": "2026-10-10T07:10:10.676Z"
+      "createdAt": "2026-10-10T07:10:10.676Z",
+      "completedAt": "2026-10-25T14:12:00.822Z"
     },
     {
       "id": "job-1fddec7e",
       "orderId": "ord-10f046cc",
       "shopId": "shp-00ff309e",
       "printerName": "Default Windows Printer",
-      "status": "pending",
+      "status": "printed",
       "retryCount": 0,
-      "createdAt": "2026-10-10T07:10:13.403Z"
+      "createdAt": "2026-10-10T07:10:13.403Z",
+      "completedAt": "2026-10-25T14:12:00.822Z"
     },
     {
       "id": "job-4565efc2",
       "orderId": "ord-10f046cc",
       "shopId": "shp-00ff309e",
       "printerName": "Default Windows Printer",
-      "status": "pending",
+      "status": "printed",
       "retryCount": 0,
-      "createdAt": "2026-10-10T07:10:14.131Z"
+      "createdAt": "2026-10-10T07:10:14.131Z",
+      "completedAt": "2026-10-25T14:12:00.822Z"
     },
     {
       "id": "job-23d0d993",
       "orderId": "ord-10f046cc",
       "shopId": "shp-00ff309e",
       "printerName": "Default Windows Printer",
-      "status": "pending",
+      "status": "printed",
       "retryCount": 0,
-      "createdAt": "2026-10-10T07:10:15.430Z"
+      "createdAt": "2026-10-10T07:10:15.430Z",
+      "completedAt": "2026-10-25T14:12:00.822Z"
     },
     {
       "id": "job-e99a4684",
       "orderId": "ord-10f046cc",
       "shopId": "shp-00ff309e",
       "printerName": "Default Windows Printer",
-      "status": "pending",
+      "status": "printed",
       "retryCount": 0,
-      "createdAt": "2026-10-10T07:10:15.642Z"
+      "createdAt": "2026-10-10T07:10:15.642Z",
+      "completedAt": "2026-10-25T14:12:00.822Z"
     },
     {
       "id": "job-396c9f6f",
@@ -2244,56 +2259,60 @@
       "orderId": "ord-9bd4f600",
       "shopId": "shp-00ff309e",
       "printerName": "Canon PIXMA G3010",
-      "status": "pending",
+      "status": "printed",
       "retryCount": 0,
       "filePath": "e108732d-ff23-4494-82b5-307bd6f78698.pdf",
       "documentName": "Doc_1.pdf",
       "documentType": "application/pdf",
       "fileIndex": 1,
       "totalFiles": 4,
-      "createdAt": "2026-10-23T19:19:27.248Z"
+      "createdAt": "2026-10-23T19:19:27.248Z",
+      "completedAt": "2026-10-23T19:20:00.000Z"
     },
     {
       "id": "job-f8432d14",
       "orderId": "ord-9bd4f600",
       "shopId": "shp-00ff309e",
       "printerName": "Canon PIXMA G3010",
-      "status": "pending",
+      "status": "printed",
       "retryCount": 0,
       "filePath": "52d26297-fe30-457a-9c5e-a9b194594b6a.jpg",
       "documentName": "Pan_Card.jpeg",
       "documentType": "image/jpeg",
       "fileIndex": 2,
       "totalFiles": 4,
-      "createdAt": "2026-10-23T19:19:27.248Z"
+      "createdAt": "2026-10-23T19:19:27.248Z",
+      "completedAt": "2026-10-23T19:20:00.000Z"
     },
     {
       "id": "job-3c67dca9",
       "orderId": "ord-9bd4f600",
       "shopId": "shp-00ff309e",
       "printerName": "Canon PIXMA G3010",
-      "status": "pending",
+      "status": "printed",
       "retryCount": 0,
       "filePath": "b8063031-8f09-4c42-be22-4c51d9fc9802.pdf",
       "documentName": "Doc_2.pdf",
       "documentType": "application/pdf",
       "fileIndex": 3,
       "totalFiles": 4,
-      "createdAt": "2026-10-23T19:19:27.248Z"
+      "createdAt": "2026-10-23T19:19:27.248Z",
+      "completedAt": "2026-10-23T19:20:00.000Z"
     },
     {
       "id": "job-b015861c",
       "orderId": "ord-9bd4f600",
       "shopId": "shp-00ff309e",
       "printerName": "Canon PIXMA G3010",
-      "status": "pending",
+      "status": "printed",
       "retryCount": 0,
       "filePath": "51e12fa1-5abf-4580-82b3-3b51ce918195.jpg",
       "documentName": "Pan_Card_Copy.jpeg",
       "documentType": "image/jpeg",
       "fileIndex": 4,
       "totalFiles": 4,
-      "createdAt": "2026-10-23T19:19:27.248Z"
+      "createdAt": "2026-10-23T19:19:27.248Z",
+      "completedAt": "2026-10-23T19:20:00.000Z"
     }
   ],
   "activityLogs": [
