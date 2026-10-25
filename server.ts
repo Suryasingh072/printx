@@ -1158,11 +1158,20 @@ app.post('/api/orders/:orderNumber/pay-online', (req, res) => {
 // ==========================================
 
 // Safely expose client public key (Never secret)
+const DEFAULT_RAZORPAY_KEY_ID = 'rzp_live_TsAzwEO7ucpLWe';
+const DEFAULT_RAZORPAY_KEY_SECRET = '7J61s5xHH2Em62idHwSm5hxU';
+
+const getRazorpayCredentials = () => {
+  const key_id = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || DEFAULT_RAZORPAY_KEY_ID;
+  const key_secret = process.env.RAZORPAY_KEY_SECRET || DEFAULT_RAZORPAY_KEY_SECRET;
+  return { key_id, key_secret };
+};
+
 app.get(['/api/razorpay/config', '/api/razorpay-key'], (_req, res) => {
-  const key_id = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || '';
+  const { key_id, key_secret } = getRazorpayCredentials();
   res.json({
     key_id,
-    enabled: Boolean(key_id && process.env.RAZORPAY_KEY_SECRET),
+    enabled: Boolean(key_id && key_secret),
   });
 });
 
@@ -1173,8 +1182,7 @@ app.get(['/api/razorpay/config', '/api/razorpay-key'], (_req, res) => {
 // Minimum amount: 100 paise
 app.post('/api/create-order', async (req, res) => {
   try {
-    const key_id = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID;
-    const key_secret = process.env.RAZORPAY_KEY_SECRET;
+    const { key_id, key_secret } = getRazorpayCredentials();
 
     if (!key_id || !key_secret) {
       return res.status(401).json({
@@ -1248,7 +1256,7 @@ app.post('/api/verify-payment', (req, res) => {
       });
     }
 
-    const key_secret = process.env.RAZORPAY_KEY_SECRET;
+    const { key_secret } = getRazorpayCredentials();
     if (!key_secret) {
       return res.status(401).json({
         success: false,

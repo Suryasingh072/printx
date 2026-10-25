@@ -115,18 +115,28 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
   const [razorpayMessage, setRazorpayMessage] = useState<{ type: 'error' | 'info' | 'success'; text: string } | null>(null);
 
   const handlePayWithRazorpay = async (orderToPay?: any) => {
-    const order = orderToPay || placedOrder;
+    const order = (orderToPay && typeof orderToPay === 'object' && ('totalAmount' in orderToPay || 'orderNumber' in orderToPay) ? orderToPay : null) || placedOrder;
     if (!order) return;
     setIsRazorpayLoading(true);
     setRazorpayMessage(null);
 
+    const payableAmount = Number(order.totalAmount ?? order.total ?? total);
+    if (!payableAmount || payableAmount < 1) {
+      setIsRazorpayLoading(false);
+      setRazorpayMessage({
+        type: 'error',
+        text: 'Invalid payable amount. Minimum amount is ₹1.00.',
+      });
+      return;
+    }
+
     try {
       await initiateRazorpayCheckout({
-        amountInRupees: order.totalAmount,
+        amountInRupees: payableAmount,
         orderNumber: order.orderNumber,
         customerName: order.customerName || customerName,
         customerPhone: order.customerPhone || customerPhone,
-        description: `Print Order ${order.orderNumber}`,
+        description: `Print Order ${order.orderNumber || ''}`,
         onDismiss: () => {
           setIsRazorpayLoading(false);
           setRazorpayMessage({
@@ -808,7 +818,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                 <div className="space-y-3">
                   <button
                     type="button"
-                    onClick={handlePayWithRazorpay}
+                    onClick={() => handlePayWithRazorpay()}
                     disabled={isRazorpayLoading}
                     className="w-full btn bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-black py-4 px-6 rounded-2xl shadow-[0_8px_25px_rgba(2,132,199,0.35)] flex items-center justify-center gap-3 text-sm font-head cursor-pointer transition transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
                   >

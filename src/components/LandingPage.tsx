@@ -34,10 +34,8 @@ import {
   Sun,
   Menu,
   LogIn,
-  CreditCard,
 } from 'lucide-react';
 import { api } from '../lib/api.js';
-import { RazorpayCheckoutModal } from './RazorpayCheckoutModal.js';
 
 interface LandingPageProps {
   onOpenCustomerPortal: (slug: string) => void;
@@ -93,10 +91,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
     }
   }, [stageStep]);
 
-  // Auth & Payment Modals
+  // Auth Modals
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
-  const [showRazorpayDemo, setShowRazorpayDemo] = useState(false);
 
   // Login Form
   const [loginEmail, setLoginEmail] = useState('');
@@ -222,23 +219,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
           {/* Nav Right CTA */}
           <div className="flex items-center gap-2.5">
             <button
-              onClick={() => onOpenCustomerPortal('ekta-communication')}
-              className="px-3 py-2 text-xs font-bold bg-white/10 hover:bg-white/15 text-white border border-white/15 rounded-xl cursor-pointer flex items-center gap-1.5 transition hidden sm:flex"
-            >
-              <Upload className="w-3.5 h-3.5 text-rose-400" />
-              <span>Upload & Print</span>
-            </button>
-
-            <button
-              onClick={() => setShowRazorpayDemo(true)}
-              className="px-3 py-2 text-xs font-bold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-400/30 rounded-xl cursor-pointer flex items-center gap-1.5 transition shadow-sm shadow-sky-500/10"
-              title="Test Razorpay Standard Checkout modal"
-            >
-              <CreditCard className="w-3.5 h-3.5 text-sky-400" />
-              <span>Razorpay Checkout</span>
-            </button>
-
-            <button
               onClick={() => setShowLoginModal(true)}
               className="px-4 py-2 text-xs sm:text-sm font-black btn-grad rounded-xl cursor-pointer flex items-center gap-2 shadow-[0_4px_16px_rgba(255,46,99,0.35)]"
             >
@@ -318,27 +298,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
 
             <div className="flex flex-wrap gap-3.5 pt-2">
               <button
-                onClick={() => onOpenCustomerPortal('ekta-communication')}
+                onClick={() => setShowLoginModal(true)}
                 className="px-7 py-4 rounded-xl font-black text-sm btn-grad flex items-center gap-2.5 cursor-pointer shadow-xl shadow-rose-500/30 transition hover:scale-[1.02]"
               >
-                <Upload className="w-4 h-4" />
-                <span>Upload & Print Document →</span>
+                <LogIn className="w-4 h-4" />
+                <span>Shopkeeper Sign in →</span>
               </button>
 
               <button
-                onClick={() => setShowRazorpayDemo(true)}
-                className="px-6 py-4 rounded-xl font-bold text-sm bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white flex items-center gap-2 cursor-pointer shadow-xl shadow-sky-600/25 transition hover:scale-[1.02]"
-              >
-                <CreditCard className="w-4 h-4 text-sky-200" />
-                <span>Test Razorpay Checkout</span>
-              </button>
-
-              <button
-                onClick={() => setShowLoginModal(true)}
+                onClick={() => {
+                  const el = document.getElementById('how-it-works');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
                 className="px-6 py-4 rounded-xl font-bold text-sm border border-white/15 bg-white/5 hover:bg-white/10 text-white flex items-center gap-2 cursor-pointer transition hover:scale-[1.02]"
               >
-                <LogIn className="w-4 h-4 text-rose-400" />
-                <span>Shopkeeper Sign in</span>
+                <Layers className="w-4 h-4 text-slate-300" />
+                <span>How It Works</span>
               </button>
             </div>
 
@@ -1238,13 +1213,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
           </div>
         </div>
       )}
-
-      {/* Razorpay Standard Checkout Modal */}
-      <RazorpayCheckoutModal
-        isOpen={showRazorpayDemo}
-        onClose={() => setShowRazorpayDemo(false)}
-        defaultAmountRupees={5}
-      />
     </div>
   );
 };
