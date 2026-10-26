@@ -103,7 +103,8 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
 
   // Payment Collect Modal
   const [paymentModalOrder, setPaymentModalOrder] = useState<Order | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'counter_upi' | 'online_upi'>('counter_upi');
+  const [paymentMethod, setPaymentMethod] = useState<'counter_cash' | 'counter_upi' | 'online_upi'>('counter_cash');
+  const [autoPrintOnPayment, setAutoPrintOnPayment] = useState<boolean>(true);
 
   // Pricing State
   const [pricing, setPricing] = useState<ShopPricing | null>(null);
@@ -230,9 +231,9 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
   const handleConfirmPayment = async () => {
     if (!paymentModalOrder) return;
     try {
-      await api.collectPayment(paymentModalOrder.id, paymentMethod);
+      await api.collectPayment(paymentModalOrder.id, paymentMethod, undefined, autoPrintOnPayment);
       setPaymentModalOrder(null);
-      showToast('Payment recorded successfully!', 'success');
+      showToast(autoPrintOnPayment ? 'Payment recorded & print job spooled to printer!' : 'Payment recorded successfully!', 'success');
       refreshOrders();
     } catch (e: any) {
       showToast(e.message || 'Payment update failed', 'error');
@@ -786,14 +787,19 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                           </button>
                         )}
 
-                        {/* Quick Collect Counter Payment Button */}
+                        {/* Quick Collect Counter Payment & Print Button */}
                         {!isPaid && ord.status !== 'rejected' && ord.status !== 'archived' && (
                           <button
                             type="button"
-                            onClick={() => setPaymentModalOrder(ord)}
-                            className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                            onClick={() => {
+                              setPaymentModalOrder(ord);
+                              setAutoPrintOnPayment(true);
+                            }}
+                            className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500/25 to-pink-500/25 hover:from-amber-500/35 hover:to-pink-500/35 text-amber-200 border border-amber-500/40 rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-sm shadow-amber-500/20 cursor-pointer"
+                            title="Collect payment at counter and spool to printer immediately"
                           >
-                            <DollarSign className="w-3.5 h-3.5" /> Collect Payment
+                            <DollarSign className="w-3.5 h-3.5 text-amber-300" />
+                            <span>Collect Payment & Print</span>
                           </button>
                         )}
 
@@ -1032,6 +1038,79 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                   </div>
                 </div>
               )}
+
+              {/* Online Payment Only Toggle (Shopkeeper control for customer page) */}
+              <div className="p-5 bg-gradient-to-br from-[#0c1322] via-[#101b30] to-[#0a1120] rounded-2xl border-2 border-pink-500/30 shadow-lg shadow-pink-500/10 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <CreditCard className="w-4 h-4 text-pink-400" />
+                      <h4 className="text-sm font-black text-white font-head">
+                        Require Online Payment (Customer Page Toggle)
+                      </h4>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          (rulesForm.requireOnlinePayment ?? true)
+                            ? 'bg-pink-500/20 text-pink-300 border border-pink-500/40'
+                            : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                        }`}
+                      >
+                        {(rulesForm.requireOnlinePayment ?? true) ? '⚡ ON (Only Online Payment)' : '💵 OFF (Pay at Counter Mode)'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      {(rulesForm.requireOnlinePayment ?? true)
+                        ? 'Toggle ON: Customer page par ONLY online Razorpay payment option rahega. Bina online payment ke order submit nahi hoga.'
+                        : 'Toggle OFF: Customer bina online payment kiye direct "Pay at Counter" order place kar sakta hai. Order aapke Print Queue me aa jayega aur aap "Collect Payment & Print" dabakar print nikal sakte hain.'}
+                    </p>
+                  </div>
+
+                  {/* Toggle Switch */}
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0 self-start sm:self-auto">
+                    <input
+                      type="checkbox"
+                      checked={rulesForm.requireOnlinePayment ?? true}
+                      onChange={(e) => setRulesForm({ ...rulesForm, requireOnlinePayment: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-14 h-7 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-pink-500 peer-checked:to-purple-600 shadow-inner"></div>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
+                  <div
+                    onClick={() => setRulesForm({ ...rulesForm, requireOnlinePayment: true })}
+                    className={`p-3 rounded-xl border cursor-pointer transition ${
+                      (rulesForm.requireOnlinePayment ?? true)
+                        ? 'border-pink-500 bg-pink-500/15 text-white font-semibold'
+                        : 'border-white/10 bg-white/5 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="font-bold flex items-center gap-1.5 text-pink-300">
+                      <span>✓ Toggle ON (Only Online Payment)</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Customers must pay with Razorpay UPI/Cards before order is spooled.
+                    </p>
+                  </div>
+
+                  <div
+                    onClick={() => setRulesForm({ ...rulesForm, requireOnlinePayment: false })}
+                    className={`p-3 rounded-xl border cursor-pointer transition ${
+                      !(rulesForm.requireOnlinePayment ?? true)
+                        ? 'border-emerald-500 bg-emerald-500/15 text-white font-semibold'
+                        : 'border-white/10 bg-white/5 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="font-bold flex items-center gap-1.5 text-emerald-300">
+                      <span>✓ Toggle OFF (Pay at Counter)</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Customer places order without online payment. You collect payment at counter & click Print.
+                    </p>
+                  </div>
+                </div>
+              </div>
 
               {/* Payment enforcement */}
               <div className="pt-2">
@@ -1839,32 +1918,56 @@ create table if not exists public.shops (
               <p className="text-3xl font-black text-white mt-1 font-head grad">₹{paymentModalOrder.totalAmount.toFixed(2)}</p>
             </div>
 
-            <div className="space-y-3 mb-6">
+            <div className="space-y-3 mb-5">
               <label className="text-xs font-bold text-slate-300 block">Payment Method Received</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('counter_cash')}
+                  className={`py-2.5 px-2 rounded-xl border text-xs font-bold transition text-center cursor-pointer ${
+                    paymentMethod === 'counter_cash'
+                      ? 'border-emerald-500 bg-emerald-500/15 text-emerald-300 shadow-[0_0_15px_rgba(34,197,94,0.2)]'
+                      : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
+                  }`}
+                >
+                  💵 Cash
+                </button>
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('counter_upi')}
-                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                  className={`py-2.5 px-2 rounded-xl border text-xs font-bold transition text-center cursor-pointer ${
                     paymentMethod === 'counter_upi'
                       ? 'border-pink-500 bg-pink-500/15 text-pink-300 shadow-[0_0_15px_rgba(255,46,99,0.2)]'
                       : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
                   }`}
                 >
-                  Shop Counter UPI QR
+                  📱 Counter UPI
                 </button>
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('online_upi')}
-                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                  className={`py-2.5 px-2 rounded-xl border text-xs font-bold transition text-center cursor-pointer ${
                     paymentMethod === 'online_upi'
-                      ? 'border-pink-500 bg-pink-500/15 text-pink-300 shadow-[0_0_15px_rgba(255,46,99,0.2)]'
+                      ? 'border-sky-500 bg-sky-500/15 text-sky-300 shadow-[0_0_15px_rgba(14,165,233,0.2)]'
                       : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
                   }`}
                 >
-                  Online Payment Link
+                  💳 Razorpay
                 </button>
               </div>
+
+              {/* Auto-dispatch print job checkbox */}
+              <label className="flex items-center gap-2.5 p-3 rounded-xl bg-white/[0.04] border border-white/10 cursor-pointer mt-3">
+                <input
+                  type="checkbox"
+                  checked={autoPrintOnPayment}
+                  onChange={(e) => setAutoPrintOnPayment(e.target.checked)}
+                  className="rounded text-pink-500 focus:ring-pink-500 w-4 h-4 cursor-pointer"
+                />
+                <span className="text-xs text-slate-200 font-semibold">
+                  Auto-spool & print immediately on printer
+                </span>
+              </label>
             </div>
 
             <div className="flex gap-2">
@@ -1876,9 +1979,10 @@ create table if not exists public.shops (
               </button>
               <button
                 onClick={handleConfirmPayment}
-                className="btn btn-primary flex-1 py-3 text-xs font-black shadow-lg shadow-rose-500/30 cursor-pointer"
+                className="btn btn-primary flex-1 py-3 text-xs font-black shadow-lg shadow-rose-500/30 cursor-pointer flex items-center justify-center gap-1.5"
               >
-                Confirm Paid
+                <Printer className="w-4 h-4" />
+                {autoPrintOnPayment ? 'Collect & Print' : 'Confirm Paid'}
               </button>
             </div>
           </div>

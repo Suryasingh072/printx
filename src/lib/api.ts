@@ -186,7 +186,14 @@ export const api = {
   },
 
   // Public Shop
-  async getPublicShop(slug: string): Promise<{ shop: Shop; pricing: ShopPricing; requiresCounterPayment: boolean }> {
+  async getPublicShop(slug: string): Promise<{
+    shop: Shop;
+    pricing: ShopPricing;
+    requiresCounterPayment: boolean;
+    requireOnlinePayment: boolean;
+    rules: ShopApprovalRules;
+    agentOnline: boolean;
+  }> {
     return this.request(`/api/shops/${slug}`);
   },
 
@@ -291,10 +298,10 @@ export const api = {
     });
   },
 
-  async collectPayment(orderId: string, method: 'counter_upi' | 'online_upi', notes?: string): Promise<any> {
+  async collectPayment(orderId: string, method: 'counter_cash' | 'counter_upi' | 'online_upi' = 'counter_cash', notes?: string, autoPrint = true): Promise<any> {
     return this.request(`/api/shop/orders/${orderId}/collect-payment`, {
       method: 'POST',
-      body: JSON.stringify({ method, notes }),
+      body: JSON.stringify({ method, notes, autoPrint }),
     });
   },
 

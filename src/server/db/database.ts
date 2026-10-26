@@ -575,6 +575,7 @@ export class Database {
       maxAutoPages: 10,
       maxAutoAmount: 50.00,
       requirePaymentBeforePrint: true,
+      requireOnlinePayment: true,
       notifyWhatsapp: true,
       updatedAt: new Date().toISOString(),
     };
@@ -669,7 +670,12 @@ export class Database {
   // --- Approval Rules ---
   public getShopApprovalRules(shopId: string): ShopApprovalRules {
     const found = this.data.approvalRules.find((r) => r.shopId === shopId);
-    if (found) return found;
+    if (found) {
+      if (found.requireOnlinePayment === undefined) {
+        found.requireOnlinePayment = true;
+      }
+      return found;
+    }
 
     const fallback: ShopApprovalRules = {
       id: `rul-${crypto.randomUUID().slice(0, 8)}`,
@@ -678,6 +684,7 @@ export class Database {
       maxAutoPages: 10,
       maxAutoAmount: 50.00,
       requirePaymentBeforePrint: true,
+      requireOnlinePayment: true,
       notifyWhatsapp: true,
       updatedAt: new Date().toISOString(),
     };
@@ -696,6 +703,7 @@ export class Database {
         maxAutoPages: updates.maxAutoPages ?? 10,
         maxAutoAmount: updates.maxAutoAmount ?? 50.00,
         requirePaymentBeforePrint: updates.requirePaymentBeforePrint ?? true,
+        requireOnlinePayment: updates.requireOnlinePayment !== undefined ? Boolean(updates.requireOnlinePayment) : true,
         notifyWhatsapp: updates.notifyWhatsapp ?? true,
         updatedAt: new Date().toISOString(),
       };
@@ -707,6 +715,7 @@ export class Database {
     this.data.approvalRules[idx] = {
       ...this.data.approvalRules[idx],
       ...updates,
+      requireOnlinePayment: updates.requireOnlinePayment !== undefined ? Boolean(updates.requireOnlinePayment) : (this.data.approvalRules[idx].requireOnlinePayment ?? true),
       updatedAt: new Date().toISOString(),
     };
     this.save();

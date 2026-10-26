@@ -893,6 +893,8 @@ app.get(['/api/shops/:slug', '/api/s/:slug'], (req, res) => {
       currency: pricing.currency,
     },
     requiresCounterPayment: approvalRules.requirePaymentBeforePrint,
+    requireOnlinePayment: approvalRules.requireOnlinePayment ?? true,
+    rules: approvalRules,
     agentOnline,
   });
 });
@@ -1001,8 +1003,8 @@ app.post('/api/orders', async (req, res) => {
   });
 
   // Evaluate Approval Rules
-  let initialStatus: 'pending_approval' | 'payment_pending' | 'queued' = 'payment_pending';
-
+  const isOnlinePaymentRequired = rules.requireOnlinePayment !== false;
+  const isCounterPaymentRequested = req.body.paymentMethod === 'counter_cash' || req.body.paymentMethod === 'counter_upi' || req.body.isCounterPayment === true;
   const totalPages = (pageCount || 1) * (copies || 1);
   const isAutoApproved =
     rules.mode === 'auto' ||
@@ -1010,7 +1012,13 @@ app.post('/api/orders', async (req, res) => {
       totalPages <= rules.maxAutoPages &&
       priceCalc.totalAmount <= rules.maxAutoAmount);
 
-  if (isAutoApproved) {
+  let initialStatus: 'pending_approval' | 'payment_pending' | 'queued' = 'payment_pending';
+  if (!isAutoApproved) {
+    initialStatus = 'pending_approval';
+  } else if (!isOnlinePaymentRequired && isCounterPaymentRequested) {
+    // If shopkeeper allows pay at counter and customer chooses counter, queue order for counter payment & print
+    initialStatus = 'payment_pending';
+  } else {
     initialStatus = 'payment_pending';
   }
 
@@ -1037,15 +1045,21 @@ app.post('/api/orders', async (req, res) => {
     files: Array.isArray(req.body.files) ? req.body.files : undefined,
   });
 
+  const orderDesc = (!isOnlinePaymentRequired && isCounterPaymentRequested)
+    ? `Order ${order.orderNumber} placed by ${order.customerName} (${order.documentName}, ₹${order.totalAmount}). Pay at Counter chosen.`
+    : `Order ${order.orderNumber} placed by ${order.customerName} (${order.documentName}, ₹${order.totalAmount}). Online checkout ready.`;
+
   db.logActivity({
     shopId: shop.id,
     actionType: 'order_submitted',
-    description: `Order ${order.orderNumber} placed by ${order.customerName} (${order.documentName}, ₹${order.totalAmount}). Razorpay checkout ready.`,
-    metadata: { orderNumber: order.orderNumber, amount: order.totalAmount },
+    description: orderDesc,
+    metadata: { orderNumber: order.orderNumber, amount: order.totalAmount, counterPayment: !isOnlinePaymentRequired && isCounterPaymentRequested },
   });
 
   res.status(201).json({
-    message: 'Order placed successfully! Please complete online payment via Razorpay.',
+    message: (!isOnlinePaymentRequired && isCounterPaymentRequested)
+      ? 'Order placed successfully! Please collect your print at the counter and pay.'
+      : 'Order placed successfully! Please complete online payment via Razorpay.',
     order: {
       orderNumber: order.orderNumber,
       customerName: order.customerName,
@@ -1071,13 +1085,54 @@ app.post('/api/orders', async (req, res) => {
   });
 });
 
-// Customer Track Order by Order Number
-app.get('/api/orders/:orderNumber', (req, res) => {
+// Customer Track Order by Order Number (Auto-Syncs Mobile Razorpay Status!)
+app.get('/api/orders/:orderNumber', async (req, res) => {
   const orderNumber = req.params.orderNumber;
-  const order = db.getOrderByNumber(orderNumber);
+  let order = db.getOrderByNumber(orderNumber);
 
   if (!order) {
     return res.status(404).json({ error: 'Order not found. Please check your order number.' });
+  }
+
+  // Automatic Background Verification for Mobile Payments:
+  // If user paid on mobile phone via UPI app and returned to browser, verify directly with Razorpay
+  if (order.paymentStatus !== 'collected' && order.gatewayOrderId) {
+    try {
+      const { key_id, key_secret } = getRazorpayCredentials();
+      if (key_id && key_secret) {
+        const razorpay = new Razorpay({ key_id, key_secret });
+        const rzpOrder = await razorpay.orders.fetch(order.gatewayOrderId);
+        if (rzpOrder && (rzpOrder.status === 'paid' || (Number(rzpOrder.amount_paid || 0) >= Number(rzpOrder.amount)))) {
+          db.recordPayment({
+            orderId: order.id,
+            shopId: order.shopId,
+            amount: order.totalAmount,
+            method: 'online_upi',
+            collectorName: 'Razorpay Auto-Sync',
+            notes: `Mobile Payment Detected Paid: ${order.gatewayOrderId}`,
+          });
+
+          const agent = db.getAgentByShopId(order.shopId);
+          const targetPrinter =
+            (order.colorMode === 'color' ? agent?.colorPrinter : agent?.bwPrinter) ||
+            agent?.defaultPrinter ||
+            'Default Windows Printer';
+
+          db.createPrintJobsForOrder(order.id, targetPrinter);
+          db.updateOrderStatus(
+            order.id,
+            'queued',
+            'Razorpay Auto-Spooler',
+            undefined,
+            `Mobile Razorpay payment verified (₹${order.totalAmount}). Automatically spooled to "${targetPrinter}".`
+          );
+          db.save();
+          order = db.getOrderById(order.id) || order;
+        }
+      }
+    } catch (_syncErr) {
+      // Non-blocking catch
+    }
   }
 
   const shop = db.getShopById(order.shopId);
@@ -1214,6 +1269,16 @@ app.post('/api/create-order', async (req, res) => {
 
     const razorpayOrder = await razorpay.orders.create(orderPayload);
 
+    // Link gatewayOrderId to existing shop order immediately if receipt or notes has orderNumber!
+    const targetOrdRef = (notes && notes.orderNumber) || (receipt ? String(receipt).replace(/^rcpt_/, '') : '');
+    if (targetOrdRef) {
+      const ord = db.getOrderByNumber(targetOrdRef) || db.getOrderById(targetOrdRef);
+      if (ord) {
+        ord.gatewayOrderId = razorpayOrder.id;
+        db.save();
+      }
+    }
+
     return res.status(200).json({
       order_id: razorpayOrder.id,
       id: razorpayOrder.id,
@@ -1287,46 +1352,53 @@ app.post('/api/verify-payment', (req, res) => {
 
     // If payment belongs to a print shop order, mark it as collected and auto-spool to printer!
     const orderRef = req.body.orderNumber || req.body.orderRef || req.body.receipt;
-    let orderRecord = null;
+    let existingOrder = null;
     if (orderRef) {
-      const existingOrder = db.getOrderByNumber(orderRef) || db.getOrderById(orderRef);
-      if (existingOrder) {
-        if (existingOrder.paymentStatus !== 'collected') {
-          db.recordPayment({
-            orderId: existingOrder.id,
-            shopId: existingOrder.shopId,
-            amount: existingOrder.totalAmount,
-            method: 'online_upi',
-            collectorName: 'Razorpay Standard Checkout',
-            notes: `Razorpay Payment Verified: ${payment_id} | Order: ${order_id}`,
-          });
+      const cleanRef = String(orderRef).replace(/^rcpt_/, '').trim();
+      existingOrder = db.getOrderByNumber(cleanRef) || db.getOrderById(cleanRef) || db.getOrderByNumber(orderRef) || db.getOrderById(orderRef);
+    }
+    if (!existingOrder && order_id) {
+      existingOrder = (db as any).data.orders.find((o: any) => o.gatewayOrderId === order_id);
+    }
 
-          const agent = db.getAgentByShopId(existingOrder.shopId);
-          const targetPrinter =
-            (existingOrder.colorMode === 'color' ? agent?.colorPrinter : agent?.bwPrinter) ||
-            agent?.defaultPrinter ||
-            'Default Windows Printer';
+    let orderRecord = null;
+    if (existingOrder) {
+      existingOrder.gatewayOrderId = order_id;
+      if (existingOrder.paymentStatus !== 'collected') {
+        db.recordPayment({
+          orderId: existingOrder.id,
+          shopId: existingOrder.shopId,
+          amount: existingOrder.totalAmount,
+          method: 'online_upi',
+          collectorName: 'Razorpay Standard Checkout',
+          notes: `Razorpay Payment Verified: ${payment_id} | Order: ${order_id}`,
+        });
 
-          db.createPrintJobsForOrder(existingOrder.id, targetPrinter);
-          db.updateOrderStatus(
-            existingOrder.id,
-            'printing',
-            'Razorpay Auto-Spooler',
-            undefined,
-            `Razorpay verified (₹${existingOrder.totalAmount}). Automatically spooled to "${targetPrinter}".`
-          );
+        const agent = db.getAgentByShopId(existingOrder.shopId);
+        const targetPrinter =
+          (existingOrder.colorMode === 'color' ? agent?.colorPrinter : agent?.bwPrinter) ||
+          agent?.defaultPrinter ||
+          'Default Windows Printer';
 
-          db.logActivity({
-            shopId: existingOrder.shopId,
-            actionType: 'payment_collected',
-            description: `Order ${existingOrder.orderNumber} paid ₹${existingOrder.totalAmount} via Razorpay. Dispatched to printer.`,
-            metadata: { razorpay_payment_id: payment_id, razorpay_order_id: order_id },
-          });
+        db.createPrintJobsForOrder(existingOrder.id, targetPrinter);
+        db.updateOrderStatus(
+          existingOrder.id,
+          'queued',
+          'Razorpay Auto-Spooler',
+          undefined,
+          `Razorpay verified (₹${existingOrder.totalAmount}). Automatically spooled to "${targetPrinter}".`
+        );
 
-          db.save();
-        }
-        orderRecord = db.getOrderById(existingOrder.id);
+        db.logActivity({
+          shopId: existingOrder.shopId,
+          actionType: 'payment_collected',
+          description: `Order ${existingOrder.orderNumber} paid ₹${existingOrder.totalAmount} via Razorpay. Dispatched to printer.`,
+          metadata: { razorpay_payment_id: payment_id, razorpay_order_id: order_id },
+        });
+
+        db.save();
       }
+      orderRecord = db.getOrderById(existingOrder.id);
     }
 
     return res.status(200).json({
@@ -1603,13 +1675,14 @@ app.put('/api/shop/approval-rules', requireAuth, (req, res) => {
   const shop = getShopForSession(req);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
-  const { mode, maxAutoPages, maxAutoAmount, requirePaymentBeforePrint, notifyWhatsapp } = req.body;
+  const { mode, maxAutoPages, maxAutoAmount, requirePaymentBeforePrint, requireOnlinePayment, notifyWhatsapp } = req.body;
 
   const updated = db.updateShopApprovalRules(shop.id, {
     mode,
     maxAutoPages: Number(maxAutoPages),
     maxAutoAmount: Number(maxAutoAmount),
     requirePaymentBeforePrint: Boolean(requirePaymentBeforePrint),
+    requireOnlinePayment: requireOnlinePayment !== undefined ? Boolean(requireOnlinePayment) : true,
     notifyWhatsapp: Boolean(notifyWhatsapp),
   });
 
@@ -1617,7 +1690,7 @@ app.put('/api/shop/approval-rules', requireAuth, (req, res) => {
     shopId: shop.id,
     userId: session.userId,
     actionType: 'rules_updated',
-    description: `Approval mode updated to ${mode.toUpperCase()} (Payment before print: ${requirePaymentBeforePrint ? 'Yes' : 'No'})`,
+    description: `Approval mode updated to ${mode.toUpperCase()} (Online Payment Only: ${requireOnlinePayment !== false ? 'ON' : 'OFF'}, Payment before print: ${requirePaymentBeforePrint ? 'Yes' : 'No'})`,
   });
 
   res.json(updated);
@@ -1680,11 +1753,11 @@ app.post('/api/shop/orders/:id/reject', requireAuth, (req, res) => {
   res.json(updated);
 });
 
-// Record Counter Payment
+// Record Counter Payment & Auto-Print Spooling
 app.post('/api/shop/orders/:id/collect-payment', requireAuth, (req, res) => {
   const session = (req as any).user;
   const orderId = req.params.id;
-  const { method, notes } = req.body; // method: 'counter_cash' | 'counter_upi'
+  const { method = 'counter_cash', notes, autoPrint = true, printerName } = req.body; // method: 'counter_cash' | 'counter_upi'
   const order = db.getOrderById(orderId);
 
   if (!order) return res.status(404).json({ error: 'Order not found' });
@@ -1699,14 +1772,30 @@ app.post('/api/shop/orders/:id/collect-payment', requireAuth, (req, res) => {
     notes,
   });
 
+  let jobs: any[] = [];
+  if (autoPrint) {
+    const agent = db.getAgentByShopId(order.shopId);
+    const targetPrinter = printerName || (order.colorMode === 'color' ? agent?.colorPrinter : agent?.bwPrinter) || agent?.defaultPrinter || 'Default Windows Printer';
+
+    jobs = db.createPrintJobsForOrder(orderId, targetPrinter);
+    db.updateOrderStatus(orderId, 'queued', 'Shop Counter Payment', session.userId, `Counter payment collected (₹${order.totalAmount}). Automatically spooled to "${targetPrinter}".`);
+  }
+
   db.logActivity({
     shopId: order.shopId,
     userId: session.userId,
     actionType: 'payment_collected',
-    description: `Collected ₹${order.totalAmount} via ${method === 'counter_upi' ? 'UPI' : 'Cash'} for order ${order.orderNumber}`,
+    description: `Collected ₹${order.totalAmount} via ${method === 'counter_upi' ? 'UPI' : 'Cash'} for order ${order.orderNumber}${autoPrint ? ' & spooled to printer' : ''}`,
   });
 
-  res.json({ message: 'Payment recorded successfully', payment, order: db.getOrderById(orderId) });
+  (db as any).save();
+
+  res.json({
+    message: autoPrint ? 'Payment recorded and print job dispatched to printer!' : 'Payment recorded successfully',
+    payment,
+    order: db.getOrderById(orderId),
+    jobs,
+  });
 });
 
 // Dispatch to Printer Queue / Trigger Print

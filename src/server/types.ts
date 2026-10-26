@@ -79,6 +79,7 @@ export interface ShopApprovalRules {
   maxAutoPages: number;
   maxAutoAmount: number;
   requirePaymentBeforePrint: boolean;
+  requireOnlinePayment: boolean;
   notifyWhatsapp: boolean;
   updatedAt: string;
 }

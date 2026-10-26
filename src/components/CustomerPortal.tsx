@@ -77,6 +77,8 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
   const [shop, setShop] = useState<Shop | null>(null);
   const [pricing, setPricing] = useState<ShopPricing | null>(null);
   const [requiresCounterPayment, setRequiresCounterPayment] = useState<boolean>(true);
+  const [requireOnlinePayment, setRequireOnlinePayment] = useState<boolean>(true);
+  const [paymentChoice, setPaymentChoice] = useState<'online' | 'counter'>('online');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -195,6 +197,13 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
         setShop(data.shop);
         setPricing(data.pricing);
         setRequiresCounterPayment(data.requiresCounterPayment);
+        const onlineRequired = data.requireOnlinePayment !== false;
+        setRequireOnlinePayment(onlineRequired);
+        if (!onlineRequired) {
+          setPaymentChoice('counter');
+        } else {
+          setPaymentChoice('online');
+        }
       } catch (err: any) {
         setError(err.message || 'Could not load shop information.');
       } finally {
@@ -615,6 +624,8 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
         orderType,
         pageRange: 'all',
         customNotes,
+        paymentMethod: (!requireOnlinePayment && paymentChoice === 'counter') ? 'counter_cash' : 'online_upi',
+        isCounterPayment: (!requireOnlinePayment && paymentChoice === 'counter'),
         files: filesPayload as any,
       });
 
@@ -625,8 +636,10 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
         spread: 70,
         origin: { y: 0.6 },
       });
-      // Seamless Razorpay checkout modal trigger
-      handlePayWithRazorpay(res.order);
+      // If online payment is enforced or customer selected online payment, trigger Razorpay modal
+      if (requireOnlinePayment || paymentChoice === 'online') {
+        handlePayWithRazorpay(res.order);
+      }
     } catch (err: any) {
       alert(err.message || 'Order submission failed.');
     } finally {
@@ -786,6 +799,58 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                   <Plus className="w-4 h-4 stroke-[3]" />
                   Naya Print / Upload Karein
                 </button>
+              </div>
+            ) : !requireOnlinePayment && paymentChoice === 'counter' ? (
+              <div className="space-y-4 bg-gradient-to-br from-[#121c2d] via-[#101b33] to-[#0a1224] p-5 sm:p-6 rounded-2xl border-2 border-amber-500/40 shadow-[0_8px_30px_rgba(245,158,11,0.15)]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 shadow-lg shadow-amber-500/20 shrink-0">
+                      <Store className="w-6 h-6 stroke-[2.5]" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-base font-black text-white font-head">Order Queued • Pay at Shop Counter</h4>
+                        <span className="badge text-[10px] font-black uppercase tracking-wider py-0.5 px-2 bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                          Cash / Counter UPI
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-300 mt-0.5">
+                        Order #{placedOrder.orderNumber} shop ke Print Queue me successfully submit ho gaya hai.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right self-end sm:self-auto">
+                    <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Amount Due:</span>
+                    <p className="text-2xl font-black text-white font-mono grad font-head">₹{placedOrder.totalAmount.toFixed(2)}</p>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-amber-500/10 border border-amber-500/25 rounded-xl space-y-1.5 text-xs text-amber-200">
+                  <p className="font-bold flex items-center gap-1.5 text-amber-300">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    Aapka Document Print Queue Me Ready Hai
+                  </p>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Kripya shop counter par apna Order No. <strong>{placedOrder.orderNumber}</strong> batayein aur <strong>₹{placedOrder.totalAmount.toFixed(2)}</strong> Cash ya UPI se pay karein. Shopkeeper payment receive karke turant print nikal dega.
+                  </p>
+                </div>
+
+                {/* Optional Online Payment Option */}
+                <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-white/10">
+                  <p className="text-xs text-slate-400">
+                    Counter par line se bachne ke liye online bhi pay kar sakte hain:
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => handlePayWithRazorpay()}
+                    disabled={isRazorpayLoading}
+                    className="btn bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-black py-2.5 px-5 rounded-xl text-xs flex items-center gap-2 cursor-pointer shrink-0"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    Pay ₹{placedOrder.totalAmount.toFixed(2)} with Razorpay
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-5 bg-gradient-to-br from-[#0c1830] via-[#0f172a] to-[#0a1120] p-5 sm:p-6 rounded-2xl border-2 border-sky-500/40 shadow-[0_8px_30px_rgba(14,165,233,0.15)]">
@@ -1299,15 +1364,57 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                   />
                 </div>
 
+                {/* Payment Option Selector (only shown when requireOnlinePayment is OFF) */}
+                {!requireOnlinePayment && (
+                  <div className="space-y-2 p-3.5 bg-white/[0.04] border border-white/10 rounded-2xl">
+                    <label className="text-xs font-bold text-slate-300 block">Payment Preference:</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentChoice('counter')}
+                        className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                          paymentChoice === 'counter'
+                            ? 'border-emerald-500 bg-emerald-500/15 text-white font-bold shadow-[0_0_15px_rgba(34,197,94,0.2)]'
+                            : 'border-white/10 bg-white/5 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 text-emerald-300 text-xs font-black">
+                          <Store className="w-4 h-4" /> Pay at Counter
+                        </div>
+                        <p className="text-[10px] text-slate-300 mt-1">Cash / UPI counter par dein</p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setPaymentChoice('online')}
+                        className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                          paymentChoice === 'online'
+                            ? 'border-pink-500 bg-pink-500/15 text-white font-bold shadow-[0_0_15px_rgba(255,46,99,0.2)]'
+                            : 'border-white/10 bg-white/5 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 text-pink-300 text-xs font-black">
+                          <CreditCard className="w-4 h-4" /> Pay Online
+                        </div>
+                        <p className="text-[10px] text-slate-300 mt-1">Razorpay UPI / Cards</p>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={fileQueue.length === 0 || isSubmitting || isBulkUploading}
-                  className={`btn btn-primary w-full py-4 text-sm font-black disabled:opacity-40 disabled:pointer-events-none cursor-pointer`}
+                  className={`btn ${(!requireOnlinePayment && paymentChoice === 'counter') ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 shadow-[0_8px_25px_rgba(34,197,94,0.35)]' : 'btn-primary shadow-rose-500/30'} w-full py-4 text-sm font-black disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex items-center justify-center gap-2`}
                 >
                   {isSubmitting ? (
                     <>
                       <RefreshCw className="w-5 h-5 animate-spin" /> Submitting Order...
+                    </>
+                  ) : (!requireOnlinePayment && paymentChoice === 'counter') ? (
+                    <>
+                      <Store className="w-5 h-5 stroke-[2.5]" /> Place Order (Pay at Counter) • ₹{total.toFixed(2)}
                     </>
                   ) : (
                     <>
@@ -1353,20 +1460,37 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                   </div>
 
                   {/* Payment Gateway Badge */}
-                  <div className="p-3 bg-gradient-to-r from-sky-500/10 via-blue-500/10 to-indigo-500/10 rounded-2xl border border-sky-500/20 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-xs font-black text-sky-300">
-                        <CreditCard className="w-3.5 h-3.5 text-sky-400" />
-                        Razorpay Standard Checkout
-                      </span>
-                      <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                        100% Online Payment
-                      </span>
+                  {requireOnlinePayment ? (
+                    <div className="p-3 bg-gradient-to-r from-sky-500/10 via-blue-500/10 to-indigo-500/10 rounded-2xl border border-sky-500/20 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 text-xs font-black text-sky-300">
+                          <CreditCard className="w-3.5 h-3.5 text-sky-400" />
+                          Razorpay Standard Checkout
+                        </span>
+                        <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                          100% Online Payment
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 leading-snug">
+                        UPI (GPay • PhonePe • Paytm • BHIM), Cards & Netbanking. Pre-loaded amount, printer auto-starts on payment.
+                      </p>
                     </div>
-                    <p className="text-[11px] text-slate-300 leading-snug">
-                      UPI (GPay • PhonePe • Paytm • BHIM), Cards & Netbanking. Amount pre-loaded, printer auto-starts on payment.
-                    </p>
-                  </div>
+                  ) : (
+                    <div className="p-3 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 rounded-2xl border border-emerald-500/25 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 text-xs font-black text-emerald-300">
+                          <Store className="w-3.5 h-3.5 text-emerald-400" />
+                          Flexible Payment Modes
+                        </span>
+                        <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          Counter / Online
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 leading-snug">
+                        Shopkeeper accepts counter cash or direct Razorpay checkout. Print released upon payment.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Features Highlights like website */}
@@ -1405,11 +1529,15 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                 if (form) form.requestSubmit();
               }}
               disabled={fileQueue.length === 0 || isSubmitting || isBulkUploading}
-              className="btn bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white font-black py-3 px-5 text-xs rounded-xl shadow-lg shadow-emerald-500/30 flex items-center gap-2 cursor-pointer disabled:opacity-40"
+              className={`btn ${(!requireOnlinePayment && paymentChoice === 'counter') ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500'} text-white font-black py-3 px-5 text-xs rounded-xl shadow-lg shadow-emerald-500/30 flex items-center gap-2 cursor-pointer disabled:opacity-40`}
             >
               {isSubmitting ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" /> Submitting...
+                </>
+              ) : (!requireOnlinePayment && paymentChoice === 'counter') ? (
+                <>
+                  <Store className="w-4 h-4" /> Place Order • Pay at Counter
                 </>
               ) : (
                 <>
