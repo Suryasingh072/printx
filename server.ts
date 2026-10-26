@@ -1867,13 +1867,22 @@ app.get('/api/shop/orders/:id/document-token', requireAuth, (req, res) => {
   res.json({ token, expiresAt, url: `/api/documents/preview/${orderId}?token=${token}` });
 });
 
+app.options('/api/documents/preview/:orderId', (_req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.sendStatus(204);
+});
+
 // Document Stream / Preview with Token or Auth Header
 app.get('/api/documents/preview/:orderId', (req, res) => {
   const { orderId } = req.params;
-  const token = req.query.token as string;
+  const token = (req.query.token as string) || (req.query.auth as string);
 
   let authorized = false;
   if (token && storageService.verifySignedToken(token, orderId)) {
+    authorized = true;
+  } else if (token && verifySessionToken(token)) {
     authorized = true;
   } else {
     // Check Authorization header for logged-in shop owners

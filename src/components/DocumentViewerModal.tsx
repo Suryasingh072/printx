@@ -127,14 +127,21 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
             setLoading(false);
             return;
           }
-          // Fetch PDF arraybuffer safely
-          const res = await fetch(previewUrl);
+          // Fetch PDF arraybuffer safely with auth header if available
+          const token = localStorage.getItem('printqr_auth_token');
+          const headers: Record<string, string> = {};
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+          }
+          const res = await fetch(previewUrl, { headers });
           if (!res.ok) {
             throw new Error(`Failed to load document (${res.status} ${res.statusText})`);
           }
           arrayBuffer = await res.arrayBuffer();
         } else {
-          throw new Error('No document file or URL provided for preview.');
+          // Waiting for previewUrl or file to become available
+          setLoading(true);
+          return;
         }
 
         if (!active) return;

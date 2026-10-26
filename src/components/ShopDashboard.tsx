@@ -285,12 +285,17 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
       showToast('Privacy Guarantee: Customer files were permanently auto-deleted 5 minutes after print completion.', 'info');
       return;
     }
+    const sessionToken = api.getToken();
+    const fallbackUrl = `/api/documents/preview/${order.id}${sessionToken ? `?auth=${encodeURIComponent(sessionToken)}` : ''}`;
+    setPreviewTokenUrl(fallbackUrl);
     setSelectedOrderForPreview(order);
     try {
       const res = await api.getDocumentToken(order.id);
-      setPreviewTokenUrl(res.url);
+      if (res?.url) {
+        setPreviewTokenUrl(res.url);
+      }
     } catch (e: any) {
-      showToast(`Preview error: ${e.message}`, 'error');
+      console.warn('Signed preview token retrieval note (session URL active):', e);
     }
   };
 
