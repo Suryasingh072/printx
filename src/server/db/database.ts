@@ -20,6 +20,51 @@ import {
   ShopStats,
 } from '../types.js';
 
+export function resolveTargetPrinter(
+  agent: WindowsAgent | null | undefined,
+  colorMode?: string,
+  preferredPrinter?: string
+): string {
+  if (preferredPrinter && preferredPrinter.trim() && preferredPrinter !== 'Default Windows Printer') {
+    return preferredPrinter.trim();
+  }
+  if (!agent) return 'Default Windows Printer';
+
+  const installed = (agent.installedPrinters || []).map((p) => p.name);
+  const isColor = colorMode === 'color';
+  const preferred = isColor ? agent.colorPrinter : agent.bwPrinter;
+
+  // 1. If preferred printer is configured AND is present in agent's installedPrinters, use it
+  if (preferred && installed.includes(preferred)) {
+    return preferred;
+  }
+
+  // 2. If agent has a defaultPrinter that is installed, use it
+  if (agent.defaultPrinter && installed.includes(agent.defaultPrinter)) {
+    return agent.defaultPrinter;
+  }
+
+  // 3. Find first real physical hardware printer (excluding virtual ones like OneNote, XPS, Fax, Print to PDF)
+  if (installed.length > 0) {
+    const isVirtual = (name: string) =>
+      /onenote|xps|fax|print to pdf|writer/i.test(name);
+
+    // Look for real physical printer
+    const hardwarePrinter = (agent.installedPrinters || []).find((p) => !isVirtual(p.name));
+    if (hardwarePrinter) {
+      return hardwarePrinter.name;
+    }
+
+    // Default installed flag
+    const def = (agent.installedPrinters || []).find((p) => p.isDefault);
+    if (def) return def.name;
+
+    return installed[0];
+  }
+
+  return preferred || agent.defaultPrinter || 'Default Windows Printer';
+}
+
 interface DatabaseSchema {
   users: User[];
   shops: Shop[];
@@ -732,7 +777,18 @@ export class Database {
   }
 
   public getOrdersByShop(shopId: string, filter?: string): Order[] {
-    let orders = this.data.orders.filter((o) => o.shopId === shopId);
+    const now = Date.now();
+    // Exclude orders that completed and whose 5-minute queue deletion time has elapsed
+    let orders = this.data.orders.filter((o) => {
+      if (o.shopId !== shopId) return false;
+      const isCompleted = o.status === 'completed' || Boolean(o.printedAt);
+      if (isCompleted) {
+        if (o.purgeDueAt && now >= new Date(o.purgeDueAt).getTime()) return false;
+        if (o.printedAt && now - new Date(o.printedAt).getTime() >= 5 * 60 * 1000) return false;
+      }
+      return true;
+    });
+
     if (filter && filter !== 'all') {
       if (filter === 'payment_due') {
         orders = orders.filter((o) => o.paymentStatus === 'unpaid' && o.status !== 'rejected');
@@ -847,24 +903,26 @@ export class Database {
   }
 
   /**
-   * Automatically purges customer files 5 minutes after print completion
-   * to guarantee customer privacy and prevent data retention.
+   * Automatically deletes printed/completed orders and customer files from the Print Queue 5 minutes
+   * after print completion to maintain queue cleanliness and protect customer privacy.
    */
   public purgeCompletedOrdersFiles(): { purgedCount: number; purgedOrderIds: string[] } {
     const now = Date.now();
     const purgedOrderIds: string[] = [];
+    const remainingOrders: Order[] = [];
 
     for (const order of this.data.orders) {
       const isCompleted = order.status === 'completed' || Boolean(order.printedAt);
-      if (!isCompleted || order.isDocumentPurged) continue;
 
       let shouldPurge = false;
-      if (order.purgeDueAt) {
-        shouldPurge = now >= new Date(order.purgeDueAt).getTime();
-      } else if (order.printedAt) {
-        shouldPurge = now - new Date(order.printedAt).getTime() >= 5 * 60 * 1000;
-      } else if (order.updatedAt && order.status === 'completed') {
-        shouldPurge = now - new Date(order.updatedAt).getTime() >= 5 * 60 * 1000;
+      if (isCompleted) {
+        if (order.purgeDueAt) {
+          shouldPurge = now >= new Date(order.purgeDueAt).getTime();
+        } else if (order.printedAt) {
+          shouldPurge = now - new Date(order.printedAt).getTime() >= 5 * 60 * 1000;
+        } else if (order.updatedAt && order.status === 'completed') {
+          shouldPurge = now - new Date(order.updatedAt).getTime() >= 5 * 60 * 1000;
+        }
       }
 
       if (shouldPurge) {
@@ -890,23 +948,18 @@ export class Database {
           }
         }
 
-        order.isDocumentPurged = true;
-        order.purgedAt = new Date().toISOString();
-        purgedOrderIds.push(order.id);
+        // Clean up associated print jobs
+        this.data.printJobs = this.data.printJobs.filter((j) => j.orderId !== order.id);
 
-        this.data.orderHistory.push({
-          id: `hst-${crypto.randomUUID().slice(0, 8)}`,
-          orderId: order.id,
-          previousStatus: order.status,
-          newStatus: order.status,
-          changedByName: 'printx Privacy Engine',
-          comment: 'Customer files automatically & permanently deleted 5 minutes after completion for privacy protection.',
-          createdAt: new Date().toISOString(),
-        });
+        purgedOrderIds.push(order.id);
+        console.log(`[Queue Auto-Delete] Order ${order.orderNumber} automatically deleted from Print Queue after 5 minutes.`);
+      } else {
+        remainingOrders.push(order);
       }
     }
 
     if (purgedOrderIds.length > 0) {
+      this.data.orders = remainingOrders;
       this.save();
     }
 
@@ -1225,11 +1278,7 @@ export class Database {
     if (!order) return [];
 
     const agent = this.getAgentByShopId(order.shopId);
-    const targetPrinter =
-      preferredPrinter ||
-      (order.colorMode === 'color' ? agent?.colorPrinter : agent?.bwPrinter) ||
-      agent?.defaultPrinter ||
-      'Default Windows Printer';
+    const targetPrinter = resolveTargetPrinter(agent, order.colorMode, preferredPrinter);
 
     const existingJobs = this.data.printJobs.filter((j) => j.orderId === orderId);
 
@@ -1382,6 +1431,7 @@ export class Database {
         if (remainingActive.length === 0) {
           order.status = 'completed';
           order.printedAt = new Date().toISOString();
+          order.purgeDueAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
         } else {
           order.status = 'printing';
         }

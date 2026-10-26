@@ -201,12 +201,17 @@ class WorkerThread(QThread):
             try:
                 self.log_signal.emit(f"[Win32 Spooler] Submitting '{file_path}' to '{printer_name}'...")
                 win32api.ShellExecute(0, "printto", file_path, f'"{printer_name}"', ".", 0)
-                # Wait 2 seconds for shell process to hand off data to printer port
                 time.sleep(2)
                 return True
             except Exception as e:
-                self.log_signal.emit(f"[Win32 Error] {e}")
-                return False
+                self.log_signal.emit(f"[Win32 Spooler Note] '{printer_name}' failed: {e}. Fallback to Windows default printer...")
+                try:
+                    win32api.ShellExecute(0, "print", file_path, None, ".", 0)
+                    time.sleep(2)
+                    return True
+                except Exception as e2:
+                    self.log_signal.emit(f"[Win32 Spooler Fatal] Both target and default printer failed: {e2}")
+                    return False
         else:
             self.log_signal.emit("[Warning] pywin32 not installed. Simulating execution.")
             return True

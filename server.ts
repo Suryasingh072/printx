@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import multer from 'multer';
 import Razorpay from 'razorpay';
-import { db } from './src/server/db/database.js';
+import { db, resolveTargetPrinter } from './src/server/db/database.js';
 import { storageService } from './src/server/services/storage.js';
 import { whatsAppService } from './src/server/services/whatsapp.js';
 import { calculateOrderPrice } from './src/server/services/pricing.js';
@@ -1113,10 +1113,7 @@ app.get('/api/orders/:orderNumber', async (req, res) => {
           });
 
           const agent = db.getAgentByShopId(order.shopId);
-          const targetPrinter =
-            (order.colorMode === 'color' ? agent?.colorPrinter : agent?.bwPrinter) ||
-            agent?.defaultPrinter ||
-            'Default Windows Printer';
+          const targetPrinter = resolveTargetPrinter(agent, order.colorMode);
 
           db.createPrintJobsForOrder(order.id, targetPrinter);
           db.updateOrderStatus(
@@ -1190,7 +1187,7 @@ app.post('/api/orders/:orderNumber/pay-online', (req, res) => {
 
   // 2. Immediately dispatch to active printer spooler (Zero approval friction)
   const agent = db.getAgentByShopId(order.shopId);
-  const targetPrinter = (order.colorMode === 'color' ? agent?.colorPrinter : agent?.bwPrinter) || agent?.defaultPrinter || 'Default Windows Printer';
+  const targetPrinter = resolveTargetPrinter(agent, order.colorMode);
 
   db.createPrintJobsForOrder(order.id, targetPrinter);
   db.updateOrderStatus(order.id, 'printing', 'Auto-Print Spooler', undefined, `Online payment received (₹${order.totalAmount}). Automatically spooled to "${targetPrinter}".`);
@@ -1375,10 +1372,7 @@ app.post('/api/verify-payment', (req, res) => {
         });
 
         const agent = db.getAgentByShopId(existingOrder.shopId);
-        const targetPrinter =
-          (existingOrder.colorMode === 'color' ? agent?.colorPrinter : agent?.bwPrinter) ||
-          agent?.defaultPrinter ||
-          'Default Windows Printer';
+        const targetPrinter = resolveTargetPrinter(agent, existingOrder.colorMode);
 
         db.createPrintJobsForOrder(existingOrder.id, targetPrinter);
         db.updateOrderStatus(
@@ -1775,7 +1769,7 @@ app.post('/api/shop/orders/:id/collect-payment', requireAuth, (req, res) => {
   let jobs: any[] = [];
   if (autoPrint) {
     const agent = db.getAgentByShopId(order.shopId);
-    const targetPrinter = printerName || (order.colorMode === 'color' ? agent?.colorPrinter : agent?.bwPrinter) || agent?.defaultPrinter || 'Default Windows Printer';
+    const targetPrinter = resolveTargetPrinter(agent, order.colorMode, printerName);
 
     jobs = db.createPrintJobsForOrder(orderId, targetPrinter);
     db.updateOrderStatus(orderId, 'queued', 'Shop Counter Payment', session.userId, `Counter payment collected (₹${order.totalAmount}). Automatically spooled to "${targetPrinter}".`);
@@ -1808,7 +1802,7 @@ app.post('/api/shop/orders/:id/dispatch-print', requireAuth, (req, res) => {
   if (!order) return res.status(404).json({ error: 'Order not found' });
 
   const agent = db.getAgentByShopId(order.shopId);
-  const targetPrinter = printerName || (order.colorMode === 'color' ? agent?.colorPrinter : agent?.bwPrinter) || agent?.defaultPrinter || 'Default Windows Printer';
+  const targetPrinter = resolveTargetPrinter(agent, order.colorMode, printerName);
 
   const jobs = db.createPrintJobsForOrder(orderId, targetPrinter);
 

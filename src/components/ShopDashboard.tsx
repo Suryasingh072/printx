@@ -157,8 +157,20 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
     }
   };
 
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const tickInterval = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(tickInterval);
+  }, []);
+
   useEffect(() => {
     refreshOrders();
+    const pollInterval = setInterval(() => {
+      api.getShopOrders(queueFilter).then((data) => {
+        setOrders(data);
+      }).catch(() => {});
+    }, 8000);
+    return () => clearInterval(pollInterval);
   }, [queueFilter]);
 
   // Load other settings
@@ -498,6 +510,19 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
     }
   };
 
+  const getRemainingDeleteTime = (ord: Order) => {
+    if (ord.status !== 'completed' && !ord.printedAt) return null;
+    const due = ord.purgeDueAt
+      ? new Date(ord.purgeDueAt).getTime()
+      : (ord.printedAt ? new Date(ord.printedAt).getTime() + 5 * 60 * 1000 : 0);
+    if (!due) return 'in ~5m';
+    const diffSec = Math.max(0, Math.floor((due - Date.now()) / 1000));
+    if (diffSec <= 0) return 'deleting now...';
+    const m = Math.floor(diffSec / 60);
+    const s = diffSec % 60;
+    return `${m}m ${s < 10 ? '0' : ''}${s}s`;
+  };
+
   // Filtered orders for queue
   const filteredOrders = orders.filter((o) => {
     if (!searchQuery) return true;
@@ -740,22 +765,15 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                               {isPaid ? `PAID (₹${ord.totalAmount.toFixed(2)})` : `UNPAID (₹${ord.totalAmount.toFixed(2)})`}
                             </span>
 
-                            {/* 5-Min Privacy Auto-Purge Badge */}
-                            {ord.isDocumentPurged ? (
+                            {/* 5-Min Print Queue Auto-Delete Badge */}
+                            {(ord.status === 'completed' || Boolean(ord.printedAt)) && (
                               <span
-                                className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-slate-400 border border-white/10 inline-flex items-center gap-1"
-                                title="Customer document files permanently deleted 5 mins after print completion for privacy"
+                                className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 inline-flex items-center gap-1 animate-pulse"
+                                title="Order will automatically be deleted from Print Queue 5 minutes after print completion"
                               >
-                                🔒 Files Purged (5m Privacy)
+                                ⏱️ Auto-delete in {getRemainingDeleteTime(ord)}
                               </span>
-                            ) : ord.status === 'completed' ? (
-                              <span
-                                className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20 inline-flex items-center gap-1"
-                                title="Customer files will automatically be deleted 5 minutes after completion"
-                              >
-                                ⏱️ Auto-purging in 5m
-                              </span>
-                            ) : null}
+                            )}
                           </div>
 
                           <p className="text-xs font-semibold text-slate-200 mt-1 break-words">
@@ -826,13 +844,14 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                           </button>
                         )}
 
-                        {/* Mark Completed */}
-                        {ord.status === 'printing' && (
+                        {/* Mark Completed / Done */}
+                        {(ord.status === 'printing' || ord.status === 'queued') && (
                           <button
                             onClick={() => handleCompleteOrder(ord.id)}
-                            className="px-3.5 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition cursor-pointer"
+                            className="px-3.5 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1"
+                            title="Mark order printed & complete (starts 5-min auto-delete timer)"
                           >
-                            Mark Done
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Mark Done
                           </button>
                         )}
 
@@ -1969,9 +1988,14 @@ create table if not exists public.shops (
                   onChange={(e) => setAutoPrintOnPayment(e.target.checked)}
                   className="rounded text-pink-500 focus:ring-pink-500 w-4 h-4 cursor-pointer"
                 />
-                <span className="text-xs text-slate-200 font-semibold">
-                  Auto-spool & print immediately on printer
-                </span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs text-slate-200 font-semibold block">
+                    Auto-spool & print immediately on printer
+                  </span>
+                  <span className="text-[11px] text-pink-400 font-mono block truncate">
+                    Target: {agent?.bwPrinter || agent?.defaultPrinter || 'Default Windows Printer'}
+                  </span>
+                </div>
               </label>
             </div>
 
