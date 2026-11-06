@@ -199,6 +199,11 @@ class WorkerThread(QThread):
         """Submit job to Windows Print Spooler with port separation"""
         if WIN32_AVAILABLE:
             try:
+                if printer_name and printer_name != "Default Windows Printer":
+                    try:
+                        win32print.SetDefaultPrinter(printer_name)
+                    except Exception:
+                        pass
                 self.log_signal.emit(f"[Win32 Spooler] Submitting '{file_path}' to '{printer_name}'...")
                 win32api.ShellExecute(0, "printto", file_path, f'"{printer_name}"', ".", 0)
                 time.sleep(2)

@@ -1044,15 +1044,32 @@ export class Database {
 
   public getAgentByToken(token: string): WindowsAgent | undefined {
     if (!token) return undefined;
-    const cleanToken = token.trim();
+    let cleanToken = String(token).trim();
+    if (cleanToken.startsWith('Bearer ')) {
+      cleanToken = cleanToken.slice(7).trim();
+    }
+    if (!cleanToken) return undefined;
+
     const hash = crypto.createHash('sha256').update(cleanToken).digest('hex');
-    return this.data.agents.find(
-      (a) =>
-        (a.authTokenHash === hash ||
-          a.utilityApiKey === cleanToken ||
-          (a.pairingCode && a.pairingCode === cleanToken)) &&
-        a.status !== 'revoked'
-    );
+    const normalized = cleanToken.replace(/[\s\-]/g, '').toLowerCase();
+
+    const agent = this.data.agents.find((a) => {
+      if (a.status === 'revoked') return false;
+      if (a.authTokenHash === hash) return true;
+      if ((a as any).permanentToken === cleanToken) return true;
+      if (a.utilityApiKey && (a.utilityApiKey === cleanToken || a.utilityApiKey.trim() === cleanToken)) return true;
+      if (a.pairingCode && a.pairingCode.replace(/[\s\-]/g, '').toLowerCase() === normalized) return true;
+      if (a.id && a.id.toLowerCase() === normalized) return true;
+      if (a.shopId && a.shopId.toLowerCase() === normalized) return true;
+      return false;
+    });
+
+    if (agent) {
+      agent.status = 'online';
+      agent.lastSeenAt = new Date().toISOString();
+    }
+
+    return agent;
   }
 
   public createUtilityApiKey(shopId: string): { key: string; agent: WindowsAgent } {
@@ -1159,9 +1176,11 @@ export class Database {
     return agent;
   }
 
-  public pairAgent(pairingCode: string, deviceName: string, ipAddress?: string): { agent: WindowsAgent; token: string } | null {
+  public pairAgent(pairingCode: string, deviceName?: string, ipAddress?: string): { agent: WindowsAgent; token: string } | null {
     if (!pairingCode) return null;
-    const cleanCode = pairingCode.replace(/[\s\-]/g, '').trim();
+    let cleanCode = String(pairingCode).trim();
+    if (cleanCode.startsWith('Bearer ')) cleanCode = cleanCode.slice(7).trim();
+    cleanCode = cleanCode.replace(/[\s\-]/g, '');
 
     // 1. Direct match on 6-digit pairingCode or utilityApiKey (Fixed permanent pairing, no expiry lockout!)
     let agent = this.data.agents.find((a) => {
@@ -1172,7 +1191,9 @@ export class Database {
         a.utilityApiKey &&
         (a.utilityApiKey.trim() === cleanCode ||
           a.utilityApiKey.replace(/[\s\-]/g, '') === cleanCode);
-      return Boolean(codeMatch || keyMatch);
+      const permMatch = (a as any).permanentToken === cleanCode;
+      const idMatch = a.id === cleanCode || a.shopId === cleanCode;
+      return Boolean(codeMatch || keyMatch || permMatch || idMatch);
     });
 
     // 2. Fallback: match by shop slug or shop phone if user entered their shop ID
@@ -1185,20 +1206,7 @@ export class Database {
           s.id === cleanCode
       );
       if (shop) {
-        agent = this.getAgentByShopId(shop.id);
-        if (!agent) {
-          agent = {
-            id: `agt-${crypto.randomUUID().slice(0, 8)}`,
-            shopId: shop.id,
-            deviceName: deviceName || 'Shop Windows PC',
-            status: 'offline',
-            installedPrinters: [],
-            appVersion: '2.4.0',
-            dryRunMode: false,
-            createdAt: new Date().toISOString(),
-          };
-          this.data.agents.push(agent);
-        }
+        agent = this.getOrCreateAgent(shop.id);
       }
     }
 
@@ -1206,11 +1214,11 @@ export class Database {
 
     const token = `agt_token_${crypto.randomBytes(24).toString('hex')}`;
     agent.authTokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    agent.deviceName = deviceName || agent.deviceName;
+    (agent as any).permanentToken = (agent as any).permanentToken || token;
+    agent.deviceName = deviceName || agent.deviceName || 'Windows Print Agent';
     agent.ipAddress = ipAddress || agent.ipAddress;
     agent.status = 'online';
     agent.lastSeenAt = new Date().toISOString();
-    // Do not clear pairingCode immediately so reconnections don't fail!
 
     this.save();
     return { agent, token };

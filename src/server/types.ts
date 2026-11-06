@@ -37,6 +37,8 @@ export interface User {
   updatedAt: string;
 }
 
+export type ShopAccountType = 'printx' | 'shop' | 'office';
+
 export interface Shop {
   id: string;
   slug: string;
@@ -46,6 +48,7 @@ export interface Shop {
   address: string;
   city: string;
   status: ShopStatus;
+  accountType?: ShopAccountType;
   rejectionReason?: string;
   activatedAt?: string;
   activatedBy?: string;

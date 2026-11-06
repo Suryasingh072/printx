@@ -297,18 +297,22 @@ $Timer.Add_Tick({
     $headers = @{
         "Authorization" = "Bearer $Global:AgentToken"
         "x-agent-token" = "$Global:AgentToken"
+        "x-pairing-code" = "$Global:PairingCode"
     }
 
     try {
-        # 1. Send Heartbeat
-        $hbBody = @{
-            status = "online"
-            activePrinter = $PrinterBox.Text
-        } | ConvertTo-Json
-        Invoke-RestMethod -Uri "$Server/api/agent/heartbeat" -Method Post -Headers $headers -Body $hbBody -ContentType "application/json" -TimeoutSec 5 | Out-Null
+        # 1. Send Heartbeat periodically (every 10s) to keep status live without flooding
+        if (!$Global:LastHeartbeat -or ((Get-Date) - $Global:LastHeartbeat).TotalSeconds -ge 10) {
+            $Global:LastHeartbeat = Get-Date
+            $hbBody = @{
+                status = "online"
+                activePrinter = $PrinterBox.Text
+            } | ConvertTo-Json
+            Invoke-RestMethod -Uri "$Server/api/agent/heartbeat" -Method Post -Headers $headers -Body $hbBody -ContentType "application/json" -TimeoutSec 15 | Out-Null
+        }
 
-        # 2. Poll Jobs
-        $jobsResp = Invoke-RestMethod -Uri "$Server/api/agent/jobs" -Method Get -Headers $headers -TimeoutSec 5
+        # 2. Poll Jobs with generous 15s timeout
+        $jobsResp = Invoke-RestMethod -Uri "$Server/api/agent/jobs" -Method Get -Headers $headers -TimeoutSec 15
         if ($jobsResp.jobs -and $jobsResp.jobs.Count -gt 0) {
             foreach ($job in $jobsResp.jobs) {
                 $jobId = $job.jobId
@@ -377,7 +381,22 @@ $Timer.Add_Tick({
                     if ($DryRunBox.Checked) {
                         LogMessage "[TEST MODE] Simulated print of file $fileIdx/$totalF ($cleanName) completed."
                     } else {
-                        $targetPrinter = $PrinterBox.Text
+                        $targetPrinter = if ($PrinterBox.SelectedItem) {
+                            $PrinterBox.SelectedItem.ToString()
+                        } elseif ($PrinterBox.Text -and $PrinterBox.Text -ne "Default Windows Printer") {
+                            $PrinterBox.Text
+                        } elseif ($job.targetPrinter -and $job.targetPrinter -ne "Default Windows Printer") {
+                            $job.targetPrinter
+                        } else {
+                            "Default Windows Printer"
+                        }
+
+                        # Dynamically set selected printer as default so printto / print always routes directly without failing
+                        if ($targetPrinter -and $targetPrinter -ne "Default Windows Printer") {
+                            try {
+                                (New-Object -ComObject WScript.Network).SetDefaultPrinter($targetPrinter)
+                            } catch {}
+                        }
                         $ext = [System.IO.Path]::GetExtension($tmpFile).ToLower()
                         if ($ext -match '\.(jpg|jpeg|png|webp|bmp)$') {
                             # Reliable headless GDI+ .NET image printing (memory stream + safe bounds + Pixel units)

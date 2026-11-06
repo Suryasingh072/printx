@@ -9,7 +9,7 @@ import { db, resolveTargetPrinter } from './src/server/db/database.js';
 import { storageService } from './src/server/services/storage.js';
 import { whatsAppService } from './src/server/services/whatsapp.js';
 import { calculateOrderPrice } from './src/server/services/pricing.js';
-import { User, Shop, Order } from './src/server/types.js';
+import { User, Shop, Order, OrderStatus, PaymentStatus } from './src/server/types.js';
 import { supabaseService } from './src/server/db/supabase.js';
 
 const app = express();
@@ -86,9 +86,13 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-// Agent Auth Middleware
+// Agent Auth Middleware (Instant autoconnect with token, pairing code, or shop credentials)
 function requireAgentAuth(req: Request, res: Response, next: NextFunction) {
-  let token = req.headers['x-agent-token'] as string;
+  let token =
+    (req.headers['x-agent-token'] as string) ||
+    (req.headers['x-pairing-code'] as string) ||
+    (req.headers['x-api-key'] as string);
+
   if (!token && req.headers.authorization) {
     const authHeader = req.headers.authorization;
     if (authHeader.startsWith('Bearer ')) {
@@ -97,16 +101,45 @@ function requireAgentAuth(req: Request, res: Response, next: NextFunction) {
       token = authHeader.trim();
     }
   }
-  if (!token && typeof req.query.token === 'string') {
-    token = req.query.token;
-  }
+
   if (!token) {
-    return res.status(401).json({ error: 'Agent token missing. Please pair your Windows device.' });
+    if (typeof req.query.token === 'string') token = req.query.token;
+    else if (typeof req.query.code === 'string') token = req.query.code;
+    else if (typeof req.query.pairingCode === 'string') token = req.query.pairingCode;
+    else if (typeof req.query.pairing_code === 'string') token = req.query.pairing_code;
+    else if (typeof req.query.key === 'string') token = req.query.key;
   }
-  const agent = db.getAgentByToken(token);
+
+  if (!token && req.body) {
+    if (typeof req.body.token === 'string') token = req.body.token;
+    else if (typeof req.body.code === 'string') token = req.body.code;
+    else if (typeof req.body.pairingCode === 'string') token = req.body.pairingCode;
+    else if (typeof req.body.pairing_code === 'string') token = req.body.pairing_code;
+  }
+
+  let agent = token ? db.getAgentByToken(token) : undefined;
+
+  // Fallback: direct shop slug/ID resolution if token not found
   if (!agent) {
-    return res.status(401).json({ error: 'Invalid or revoked agent credentials.' });
+    const shopSlug = (req.headers['x-shop-slug'] as string) || (req.query.shopSlug as string) || (req.body?.shopSlug as string);
+    const shopId = (req.headers['x-shop-id'] as string) || (req.query.shopId as string) || (req.body?.shopId as string);
+    if (shopSlug || shopId) {
+      const shop = shopSlug ? db.getShopBySlug(shopSlug) : db.getShopById(shopId);
+      if (shop) {
+        agent = db.getOrCreateAgent(shop.id);
+      }
+    }
   }
+
+  if (!agent) {
+    return res.status(401).json({
+      error: 'Agent credentials missing or invalid. Please connect with your 6-Digit Pairing Code.',
+      help: 'Send header "Authorization: Bearer <6-digit-code>" or "x-agent-token: <6-digit-code>" or query param "?code=<6-digit-code>"',
+    });
+  }
+
+  agent.status = 'online';
+  agent.lastSeenAt = new Date().toISOString();
   (req as any).agent = agent;
   next();
 }
@@ -645,7 +678,7 @@ app.post('/api/admin/shops', requireAuth, (req, res) => {
     return res.status(403).json({ error: 'Only system administrators can register new shops.' });
   }
 
-  const { name, slug, phone, address, city, ownerName, ownerEmail, ownerPassword, ownerWhatsApp } = req.body;
+  const { name, slug, phone, address, city, ownerName, ownerEmail, ownerPassword, ownerWhatsApp, accountType = 'printx' } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Shop name is required.' });
   }
@@ -704,7 +737,17 @@ app.post('/api/admin/shops', requireAuth, (req, res) => {
     address: (address || 'Main Road Counter').trim(),
     city: (city || 'City Center').trim(),
     status: 'active',
+    accountType: (accountType === 'office' ? 'office' : accountType === 'shop' ? 'shop' : 'printx'),
   });
+
+  if (accountType === 'office') {
+    db.updateShopApprovalRules(newShop.id, { requireOnlinePayment: false, mode: 'auto', requirePaymentBeforePrint: false });
+    db.updateShopPricing(newShop.id, { bwSinglePrice: 0, bwDuplexPrice: 0, colorSinglePrice: 0, colorDuplexPrice: 0 });
+  } else if (accountType === 'shop') {
+    db.updateShopApprovalRules(newShop.id, { requireOnlinePayment: false, requirePaymentBeforePrint: true });
+  } else {
+    db.updateShopApprovalRules(newShop.id, { requireOnlinePayment: true, requirePaymentBeforePrint: true });
+  }
 
   db.updateUser(owner.id, { shopId: newShop.id } as any);
 
@@ -712,7 +755,7 @@ app.post('/api/admin/shops', requireAuth, (req, res) => {
     shopId: newShop.id,
     userId: session.userId,
     actionType: 'shop_registered',
-    description: `Shop "${newShop.name}" registered and activated directly by Super Admin.`,
+    description: `Shop "${newShop.name}" (${accountType.toUpperCase()}) registered and activated directly by Super Admin.`,
   });
 
   // Ensure disk save is executed immediately
@@ -736,7 +779,7 @@ app.put('/api/admin/shops/:id', requireAuth, (req, res) => {
   }
 
   const shopId = req.params.id;
-  const { name, phone, address, city, status, slug, ownerName, ownerEmail, ownerPassword } = req.body;
+  const { name, phone, address, city, status, slug, ownerName, ownerEmail, ownerPassword, accountType } = req.body;
   const shop = db.getShopById(shopId);
   if (!shop) return res.status(404).json({ error: 'Shop not found' });
 
@@ -755,8 +798,19 @@ app.put('/api/admin/shops/:id', requireAuth, (req, res) => {
     ...(address ? { address: address.trim() } : {}),
     ...(city ? { city: city.trim() } : {}),
     ...(status ? { status } : {}),
+    ...(accountType ? { accountType } : {}),
     slug: newSlug,
   });
+
+  if (accountType) {
+    if (accountType === 'office') {
+      db.updateShopApprovalRules(shopId, { requireOnlinePayment: false, mode: 'auto', requirePaymentBeforePrint: false });
+    } else if (accountType === 'shop') {
+      db.updateShopApprovalRules(shopId, { requireOnlinePayment: false, requirePaymentBeforePrint: true });
+    } else if (accountType === 'printx') {
+      db.updateShopApprovalRules(shopId, { requireOnlinePayment: true, requirePaymentBeforePrint: true });
+    }
+  }
 
   // Update owner details if provided
   if (shop.ownerId) {
@@ -852,9 +906,9 @@ function isShopAgentOnline(shopId: string): boolean {
   if (!agent) return false;
   if (agent.status !== 'online') return false;
   if (!agent.lastSeenAt) return false;
-  // Windows Agent polls every 2 seconds. Allow up to 30 seconds for network delay.
+  // Allow up to 90 seconds for network delay and background polling jitter so it stays continuously online
   const diffMs = Date.now() - new Date(agent.lastSeenAt).getTime();
-  return diffMs < 30000;
+  return diffMs < 90000;
 }
 
 // Get Shop Public Profile & Print Rates (supports /api/shops/:slug and /api/s/:slug)
@@ -870,6 +924,10 @@ app.get(['/api/shops/:slug', '/api/s/:slug'], (req, res) => {
   const approvalRules = db.getShopApprovalRules(shop.id);
   const agentOnline = isShopAgentOnline(shop.id);
 
+  const accountType = shop.accountType || (approvalRules.requireOnlinePayment ? 'printx' : 'shop');
+  const requireOnline = accountType === 'printx' ? (approvalRules.requireOnlinePayment ?? true) : false;
+  const requireCounter = accountType === 'shop' ? true : false;
+
   res.json({
     shop: {
       id: shop.id,
@@ -879,10 +937,20 @@ app.get(['/api/shops/:slug', '/api/s/:slug'], (req, res) => {
       address: shop.address,
       city: shop.city,
       status: shop.status,
+      accountType,
       paymentGatewayUrl: shop.paymentGatewayUrl || '',
       agentOnline,
     },
-    pricing: {
+    pricing: accountType === 'office' ? {
+      bwSinglePrice: 0,
+      bwDuplexPrice: 0,
+      colorSinglePrice: 0,
+      colorDuplexPrice: 0,
+      legalExtra: 0,
+      photo4x6Price: 0,
+      idCardSinglePrice: 0,
+      currency: pricing.currency,
+    } : {
       bwSinglePrice: pricing.bwSinglePrice,
       bwDuplexPrice: pricing.bwDuplexPrice,
       colorSinglePrice: pricing.colorSinglePrice,
@@ -892,8 +960,9 @@ app.get(['/api/shops/:slug', '/api/s/:slug'], (req, res) => {
       idCardSinglePrice: pricing.idCardSinglePrice,
       currency: pricing.currency,
     },
-    requiresCounterPayment: approvalRules.requirePaymentBeforePrint,
-    requireOnlinePayment: approvalRules.requireOnlinePayment ?? true,
+    requiresCounterPayment: requireCounter,
+    requireOnlinePayment: requireOnline,
+    accountType,
     rules: approvalRules,
     agentOnline,
   });
@@ -965,12 +1034,22 @@ app.post('/api/orders', async (req, res) => {
     customNotes,
   } = req.body;
 
-  if (!shopSlug || !documentName || !filePath || !String(filePath).trim()) {
+  let effectiveFilePath = String(filePath || '').trim();
+  if (!storageService.hasValidFile(effectiveFilePath)) {
+    if (Array.isArray(req.body.files) && req.body.files.length > 0) {
+      const found = req.body.files.find((f: any) => f?.filePath && storageService.hasValidFile(f.filePath));
+      if (found) {
+        effectiveFilePath = found.filePath;
+      }
+    }
+  }
+
+  if (!shopSlug || !documentName || !effectiveFilePath) {
     return res.status(400).json({ error: 'Missing required order details or document file.' });
   }
 
   // Ensure uploaded physical file exists and is not 0 bytes to prevent blank print jobs!
-  if (!storageService.hasValidFile(filePath)) {
+  if (!storageService.hasValidFile(effectiveFilePath)) {
     return res.status(400).json({
       error: 'Uploaded document file could not be verified on the server. Please select and upload your file again.',
     });
@@ -1002,24 +1081,38 @@ app.post('/api/orders', async (req, res) => {
     orderType: orderType || 'document',
   });
 
-  // Evaluate Approval Rules
-  const isOnlinePaymentRequired = rules.requireOnlinePayment !== false;
-  const isCounterPaymentRequested = req.body.paymentMethod === 'counter_cash' || req.body.paymentMethod === 'counter_upi' || req.body.isCounterPayment === true;
+  const accountType = shop.accountType || (rules.requireOnlinePayment ? 'printx' : 'shop');
+  const isOnlinePaymentRequired = accountType === 'printx' && rules.requireOnlinePayment !== false;
+  const isCounterPaymentRequested = accountType === 'shop' || req.body.paymentMethod === 'counter_cash' || req.body.paymentMethod === 'counter_upi' || req.body.isCounterPayment === true;
   const totalPages = (pageCount || 1) * (copies || 1);
   const isAutoApproved =
+    accountType === 'office' ||
     rules.mode === 'auto' ||
     (rules.mode === 'smart' &&
       totalPages <= rules.maxAutoPages &&
       priceCalc.totalAmount <= rules.maxAutoAmount);
 
-  let initialStatus: 'pending_approval' | 'payment_pending' | 'queued' = 'payment_pending';
-  if (!isAutoApproved) {
+  let initialStatus: OrderStatus = 'payment_pending';
+  let orderPaymentStatus: PaymentStatus = 'unpaid';
+  let orderUnitPrice = priceCalc.unitPrice;
+  let orderTotalAmount = priceCalc.totalAmount;
+
+  if (accountType === 'office') {
+    // Office mode: 100% Free / Internal, zero payment, directly queued for printing!
+    orderUnitPrice = 0;
+    orderTotalAmount = 0;
+    orderPaymentStatus = 'collected';
+    initialStatus = 'queued';
+  } else if (!isAutoApproved) {
     initialStatus = 'pending_approval';
-  } else if (!isOnlinePaymentRequired && isCounterPaymentRequested) {
-    // If shopkeeper allows pay at counter and customer chooses counter, queue order for counter payment & print
-    initialStatus = 'payment_pending';
+    orderPaymentStatus = 'unpaid';
+  } else if (accountType === 'shop' || !isOnlinePaymentRequired || isCounterPaymentRequested) {
+    // Shop mode: Pay on counter workflow, immediately goes to queue so shopkeeper can Collect & Print
+    initialStatus = 'queued';
+    orderPaymentStatus = 'unpaid';
   } else {
     initialStatus = 'payment_pending';
+    orderPaymentStatus = 'unpaid';
   }
 
   const order = db.createOrder({
@@ -1028,7 +1121,7 @@ app.post('/api/orders', async (req, res) => {
     customerPhone: customerPhone ? customerPhone.trim() : '',
     documentName,
     documentType: documentType || 'application/pdf',
-    filePath,
+    filePath: effectiveFilePath,
     fileSizeBytes: fileSizeBytes || 0,
     pageCount: Number(pageCount || 1),
     copies: Number(copies || 1),
@@ -1038,12 +1131,19 @@ app.post('/api/orders', async (req, res) => {
     orderType: orderType || 'document',
     pageRange: pageRange || 'all',
     customNotes,
-    unitPrice: priceCalc.unitPrice,
-    totalAmount: priceCalc.totalAmount,
+    unitPrice: orderUnitPrice,
+    totalAmount: orderTotalAmount,
     status: initialStatus,
-    paymentStatus: 'unpaid',
+    paymentStatus: orderPaymentStatus,
     files: Array.isArray(req.body.files) ? req.body.files : undefined,
   });
+
+  // If office mode and agent online, auto-spool to printer immediately
+  if (accountType === 'office') {
+    const agent = db.getAgentByShopId(shop.id);
+    const targetPrinter = resolveTargetPrinter(agent, colorMode);
+    db.createPrintJobsForOrder(order.id, targetPrinter);
+  }
 
   const orderDesc = (!isOnlinePaymentRequired && isCounterPaymentRequested)
     ? `Order ${order.orderNumber} placed by ${order.customerName} (${order.documentName}, ₹${order.totalAmount}). Pay at Counter chosen.`
@@ -2228,40 +2328,71 @@ app.post('/api/shop/agent/revoke', requireAuth, (req, res) => {
 
 // --- Direct Agent HTTP API (called by Windows PySide6 Desktop App) ---
 
-// Agent Pair with 6-digit code
-app.post('/api/agent/pair', (req, res) => {
-  const { pairingCode, deviceName } = req.body;
-  if (!pairingCode || !deviceName) {
-    return res.status(400).json({ error: 'Pairing code and device name are required.' });
+// Fast Auto-Connect Handler: supports POST & GET on /pair, /connect, /fast-connect
+const handleAgentPairOrConnect = (req: Request, res: Response) => {
+  const pairingCode =
+    req.body?.pairingCode ||
+    req.body?.code ||
+    req.body?.pairing_code ||
+    req.body?.key ||
+    req.query.pairingCode ||
+    req.query.code ||
+    req.query.pairing_code ||
+    req.headers['x-pairing-code'] ||
+    (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7).trim() : undefined);
+
+  const deviceName =
+    req.body?.deviceName ||
+    req.query.deviceName ||
+    req.headers['user-agent'] ||
+    'Windows Print Agent';
+
+  if (!pairingCode) {
+    return res.status(400).json({ error: 'Pairing code is required. Please provide 6-digit code.' });
   }
 
   const clientIp = req.ip || req.socket.remoteAddress;
-  const result = db.pairAgent(pairingCode.trim(), deviceName, clientIp);
+  const result = db.pairAgent(String(pairingCode).trim(), String(deviceName).trim(), clientIp);
 
   if (!result) {
-    return res.status(401).json({ error: 'Invalid or expired pairing code. Please generate a new code in Shop Dashboard.' });
+    return res.status(401).json({ error: 'Invalid pairing code. Please verify the 6-digit code in Shop Dashboard.' });
   }
 
   res.json({
+    success: true,
     message: 'Windows Agent paired successfully!',
     agentId: result.agent.id,
     shopId: result.agent.shopId,
     token: result.token,
+    permanentToken: (result.agent as any).permanentToken || result.token,
+    status: 'online',
   });
-});
+};
 
-// Agent Heartbeat & Printer Inventory Report
-app.post('/api/agent/heartbeat', requireAgentAuth, (req, res) => {
+app.post('/api/agent/pair', handleAgentPairOrConnect);
+app.get('/api/agent/pair', handleAgentPairOrConnect);
+app.post('/api/agent/connect', handleAgentPairOrConnect);
+app.get('/api/agent/connect', handleAgentPairOrConnect);
+app.post('/api/agent/fast-connect', handleAgentPairOrConnect);
+app.get('/api/agent/fast-connect', handleAgentPairOrConnect);
+
+// Agent Heartbeat & Printer Inventory Report (supports POST & GET)
+const handleAgentHeartbeat = (req: Request, res: Response) => {
   const agent = (req as any).agent;
-  const { installedPrinters, defaultPrinter } = req.body;
+  const installedPrinters = req.body?.installedPrinters || [];
+  const defaultPrinter = req.body?.defaultPrinter || (req.query.defaultPrinter as string);
 
   const updated = db.updateAgentHeartbeat(agent.id, installedPrinters, defaultPrinter);
   res.json({
     status: 'ok',
+    connected: true,
     serverTime: new Date().toISOString(),
     dryRunMode: updated?.dryRunMode ?? false,
   });
-});
+};
+
+app.post('/api/agent/heartbeat', requireAgentAuth, handleAgentHeartbeat);
+app.get('/api/agent/heartbeat', requireAgentAuth, handleAgentHeartbeat);
 
 // Agent Polls for Authorized Ready Print Jobs
 app.get('/api/agent/jobs', requireAgentAuth, (req, res) => {

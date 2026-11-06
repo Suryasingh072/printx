@@ -1,4 +1,4 @@
-import { User, Shop, ShopPricing, ShopApprovalRules, Order, WindowsAgent, ShopStats, ActivityLog } from '../types.js';
+import { User, Shop, ShopPricing, ShopApprovalRules, Order, WindowsAgent, ShopStats, ActivityLog, ShopAccountType } from '../types.js';
 
 const TOKEN_KEY = 'printqr_auth_token';
 const SHOP_KEY = 'printqr_active_shop_id';
@@ -193,6 +193,7 @@ export const api = {
     requireOnlinePayment: boolean;
     rules: ShopApprovalRules;
     agentOnline: boolean;
+    accountType?: ShopAccountType;
   }> {
     return this.request(`/api/shops/${slug}`);
   },

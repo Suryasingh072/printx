@@ -279,49 +279,61 @@ export class StorageService {
       } catch {}
     }
 
-    // 2. Extract safe basename
-    const base = path.basename(trimmed);
+    // 2. Extract safe basename after normalizing Windows backslashes
+    const normalized = trimmed.replace(/\\/g, '/');
+    const base = path.basename(normalized);
     if (!base || base === '.' || base === '..') {
       return path.join(DOCS_DIR, '__missing_file__');
     }
 
-    // 3. Check in primary DOCS_DIR
-    const inDocs = path.join(DOCS_DIR, base);
-    if (fs.existsSync(inDocs)) {
+    // Candidate directories to search
+    const searchDirs = [
+      DOCS_DIR,
+      UPLOAD_ROOT,
+      path.resolve(process.cwd(), './uploads/documents'),
+      path.resolve(process.cwd(), './uploads'),
+      '/tmp/qrprint-uploads/documents',
+      '/tmp/qrprint-uploads',
+      '/tmp/documents',
+      '/tmp',
+    ];
+
+    // Check direct filename
+    for (const dir of searchDirs) {
       try {
-        if (fs.statSync(inDocs).isFile()) {
-          return inDocs;
+        const candidate = path.join(dir, base);
+        if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+          return candidate;
         }
       } catch {}
     }
 
-    // 4. Check in UPLOAD_ROOT
-    const inUploadRoot = path.join(UPLOAD_ROOT, base);
-    if (fs.existsSync(inUploadRoot)) {
-      try {
-        if (fs.statSync(inUploadRoot).isFile()) {
-          return inUploadRoot;
-        }
-      } catch {}
+    // Check companion PDF if image, or companion image if PDF
+    const dotIdx = base.lastIndexOf('.');
+    const nameWithoutExt = dotIdx > 0 ? base.substring(0, dotIdx) : base;
+    const companionExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.webp'];
+
+    for (const dir of searchDirs) {
+      for (const ext of companionExtensions) {
+        try {
+          const companion = path.join(dir, `${nameWithoutExt}${ext}`);
+          if (fs.existsSync(companion) && fs.statSync(companion).isFile()) {
+            return companion;
+          }
+        } catch {}
+      }
     }
 
-    // 5. Check in ./uploads/documents relative to cwd
-    const inCwd = path.resolve(process.cwd(), './uploads/documents', base);
-    if (fs.existsSync(inCwd)) {
-      try {
-        if (fs.statSync(inCwd).isFile()) {
-          return inCwd;
-        }
-      } catch {}
-    }
-
-    return inDocs;
+    return path.join(DOCS_DIR, base);
   }
 
   /**
    * Check if a file physically exists on disk and is non-empty
    */
   public hasValidFile(safeFilename: string): boolean {
+    if (!safeFilename || typeof safeFilename !== 'string' || !safeFilename.trim()) {
+      return false;
+    }
     try {
       const full = this.getAbsolutePath(safeFilename);
       if (fs.existsSync(full)) {

@@ -79,6 +79,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
   const [requiresCounterPayment, setRequiresCounterPayment] = useState<boolean>(true);
   const [requireOnlinePayment, setRequireOnlinePayment] = useState<boolean>(true);
   const [paymentChoice, setPaymentChoice] = useState<'online' | 'counter'>('online');
+  const [accountType, setAccountType] = useState<'printx' | 'shop' | 'office'>('printx');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -197,11 +198,17 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
         setShop(data.shop);
         setPricing(data.pricing);
         setRequiresCounterPayment(data.requiresCounterPayment);
-        const onlineRequired = data.requireOnlinePayment !== false;
-        setRequireOnlinePayment(onlineRequired);
-        if (!onlineRequired) {
+        const accType = (data.accountType || data.shop?.accountType || (data.requireOnlinePayment ? 'printx' : 'shop')) as 'printx' | 'shop' | 'office';
+        setAccountType(accType);
+
+        if (accType === 'office') {
+          setRequireOnlinePayment(false);
+          setPaymentChoice('counter');
+        } else if (accType === 'shop' || !data.requireOnlinePayment) {
+          setRequireOnlinePayment(false);
           setPaymentChoice('counter');
         } else {
+          setRequireOnlinePayment(true);
           setPaymentChoice('online');
         }
       } catch (err: any) {
@@ -213,57 +220,49 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
     fetchShop();
   }, [shopSlug]);
 
-  // Client-side image optimization to make phone camera photo uploads blazing fast (10x faster)
+  // Client-side ultra-fast image optimization for phone camera photos (up to 50x faster)
   const optimizeImageForFastUpload = async (file: File): Promise<File> => {
     if (!file.type.startsWith('image/')) return file;
-    // If under 1.2MB, already fast
-    if (file.size < 1.2 * 1024 * 1024) return file;
+    // If under 750KB, already small enough
+    if (file.size < 750 * 1024) return file;
 
-    return new Promise<File>((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const maxDim = 2400; // Optimal 300 DPI clarity for A4
-          let { width, height } = img;
-          if (width > maxDim || height > maxDim) {
-            if (width > height) {
-              height = Math.round((height * maxDim) / width);
-              width = maxDim;
-            } else {
-              width = Math.round((width * maxDim) / height);
-              height = maxDim;
-            }
+    try {
+      if (typeof window !== 'undefined' && 'createImageBitmap' in window) {
+        const bitmap = await createImageBitmap(file);
+        const maxDim = 1920; // Crisp high-res 1080p A4 print dimension
+        let { width, height } = bitmap;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
           }
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return resolve(file);
-
-          ctx.drawImage(img, 0, 0, width, height);
-          canvas.toBlob(
-            (blob) => {
-              if (blob && blob.size < file.size) {
-                const optimizedFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.jpg'), {
-                  type: 'image/jpeg',
-                  lastModified: Date.now(),
-                });
-                resolve(optimizedFile);
-              } else {
-                resolve(file);
-              }
-            },
-            'image/jpeg',
-            0.88
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(bitmap, 0, 0, width, height);
+          bitmap.close();
+          const optimizedBlob = await new Promise<Blob | null>((res) =>
+            canvas.toBlob(res, 'image/jpeg', 0.82)
           );
-        };
-        img.onerror = () => resolve(file);
-        img.src = e.target?.result as string;
-      };
-      reader.onerror = () => resolve(file);
-      reader.readAsDataURL(file);
-    });
+          if (optimizedBlob && optimizedBlob.size < file.size) {
+            return new File([optimizedBlob], file.name.replace(/\.[^/.]+$/, '.jpg'), {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+          }
+        }
+      }
+    } catch {
+      // Non-blocking fallback
+    }
+
+    return file;
   };
 
   // Handle Multi-File Input Selection (PDF + Photos)
@@ -608,6 +607,9 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
       const totalPages = fileQueue.reduce((acc, curr) => acc + curr.pageCount, 0);
       const totalSizeBytes = fileQueue.reduce((acc, curr) => acc + curr.sizeBytes, 0);
 
+      const isOffice = accountType === 'office';
+      const isShopCounter = !isOffice && (accountType === 'shop' || !requireOnlinePayment);
+
       const res = await api.createOrder({
         shopSlug,
         customerName: customerName ? customerName.trim() : 'Online Customer',
@@ -624,8 +626,8 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
         orderType,
         pageRange: 'all',
         customNotes,
-        paymentMethod: (!requireOnlinePayment && paymentChoice === 'counter') ? 'counter_cash' : 'online_upi',
-        isCounterPayment: (!requireOnlinePayment && paymentChoice === 'counter'),
+        paymentMethod: isOffice ? 'other' : (isShopCounter ? 'counter_cash' : 'online_upi'),
+        isCounterPayment: isShopCounter,
         files: filesPayload as any,
       });
 
@@ -636,8 +638,8 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
         spread: 70,
         origin: { y: 0.6 },
       });
-      // If online payment is enforced or customer selected online payment, trigger Razorpay modal
-      if (requireOnlinePayment || paymentChoice === 'online') {
+      // ONLY trigger Razorpay if NOT office AND NOT shop/counter (i.e. printx or requireOnlinePayment is explicitly true)
+      if (!isOffice && !isShopCounter && requireOnlinePayment) {
         handlePayWithRazorpay(res.order);
       }
     } catch (err: any) {
@@ -1364,40 +1366,35 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                   />
                 </div>
 
-                {/* Payment Option Selector (only shown when requireOnlinePayment is OFF) */}
-                {!requireOnlinePayment && (
-                  <div className="space-y-2 p-3.5 bg-white/[0.04] border border-white/10 rounded-2xl">
-                    <label className="text-xs font-bold text-slate-300 block">Payment Preference:</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setPaymentChoice('counter')}
-                        className={`p-3 rounded-xl border text-left transition cursor-pointer ${
-                          paymentChoice === 'counter'
-                            ? 'border-emerald-500 bg-emerald-500/15 text-white font-bold shadow-[0_0_15px_rgba(34,197,94,0.2)]'
-                            : 'border-white/10 bg-white/5 text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5 text-emerald-300 text-xs font-black">
-                          <Store className="w-4 h-4" /> Pay at Counter
-                        </div>
-                        <p className="text-[10px] text-slate-300 mt-1">Cash / UPI counter par dein</p>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setPaymentChoice('online')}
-                        className={`p-3 rounded-xl border text-left transition cursor-pointer ${
-                          paymentChoice === 'online'
-                            ? 'border-pink-500 bg-pink-500/15 text-white font-bold shadow-[0_0_15px_rgba(255,46,99,0.2)]'
-                            : 'border-white/10 bg-white/5 text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5 text-pink-300 text-xs font-black">
-                          <CreditCard className="w-4 h-4" /> Pay Online
-                        </div>
-                        <p className="text-[10px] text-slate-300 mt-1">Razorpay UPI / Cards</p>
-                      </button>
+                {/* Account Type Mode Notification */}
+                {accountType === 'office' ? (
+                  <div className="p-3.5 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl flex items-center gap-3 text-xs text-cyan-200">
+                    <div className="p-2 bg-cyan-500/20 rounded-xl text-cyan-300">
+                      <Printer className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-white text-sm">🏢 Office Internal Print</p>
+                      <p className="text-[11px] text-cyan-300/80">No payment required. Directly sends to the local print queue.</p>
+                    </div>
+                  </div>
+                ) : (!requireOnlinePayment || accountType === 'shop') ? (
+                  <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl flex items-center gap-3 text-xs text-emerald-200">
+                    <div className="p-2 bg-emerald-500/20 rounded-xl text-emerald-300">
+                      <Store className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-white text-sm">🏪 Pay at Shop Counter</p>
+                      <p className="text-[11px] text-emerald-300/80">Place order directly. Pay cash or shopkeeper's QR at the counter when collecting printout.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3.5 bg-pink-500/10 border border-pink-500/25 rounded-2xl flex items-center gap-3 text-xs text-pink-200">
+                    <div className="p-2 bg-pink-500/20 rounded-xl text-pink-300">
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-white text-sm">💳 Instant Online Payment (Razorpay)</p>
+                      <p className="text-[11px] text-pink-300/80">UPI / QR, Cards & Netbanking. Spools immediately after payment.</p>
                     </div>
                   </div>
                 )}
@@ -1406,13 +1403,23 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                 <button
                   type="submit"
                   disabled={fileQueue.length === 0 || isSubmitting || isBulkUploading}
-                  className={`btn ${(!requireOnlinePayment && paymentChoice === 'counter') ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 shadow-[0_8px_25px_rgba(34,197,94,0.35)]' : 'btn-primary shadow-rose-500/30'} w-full py-4 text-sm font-black disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex items-center justify-center gap-2`}
+                  className={`btn ${
+                    accountType === 'office'
+                      ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 hover:from-cyan-400 hover:to-indigo-400 shadow-[0_8px_25px_rgba(6,182,212,0.35)]'
+                      : (!requireOnlinePayment || accountType === 'shop')
+                      ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 shadow-[0_8px_25px_rgba(34,197,94,0.35)]'
+                      : 'btn-primary shadow-rose-500/30'
+                  } w-full py-4 text-sm font-black disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex items-center justify-center gap-2`}
                 >
                   {isSubmitting ? (
                     <>
                       <RefreshCw className="w-5 h-5 animate-spin" /> Submitting Order...
                     </>
-                  ) : (!requireOnlinePayment && paymentChoice === 'counter') ? (
+                  ) : accountType === 'office' ? (
+                    <>
+                      <Printer className="w-5 h-5 stroke-[2.5]" /> Place Order & Print (Free)
+                    </>
+                  ) : (!requireOnlinePayment || accountType === 'shop') ? (
                     <>
                       <Store className="w-5 h-5 stroke-[2.5]" /> Place Order (Pay at Counter) • ₹{total.toFixed(2)}
                     </>
@@ -1456,38 +1463,57 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
 
                   <div className="pt-3 border-t border-white/10 flex items-baseline justify-between">
                     <span className="text-sm font-black text-white">Total Price:</span>
-                    <span className="text-3xl font-black grad font-head font-mono">₹{total.toFixed(2)}</span>
+                    {accountType === 'office' ? (
+                      <span className="text-2xl font-black text-cyan-400 font-head">FREE (₹0.00)</span>
+                    ) : (
+                      <span className="text-3xl font-black grad font-head font-mono">₹{total.toFixed(2)}</span>
+                    )}
                   </div>
 
-                  {/* Payment Gateway Badge */}
-                  {requireOnlinePayment ? (
-                    <div className="p-3 bg-gradient-to-r from-sky-500/10 via-blue-500/10 to-indigo-500/10 rounded-2xl border border-sky-500/20 space-y-1.5">
+                  {/* Payment Gateway / Workflow Badge */}
+                  {accountType === 'office' ? (
+                    <div className="p-3 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-indigo-500/10 rounded-2xl border border-cyan-500/25 space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 text-xs font-black text-sky-300">
-                          <CreditCard className="w-3.5 h-3.5 text-sky-400" />
-                          Razorpay Standard Checkout
+                        <span className="flex items-center gap-1.5 text-xs font-black text-cyan-300">
+                          <Printer className="w-3.5 h-3.5 text-cyan-400" />
+                          Office Account
                         </span>
-                        <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                          100% Online Payment
+                        <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                          Zero Billing
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-300 leading-snug">
-                        UPI (GPay • PhonePe • Paytm • BHIM), Cards & Netbanking. Pre-loaded amount, printer auto-starts on payment.
+                        Internal printing active. No payment required. Order is instantly queued for printing.
                       </p>
                     </div>
-                  ) : (
+                  ) : (!requireOnlinePayment || accountType === 'shop') ? (
                     <div className="p-3 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 rounded-2xl border border-emerald-500/25 space-y-1.5">
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-1.5 text-xs font-black text-emerald-300">
                           <Store className="w-3.5 h-3.5 text-emerald-400" />
-                          Flexible Payment Modes
+                          Shop Workflow
                         </span>
                         <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                          Counter / Online
+                          Pay on Counter
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-300 leading-snug">
-                        Shopkeeper accepts counter cash or direct Razorpay checkout. Print released upon payment.
+                        Customer pays at the counter. Shopkeeper verifies and releases print job.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-gradient-to-r from-sky-500/10 via-blue-500/10 to-indigo-500/10 rounded-2xl border border-sky-500/20 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 text-xs font-black text-sky-300">
+                          <CreditCard className="w-3.5 h-3.5 text-sky-400" />
+                          PrintX Razorpay Checkout
+                        </span>
+                        <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                          Online UPI / Cards
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 leading-snug">
+                        Instant payment via Razorpay. Print job is automatically spooled once payment succeeds.
                       </p>
                     </div>
                   )}
@@ -1520,7 +1546,11 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[10px] uppercase font-bold text-slate-400">Total ({totalPages} pgs)</p>
-              <p className="text-xl font-black text-white font-head grad">₹{total.toFixed(2)}</p>
+              {accountType === 'office' ? (
+                <p className="text-xl font-black text-cyan-400 font-head">FREE</p>
+              ) : (
+                <p className="text-xl font-black text-white font-head grad">₹{total.toFixed(2)}</p>
+              )}
             </div>
             <button
               type="button"
@@ -1529,15 +1559,25 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                 if (form) form.requestSubmit();
               }}
               disabled={fileQueue.length === 0 || isSubmitting || isBulkUploading}
-              className={`btn ${(!requireOnlinePayment && paymentChoice === 'counter') ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500'} text-white font-black py-3 px-5 text-xs rounded-xl shadow-lg shadow-emerald-500/30 flex items-center gap-2 cursor-pointer disabled:opacity-40`}
+              className={`btn ${
+                accountType === 'office'
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-500 shadow-cyan-500/30'
+                  : (!requireOnlinePayment || accountType === 'shop')
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 shadow-emerald-500/30'
+                  : 'bg-gradient-to-r from-pink-500 to-rose-600 shadow-rose-500/30'
+              } text-white font-black py-3 px-5 text-xs rounded-xl shadow-lg flex items-center gap-2 cursor-pointer disabled:opacity-40`}
             >
               {isSubmitting ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" /> Submitting...
                 </>
-              ) : (!requireOnlinePayment && paymentChoice === 'counter') ? (
+              ) : accountType === 'office' ? (
                 <>
-                  <Store className="w-4 h-4" /> Place Order • Pay at Counter
+                  <Printer className="w-4 h-4" /> Place Order & Print (Free)
+                </>
+              ) : (!requireOnlinePayment || accountType === 'shop') ? (
+                <>
+                  <Store className="w-4 h-4" /> Place Order (Pay on Counter)
                 </>
               ) : (
                 <>

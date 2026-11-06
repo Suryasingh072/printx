@@ -149,9 +149,10 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
     try {
       setLoadingOrders(true);
       const data = await api.getShopOrders(queueFilter);
-      setOrders(data);
+      setOrders(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
+      setOrders([]);
     } finally {
       setLoadingOrders(false);
     }
@@ -167,7 +168,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
     refreshOrders();
     const pollInterval = setInterval(() => {
       api.getShopOrders(queueFilter).then((data) => {
-        setOrders(data);
+        setOrders(Array.isArray(data) ? data : []);
       }).catch(() => {});
     }, 8000);
     return () => clearInterval(pollInterval);
@@ -524,13 +525,14 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
   };
 
   // Filtered orders for queue
-  const filteredOrders = orders.filter((o) => {
+  const safeOrders = Array.isArray(orders) ? orders : [];
+  const filteredOrders = safeOrders.filter((o) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (
-      o.orderNumber.toLowerCase().includes(q) ||
-      o.customerName.toLowerCase().includes(q) ||
-      o.documentName.toLowerCase().includes(q)
+      (o.orderNumber && o.orderNumber.toLowerCase().includes(q)) ||
+      (o.customerName && o.customerName.toLowerCase().includes(q)) ||
+      (o.documentName && o.documentName.toLowerCase().includes(q))
     );
   });
 
@@ -602,7 +604,6 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
               { id: 'qr', label: 'Shop QR & Posters', icon: QrCode },
               { id: 'printers', label: 'Windows Spooler Agent', icon: Laptop },
               { id: 'reports', label: 'Sales Reports', icon: BarChart3 },
-              { id: 'activity', label: 'Activity Log', icon: Clock },
             ].map((tab) => {
               const Icon = tab.icon;
               return (
@@ -1558,62 +1559,12 @@ create table if not exists public.shops (
            ======================================================== */}
         {activeTab === 'printers' && (
           <div className="space-y-8 max-w-4xl">
-            {/* 1. Download ADRTECH Desktop for Windows */}
-            <div className="card space-y-6 p-6 sm:p-8">
-              <div>
-                <div className="eyebrow">AUTOMATED PRINT AGENT</div>
-                <h3 className="text-xl font-black font-head text-white mb-2">
-                  1. Download printx Desktop for Windows
-                </h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Install the app, connect with your fixed 6-Digit Quick Pairing Code, and keep it running for automated silent printing and live status updates.
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadAgent('bat')}
-                    disabled={isDownloadingAgent}
-                    className="btn btn-primary text-sm font-black shadow-lg shadow-rose-500/30 flex items-center gap-2.5 cursor-pointer"
-                  >
-                    <Play className="w-4 h-4 fill-white" />
-                    1-Click Windows App (printx-PrintAgent.bat)
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadAgent('zip')}
-                    disabled={isDownloadingAgent}
-                    className="btn btn-ghost text-sm font-bold flex items-center gap-2.5 cursor-pointer disabled:opacity-50"
-                  >
-                    <Download className="w-4 h-4" />
-                    {isDownloadingAgent ? 'Preparing Download...' : 'Download Full Package (.zip)'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowAgentSetupModal(true)}
-                    className="btn btn-ghost text-sm font-bold flex items-center gap-2 cursor-pointer"
-                  >
-                    <FileCode className="w-4 h-4 text-pink-400" />
-                    Setup Guide & Script
-                  </button>
-                </div>
-
-                <p className="text-xs text-slate-400">
-                  Includes <strong>printx-PrintAgent.bat</strong> and <strong>agent.py</strong>. Works on all 64-bit Windows PCs (Windows 10, Windows 11).
-                </p>
-              </div>
-            </div>
-
-            {/* 2. Connect using Fixed 6-Digit Pairing Code */}
+            {/* Connect using Fixed 6-Digit Pairing Code */}
             <div className="card border-2 border-pink-500/30 bg-gradient-to-br from-pink-500/10 via-purple-500/10 to-transparent p-6 sm:p-8 space-y-6 shadow-xl shadow-rose-500/10">
               <div>
                 <div className="eyebrow">PERSISTENT HARDWARE LINK</div>
                 <h3 className="text-xl font-black font-head text-white mb-1">
-                  2. Fixed 6-Digit Quick Pairing Code (Permanent Connection)
+                  Fixed 6-Digit Quick Pairing Code (Permanent Connection)
                 </h3>
                 <p className="text-xs text-slate-300 leading-relaxed">
                   Yeh 6-Digit Quick Pairing Code is shop ke liye <strong>permanently fixed</strong> hai. Windows App me enter karke connect karein — jab tak aap Windows App me Logout nahi karte, yeh 24/7 hamesha connected rahega.
@@ -1859,37 +1810,6 @@ create table if not exists public.shops (
                 <p className="text-3xl font-black text-white mt-1 font-head">{stats.totalPageCount}</p>
                 <p className="text-[11px] text-slate-400 mt-1.5">{stats.completedJobs} print jobs completed</p>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================
-            TAB 9: ACTIVITY LOG
-           ======================================================== */}
-        {activeTab === 'activity' && (
-          <div className="card p-6 sm:p-8 space-y-4">
-            <div className="pb-3 border-b border-white/10 flex items-center justify-between">
-              <div>
-                <div className="eyebrow">AUDIT TRAIL</div>
-                <h3 className="text-xl font-black font-head text-white">System Activity & Audit Log</h3>
-              </div>
-              <span className="text-xs text-slate-400 font-mono">{activityLogs.length} events logged</span>
-            </div>
-
-            <div className="divide-y divide-white/[0.06]">
-              {activityLogs.map((log) => (
-                <div key={log.id} className="py-3.5 flex items-start justify-between gap-4">
-                  <div>
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-pink-300">
-                      {log.actionType.replace('_', ' ')}
-                    </span>
-                    <p className="text-xs font-semibold text-slate-200 mt-1.5">{log.description}</p>
-                  </div>
-                  <span className="text-[11px] text-slate-400 font-mono shrink-0">
-                    {new Date(log.createdAt).toLocaleString()}
-                  </span>
-                </div>
-              ))}
             </div>
           </div>
         )}

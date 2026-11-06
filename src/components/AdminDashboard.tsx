@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Printer,
+  CreditCard,
   X,
 } from 'lucide-react';
 import { api } from '../lib/api.js';
@@ -37,7 +38,7 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, onNavigateHome }) => {
-  const [activeTab, setActiveTab] = useState<'shops' | 'users' | 'supabase'>('shops');
+  const [activeTab, setActiveTab] = useState<'shops' | 'accounts' | 'users' | 'supabase'>('shops');
   const [shops, setShops] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +62,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   const [formAddress, setFormAddress] = useState('');
   const [formCity, setFormCity] = useState('');
   const [formStatus, setFormStatus] = useState<'active' | 'pending_review' | 'suspended'>('active');
+  const [formAccountType, setFormAccountType] = useState<'printx' | 'shop' | 'office'>('printx');
   const [formOwnerName, setFormOwnerName] = useState('');
   const [formOwnerEmail, setFormOwnerEmail] = useState('');
   const [formOwnerPassword, setFormOwnerPassword] = useState('');
@@ -158,7 +160,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
     loadData();
   }, []);
 
-  const handleOpenCreateShopModal = () => {
+  const handleOpenCreateShopModal = (defaultType: 'printx' | 'shop' | 'office' = 'printx') => {
     setEditingShop(null);
     setFormName('');
     setFormSlug('');
@@ -166,6 +168,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
     setFormAddress('');
     setFormCity('');
     setFormStatus('active');
+    setFormAccountType(defaultType);
     setFormOwnerName('');
     setFormOwnerEmail('');
     setFormOwnerPassword('Shop#1234');
@@ -180,10 +183,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
     setFormAddress(shop.address);
     setFormCity(shop.city);
     setFormStatus(shop.status);
+    setFormAccountType((shop.accountType || (shop.requireOnlinePayment ? 'printx' : 'shop')) as any);
     setFormOwnerName(shop.ownerName || '');
     setFormOwnerEmail(shop.ownerEmail || '');
     setFormOwnerPassword('');
     setShowEditModal(true);
+  };
+
+  const handleQuickChangeAccountType = async (shop: any, newType: 'printx' | 'shop' | 'office') => {
+    try {
+      await api.editShop(shop.id, { accountType: newType });
+      showToast(`Updated "${shop.name}" account workflow to ${newType.toUpperCase()}`, 'success');
+      loadData();
+    } catch (e: any) {
+      showToast(e.message || 'Failed to change account type', 'error');
+    }
   };
 
   const handleSaveShop = async (e: React.FormEvent) => {
@@ -198,6 +212,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           address: formAddress,
           city: formCity,
           status: formStatus,
+          accountType: formAccountType,
           ownerName: formOwnerName,
           ownerEmail: formOwnerEmail,
           ownerPassword: formOwnerPassword || undefined,
@@ -222,14 +237,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           phone: formPhone,
           address: formAddress,
           city: formCity,
+          accountType: formAccountType,
           ownerName: formOwnerName || formName,
           ownerEmail: targetEmail,
           ownerPassword: targetPassword,
         });
 
-        showToast('New shop registered and activated successfully', 'success');
+        showToast(`New ${formAccountType.toUpperCase()} shop registered successfully`, 'success');
         setCreatedCredentials({
-          title: `New Shop Registered: ${formName}`,
+          title: `New Shop Registered: ${formName} (${formAccountType.toUpperCase()})`,
           email: targetEmail,
           password: targetPassword,
           role: 'Shop Owner',
@@ -385,40 +401,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   });
 
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#080b14] text-slate-100 flex flex-col font-sans relative overflow-x-hidden">
+      {/* Ambient Glowing Orbs identical to Home Page */}
+      <div className="fixed top-[-100px] left-[-120px] w-[520px] h-[520px] bg-rose-500/10 rounded-full blur-[120px] pointer-events-none -z-10" />
+      <div className="fixed top-24 right-[-100px] w-[460px] h-[460px] bg-purple-600/12 rounded-full blur-[120px] pointer-events-none -z-10" />
+      <div className="fixed bottom-[-100px] left-1/3 w-[600px] h-[400px] bg-indigo-600/10 rounded-full blur-[140px] pointer-events-none -z-10" />
+
       {/* Top Header */}
-      <header className="border-b border-white/[0.08] bg-[#0f172a] sticky top-0 z-40 backdrop-blur-md">
+      <header className="border-b border-white/10 bg-[#080b14]/85 sticky top-0 z-40 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white">
-              <ShieldCheck className="w-4 h-4 stroke-[2.2]" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-pink-500 via-rose-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-rose-500/30">
+              <ShieldCheck className="w-5 h-5 stroke-[2.3]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-sm text-white font-['Sora']">PrintX System Admin</span>
-                <span className="badge badge-blue text-[10.5px]">Master</span>
+                <span className="font-extrabold text-sm text-white font-head tracking-tight">PrintX Super Admin</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                  Master Console
+                </span>
               </div>
-              <p className="text-[11px] text-slate-400">{user.email}</p>
+              <p className="text-[11px] text-slate-400 font-mono">{user.email}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={loadData}
-              className="btn btn-secondary btn-sm"
+              className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-slate-300 hover:text-white transition flex items-center gap-1.5 cursor-pointer"
               title="Refresh All Data"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-blue-400' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-pink-400' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
             </button>
             <button
               onClick={onNavigateHome}
-              className="btn btn-ghost btn-sm text-xs font-medium"
+              className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-slate-300 hover:text-white transition cursor-pointer"
             >
               Website Home
             </button>
             <button
               onClick={onLogout}
-              className="btn btn-ghost btn-sm text-xs text-slate-400 hover:text-white"
+              className="px-3 py-1.5 rounded-xl border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-xs text-red-300 transition flex items-center gap-1.5 cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
               Sign Out
@@ -427,35 +451,46 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
         </div>
 
         {/* Navigation Tabs */}
-        <div className="border-t border-white/[0.06] bg-[#0c1220]">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-1">
+        <div className="border-t border-white/[0.08] bg-[#0c101c]/80">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-1 overflow-x-auto">
             <button
               onClick={() => setActiveTab('shops')}
-              className={`px-4 py-2.5 text-xs font-medium border-b-2 transition flex items-center gap-2 cursor-pointer ${
+              className={`px-4 py-3 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
                 activeTab === 'shops'
-                  ? 'border-blue-500 text-white font-semibold bg-white/[0.04]'
+                  ? 'border-pink-500 text-white bg-white/[0.05]'
                   : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Store className="w-3.5 h-3.5" />
+              <Store className="w-3.5 h-3.5 text-pink-400" />
               Registered Shops ({shops.length})
             </button>
             <button
-              onClick={() => setActiveTab('users')}
-              className={`px-4 py-2.5 text-xs font-medium border-b-2 transition flex items-center gap-2 cursor-pointer ${
-                activeTab === 'users'
-                  ? 'border-blue-500 text-white font-semibold bg-white/[0.04]'
+              onClick={() => setActiveTab('accounts')}
+              className={`px-4 py-3 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                activeTab === 'accounts'
+                  ? 'border-pink-500 text-white bg-white/[0.05]'
                   : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Users className="w-3.5 h-3.5" />
-              Users & Accounts ({users.length})
+              <Shield className="w-3.5 h-3.5 text-cyan-400" />
+              Account Roles & Workflow
+            </button>
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`px-4 py-3 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                activeTab === 'users'
+                  ? 'border-pink-500 text-white bg-white/[0.05]'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5 text-purple-400" />
+              Users & Logins ({users.length})
             </button>
             <button
               onClick={() => setActiveTab('supabase')}
-              className={`px-4 py-2.5 text-xs font-medium border-b-2 transition flex items-center gap-2 cursor-pointer ${
+              className={`px-4 py-3 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
                 activeTab === 'supabase'
-                  ? 'border-blue-500 text-white font-semibold bg-white/[0.04]'
+                  ? 'border-pink-500 text-white bg-white/[0.05]'
                   : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -471,38 +506,46 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
         {/* Actions bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="relative flex-1 sm:max-w-md">
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
+            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-3" />
             <input
               type="text"
-              placeholder={activeTab === 'shops' ? 'Filter shops by name or city...' : 'Filter users by email or role...'}
+              placeholder={activeTab === 'shops' ? 'Filter shops by name, slug, or city...' : 'Filter users by email or role...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input-field pl-8 py-1.5 text-xs"
+              className="w-full pl-9 pr-3 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pink-500"
             />
           </div>
 
           <div className="flex items-center gap-2">
             {activeTab === 'shops' && (
               <button
-                onClick={handleOpenCreateShopModal}
-                className="btn btn-primary btn-sm font-medium"
+                onClick={() => handleOpenCreateShopModal('printx')}
+                className="px-4 py-2 rounded-xl text-xs font-black btn-grad flex items-center gap-1.5 shadow-lg shadow-rose-500/25 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" /> Register New Shop
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Register New Shop
+              </button>
+            )}
+            {activeTab === 'accounts' && (
+              <button
+                onClick={() => handleOpenCreateShopModal('office')}
+                className="px-4 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white flex items-center gap-1.5 shadow-lg shadow-cyan-500/25 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Office / Shop
               </button>
             )}
             {activeTab === 'users' && (
               <button
                 onClick={handleOpenCreateUserModal}
-                className="btn btn-primary btn-sm font-medium"
+                className="px-4 py-2 rounded-xl text-xs font-black btn-grad flex items-center gap-1.5 shadow-lg shadow-rose-500/25 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" /> Create New User
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Create New User
               </button>
             )}
             {activeTab === 'supabase' && (
               <button
                 onClick={handleSyncSupabaseNow}
                 disabled={isSyncingSupabase}
-                className="btn btn-primary btn-sm font-medium"
+                className="px-4 py-2 rounded-xl text-xs font-black btn-grad flex items-center gap-1.5 shadow-lg shadow-rose-500/25 cursor-pointer disabled:opacity-50"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncingSupabase ? 'animate-spin' : ''}`} />
                 {isSyncingSupabase ? 'Syncing...' : 'Sync to Supabase'}
@@ -513,64 +556,100 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
         {/* TAB 1: SHOPS TABLE */}
         {activeTab === 'shops' && (
-          <div className="card bg-[#0f172a] border border-white/[0.08] overflow-hidden p-0">
+          <div className="bg-[#0c101e]/90 border border-white/10 rounded-2xl overflow-hidden shadow-xl backdrop-blur-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-white/[0.08] bg-[#090d16] text-slate-400 uppercase text-[11px]">
-                    <th className="py-3 px-4 font-semibold">Shop Name & Slug</th>
-                    <th className="py-3 px-4 font-semibold">Location</th>
-                    <th className="py-3 px-4 font-semibold">Contact</th>
-                    <th className="py-3 px-4 font-semibold">Status</th>
-                    <th className="py-3 px-4 font-semibold text-right">Actions</th>
+                  <tr className="border-b border-white/10 bg-white/[0.02] text-slate-400 uppercase text-[11px] font-mono">
+                    <th className="py-3.5 px-4 font-bold">Shop & Slug</th>
+                    <th className="py-3.5 px-4 font-bold">Account Workflow</th>
+                    <th className="py-3.5 px-4 font-bold">Location</th>
+                    <th className="py-3.5 px-4 font-bold">Contact</th>
+                    <th className="py-3.5 px-4 font-bold">Status</th>
+                    <th className="py-3.5 px-4 font-bold text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.06] text-slate-300">
                   {filteredShops.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-slate-500">
+                      <td colSpan={6} className="py-8 text-center text-slate-500">
                         No shops match your search criteria.
                       </td>
                     </tr>
                   ) : (
-                    filteredShops.map((s) => (
-                      <tr key={s.id} className="hover:bg-white/[0.02]">
-                        <td className="py-3 px-4">
-                          <div className="font-semibold text-white">{s.name}</div>
-                          <div className="text-[11px] font-mono text-slate-400 mt-0.5">/shop/{s.slug}</div>
-                        </td>
-                        <td className="py-3 px-4 text-slate-300">{s.city}</td>
-                        <td className="py-3 px-4 font-mono tabular-nums text-slate-300">{s.phone}</td>
-                        <td className="py-3 px-4">
-                          <span className={`badge text-[10.5px] uppercase ${s.status === 'active' ? 'badge-green' : 'badge-amber'}`}>
-                            {s.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right space-x-1">
-                          {s.status !== 'active' && (
+                    filteredShops.map((s) => {
+                      const accType = (s.accountType || (s.requireOnlinePayment ? 'printx' : 'shop')) as 'printx' | 'shop' | 'office';
+                      return (
+                        <tr key={s.id} className="hover:bg-white/[0.03] transition">
+                          <td className="py-3.5 px-4">
+                            <div className="font-bold text-white text-sm">{s.name}</div>
+                            <div className="text-[11px] font-mono text-pink-400/80 mt-0.5">/shop/{s.slug}</div>
+                          </td>
+
+                          {/* Account Workflow Column */}
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-2">
+                              {accType === 'office' ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                                  🏢 Office (Free)
+                                </span>
+                              ) : accType === 'shop' ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                  🏪 Shop (Counter)
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-300 border border-pink-500/30">
+                                  🚀 PrintX (Razorpay)
+                                </span>
+                              )}
+
+                              {/* Quick switcher */}
+                              <select
+                                value={accType}
+                                onChange={(e) => handleQuickChangeAccountType(s, e.target.value as any)}
+                                className="bg-[#12182b] border border-white/10 text-[10.5px] rounded-md px-1.5 py-1 text-slate-300 focus:outline-none focus:border-pink-500 cursor-pointer"
+                                title="Quick change workflow"
+                              >
+                                <option value="printx">PrintX (Razorpay)</option>
+                                <option value="shop">Shop (Counter)</option>
+                                <option value="office">Office (Free)</option>
+                              </select>
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4 text-slate-300">{s.city}</td>
+                          <td className="py-3.5 px-4 font-mono tabular-nums text-slate-300">{s.phone}</td>
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[10.5px] font-black uppercase border ${s.status === 'active' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/15 text-amber-300 border-amber-500/30'}`}>
+                              {s.status}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right space-x-1.5">
+                            {s.status !== 'active' && (
+                              <button
+                                onClick={() => handleActivateShop(s.id)}
+                                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 transition cursor-pointer"
+                              >
+                                Activate
+                              </button>
+                            )}
                             <button
-                              onClick={() => handleActivateShop(s.id)}
-                              className="btn btn-secondary btn-sm text-[11px] text-emerald-400"
+                              onClick={() => handleOpenEditShopModal(s)}
+                              className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white/5 hover:bg-white/10 text-white border border-white/10 transition cursor-pointer"
                             >
-                              Activate
+                              Edit
                             </button>
-                          )}
-                          <button
-                            onClick={() => handleOpenEditShopModal(s)}
-                            className="btn btn-ghost btn-sm text-[11px]"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteShop(s)}
-                            className="p-1.5 text-slate-400 hover:text-red-400 rounded"
-                            title="Delete Shop"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                            <button
+                              onClick={() => handleDeleteShop(s)}
+                              className="p-1.5 text-slate-400 hover:text-red-400 rounded-lg hover:bg-red-500/10 transition cursor-pointer"
+                              title="Delete Shop"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -578,18 +657,172 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           </div>
         )}
 
-        {/* TAB 2: USERS TABLE */}
+        {/* TAB 2: ACCOUNT ROLES & WORKFLOW MANAGEMENT */}
+        {activeTab === 'accounts' && (
+          <div className="space-y-6">
+            {/* 3 Account Types Overview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {/* Type 1: PrintX */}
+              <div className="p-5 rounded-2xl bg-[#0c101e]/90 border border-pink-500/30 relative overflow-hidden space-y-3.5 shadow-xl">
+                <div className="absolute top-0 right-0 w-28 h-28 bg-pink-500/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="flex items-center justify-between">
+                  <span className="p-2.5 rounded-xl bg-pink-500/20 text-pink-300">
+                    <CreditCard className="w-5 h-5 stroke-[2.2]" />
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                    Online Mode
+                  </span>
+                </div>
+                <div>
+                  <h4 className="text-base font-extrabold text-white font-head">1. PrintX Account</h4>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Full Razorpay integration. Customer pays online via UPI, QR, or Card. Order spools automatically to printer immediately upon payment verification.
+                  </p>
+                </div>
+                <div className="pt-2 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Payment:</span>
+                    <span className="font-bold text-pink-300">Razorpay Gateway (Online)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Auto-Print:</span>
+                    <span className="font-bold text-emerald-400">Instant on Payment</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleOpenCreateShopModal('printx')}
+                  className="w-full py-2.5 rounded-xl text-xs font-black btn-grad cursor-pointer"
+                >
+                  Create PrintX Shop
+                </button>
+              </div>
+
+              {/* Type 2: Shop */}
+              <div className="p-5 rounded-2xl bg-[#0c101e]/90 border border-emerald-500/30 relative overflow-hidden space-y-3.5 shadow-xl">
+                <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="flex items-center justify-between">
+                  <span className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-300">
+                    <Store className="w-5 h-5 stroke-[2.2]" />
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    Counter Mode
+                  </span>
+                </div>
+                <div>
+                  <h4 className="text-base font-extrabold text-white font-head">2. Shop Account</h4>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Pay on Counter manual workflow. Customer page shows "Pay on Counter". Shopkeeper accepts cash/UPI at counter and releases the print job.
+                  </p>
+                </div>
+                <div className="pt-2 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Payment:</span>
+                    <span className="font-bold text-emerald-300">Pay on Counter (Cash/UPI)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Release:</span>
+                    <span className="font-bold text-slate-200">Shopkeeper Dispatches</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleOpenCreateShopModal('shop')}
+                  className="w-full py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white cursor-pointer shadow-lg shadow-emerald-500/20"
+                >
+                  Create Shop Counter
+                </button>
+              </div>
+
+              {/* Type 3: Office */}
+              <div className="p-5 rounded-2xl bg-[#0c101e]/90 border border-cyan-500/30 relative overflow-hidden space-y-3.5 shadow-xl">
+                <div className="absolute top-0 right-0 w-28 h-28 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="flex items-center justify-between">
+                  <span className="p-2.5 rounded-xl bg-cyan-500/20 text-cyan-300">
+                    <Printer className="w-5 h-5 stroke-[2.2]" />
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    Internal Free
+                  </span>
+                </div>
+                <div>
+                  <h4 className="text-base font-extrabold text-white font-head">3. Office Account</h4>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    All payment modules removed. Customer page simply has "Place Order & Print" (₹0 / Free). Direct printing for offices, schools, and internal teams.
+                  </p>
+                </div>
+                <div className="pt-2 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Payment:</span>
+                    <span className="font-bold text-cyan-300">Disabled (₹0 Free)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Print Button:</span>
+                    <span className="font-bold text-cyan-400">Place Order & Print</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleOpenCreateShopModal('office')}
+                  className="w-full py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white cursor-pointer shadow-lg shadow-cyan-500/20"
+                >
+                  Create Office Hub
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Assignment Table */}
+            <div className="bg-[#0c101e]/90 border border-white/10 rounded-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-sm text-white font-head">Manage Registered Counters by Role</h4>
+                  <p className="text-xs text-slate-400 mt-0.5">Switch any counter's role between PrintX, Shop, and Office instantly.</p>
+                </div>
+                <span className="text-xs font-mono text-slate-400">{shops.length} total active entities</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {shops.map((s) => {
+                  const accType = (s.accountType || (s.requireOnlinePayment ? 'printx' : 'shop')) as 'printx' | 'shop' | 'office';
+                  return (
+                    <div key={s.id} className="p-3.5 bg-white/[0.03] border border-white/10 rounded-xl flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-xs text-white truncate">{s.name}</p>
+                        <p className="text-[10.5px] font-mono text-slate-400">/shop/{s.slug}</p>
+                      </div>
+
+                      <select
+                        value={accType}
+                        onChange={(e) => handleQuickChangeAccountType(s, e.target.value as any)}
+                        className={`text-xs font-bold rounded-lg px-2.5 py-1.5 border cursor-pointer ${
+                          accType === 'office'
+                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                            : accType === 'shop'
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                            : 'bg-pink-500/20 text-pink-300 border-pink-500/40'
+                        }`}
+                      >
+                        <option value="printx" className="bg-[#0c101e] text-white">1. PrintX (Razorpay)</option>
+                        <option value="shop" className="bg-[#0c101e] text-white">2. Shop (Counter)</option>
+                        <option value="office" className="bg-[#0c101e] text-white">3. Office (Free Print)</option>
+                      </select>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: USERS TABLE */}
         {activeTab === 'users' && (
-          <div className="card bg-[#0f172a] border border-white/[0.08] overflow-hidden p-0">
+          <div className="bg-[#0c101e]/90 border border-white/10 rounded-2xl overflow-hidden shadow-xl backdrop-blur-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-white/[0.08] bg-[#090d16] text-slate-400 uppercase text-[11px]">
-                    <th className="py-3 px-4 font-semibold">User Name & Email</th>
-                    <th className="py-3 px-4 font-semibold">Role</th>
-                    <th className="py-3 px-4 font-semibold">Phone</th>
-                    <th className="py-3 px-4 font-semibold">Linked Shop</th>
-                    <th className="py-3 px-4 font-semibold text-right">Actions</th>
+                  <tr className="border-b border-white/10 bg-white/[0.02] text-slate-400 uppercase text-[11px] font-mono">
+                    <th className="py-3.5 px-4 font-bold">User Name & Email</th>
+                    <th className="py-3.5 px-4 font-bold">Role</th>
+                    <th className="py-3.5 px-4 font-bold">Phone</th>
+                    <th className="py-3.5 px-4 font-bold">Linked Shop</th>
+                    <th className="py-3.5 px-4 font-bold text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.06] text-slate-300">
@@ -601,32 +834,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                     </tr>
                   ) : (
                     filteredUsers.map((u) => (
-                      <tr key={u.id} className="hover:bg-white/[0.02]">
-                        <td className="py-3 px-4">
-                          <div className="font-semibold text-white">{u.fullName}</div>
+                      <tr key={u.id} className="hover:bg-white/[0.03] transition">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-white text-sm">{u.fullName}</div>
                           <div className="text-[11px] font-mono text-slate-400">{u.email}</div>
                         </td>
-                        <td className="py-3 px-4">
-                          <span className={`badge text-[10.5px] uppercase ${u.role === 'admin' ? 'badge-blue' : 'badge-neutral'}`}>
-                            {u.role === 'admin' ? 'Administrator' : 'Shop Owner'}
+                        <td className="py-3.5 px-4">
+                          <span className={`px-2 py-0.5 rounded-full text-[10.5px] font-black uppercase border ${u.role === 'admin' ? 'bg-pink-500/15 text-pink-300 border-pink-500/30' : 'bg-white/5 text-slate-300 border-white/10'}`}>
+                            {u.role === 'admin' ? 'Super Administrator' : 'Shop Owner'}
                           </span>
                         </td>
-                        <td className="py-3 px-4 font-mono tabular-nums text-slate-300">
+                        <td className="py-3.5 px-4 font-mono tabular-nums text-slate-300">
                           {u.whatsappNumber || '—'}
                         </td>
-                        <td className="py-3 px-4 text-slate-300">
+                        <td className="py-3.5 px-4 text-slate-300 font-medium">
                           {u.linkedShop?.name || '—'}
                         </td>
-                        <td className="py-3 px-4 text-right space-x-1">
+                        <td className="py-3.5 px-4 text-right space-x-1.5">
                           <button
                             onClick={() => handleOpenEditUserModal(u)}
-                            className="btn btn-ghost btn-sm text-[11px]"
+                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white/5 hover:bg-white/10 text-white border border-white/10 transition cursor-pointer"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => handleDeleteUser(u)}
-                            className="p-1.5 text-slate-400 hover:text-red-400 rounded"
+                            className="p-1.5 text-slate-400 hover:text-red-400 rounded-lg hover:bg-red-500/10 transition cursor-pointer"
                             title="Delete User"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -641,46 +874,46 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           </div>
         )}
 
-        {/* TAB 3: SUPABASE CONFIG */}
+        {/* TAB 4: SUPABASE CONFIG */}
         {activeTab === 'supabase' && (
-          <div className="card max-w-2xl bg-[#0f172a] border border-white/[0.08] p-6 space-y-4">
+          <div className="max-w-2xl bg-[#0c101e]/90 border border-white/10 rounded-2xl p-6 space-y-5 shadow-xl">
             <div>
-              <h3 className="text-sm font-bold font-['Sora'] text-white">Supabase Cloud Database Settings</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <h3 className="text-base font-extrabold font-head text-white">Supabase Cloud Database Settings</h3>
+              <p className="text-xs text-slate-400 mt-1">
                 Configure your Supabase Cloud project credentials and verify connection status.
               </p>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">Supabase Project URL</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1.5">Supabase Project URL</label>
                 <input
                   type="text"
                   value={supabaseUrl}
                   onChange={(e) => setSupabaseUrl(e.target.value)}
-                  className="input-field text-xs font-mono"
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-pink-500"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">Service Role Key</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1.5">Service Role Key</label>
                 <input
                   type="password"
                   value={supabaseServiceKey}
                   onChange={(e) => setSupabaseServiceKey(e.target.value)}
                   placeholder="••••••••"
-                  className="input-field text-xs font-mono"
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-pink-500"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">Anon / Public Key</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1.5">Anon / Public Key</label>
                 <input
                   type="password"
                   value={supabaseAnonKey}
                   onChange={(e) => setSupabaseAnonKey(e.target.value)}
                   placeholder="••••••••"
-                  className="input-field text-xs font-mono"
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-pink-500"
                 />
               </div>
 
@@ -688,7 +921,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                 <button
                   onClick={handleSaveSupabaseConfig}
                   disabled={isSavingSupabase}
-                  className="btn btn-primary btn-sm font-medium"
+                  className="px-5 py-2.5 rounded-xl text-xs font-black btn-grad cursor-pointer disabled:opacity-50"
                 >
                   {isSavingSupabase ? 'Testing & Saving...' : 'Save & Verify Connection'}
                 </button>
@@ -702,75 +935,140 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
       {/* Edit/Create Shop Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0f172a] border border-white/[0.12] rounded-xl max-w-md w-full p-6 text-white space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
-              <h3 className="text-sm font-bold font-['Sora'] text-white">
-                {editingShop ? 'Edit Shop' : 'Register New Shop'}
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0c101e] border border-white/15 rounded-2xl max-w-lg w-full p-6 text-white space-y-4 shadow-2xl shadow-black/90 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <h3 className="text-base font-extrabold font-head text-white">
+                {editingShop ? `Edit Shop: ${editingShop.name}` : 'Register New Shop / Printing Hub'}
               </h3>
-              <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-white">
-                <X className="w-4 h-4" />
+              <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-white cursor-pointer">
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveShop} className="space-y-3">
+            <form onSubmit={handleSaveShop} className="space-y-4">
+              {/* 3 Account Types Selection */}
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">Shop Name *</label>
+                <label className="text-xs font-bold text-slate-300 block mb-2">Account Type & Workflow *</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormAccountType('printx')}
+                    className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                      formAccountType === 'printx'
+                        ? 'border-pink-500 bg-pink-500/15 text-white shadow-[0_0_15px_rgba(255,46,99,0.25)]'
+                        : 'border-white/10 bg-white/5 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center gap-1.5 text-pink-300 text-xs font-black">
+                        <CreditCard className="w-4 h-4" /> 1. PrintX
+                      </div>
+                      <p className="text-[10px] text-slate-300 mt-1">Razorpay Online</p>
+                    </div>
+                    <span className="text-[9px] uppercase font-mono text-pink-400/80 mt-2">Auto-Spool</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormAccountType('shop')}
+                    className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                      formAccountType === 'shop'
+                        ? 'border-emerald-500 bg-emerald-500/15 text-white shadow-[0_0_15px_rgba(34,197,94,0.25)]'
+                        : 'border-white/10 bg-white/5 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center gap-1.5 text-emerald-300 text-xs font-black">
+                        <Store className="w-4 h-4" /> 2. Shop
+                      </div>
+                      <p className="text-[10px] text-slate-300 mt-1">Pay on Counter</p>
+                    </div>
+                    <span className="text-[9px] uppercase font-mono text-emerald-400/80 mt-2">Manual Cash</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormAccountType('office')}
+                    className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                      formAccountType === 'office'
+                        ? 'border-cyan-500 bg-cyan-500/15 text-white shadow-[0_0_15px_rgba(6,182,212,0.25)]'
+                        : 'border-white/10 bg-white/5 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center gap-1.5 text-cyan-300 text-xs font-black">
+                        <Printer className="w-4 h-4" /> 3. Office
+                      </div>
+                      <p className="text-[10px] text-slate-300 mt-1">Zero Payment</p>
+                    </div>
+                    <span className="text-[9px] uppercase font-mono text-cyan-400/80 mt-2">Free Print</span>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Shop Name *</label>
                 <input
                   type="text"
                   required
+                  placeholder="e.g. Modern Xerox & Cyber Cafe"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  className="input-field text-xs"
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-pink-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-slate-300 block mb-1">City *</label>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">City *</label>
                   <input
                     type="text"
                     required
+                    placeholder="e.g. Kanpur"
                     value={formCity}
                     onChange={(e) => setFormCity(e.target.value)}
-                    className="input-field text-xs"
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-pink-500"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-slate-300 block mb-1">Phone *</label>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">Phone / WhatsApp *</label>
                   <input
                     type="tel"
                     required
+                    placeholder="e.g. +919876543210"
                     value={formPhone}
                     onChange={(e) => setFormPhone(e.target.value)}
-                    className="input-field text-xs"
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-pink-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">Address *</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Address *</label>
                 <input
                   type="text"
                   required
+                  placeholder="e.g. Shop #4, University Market Road"
                   value={formAddress}
                   onChange={(e) => setFormAddress(e.target.value)}
-                  className="input-field text-xs"
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-pink-500"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">Owner Email</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Owner Email</label>
                 <input
                   type="email"
+                  placeholder="e.g. owner@example.com"
                   value={formOwnerEmail}
                   onChange={(e) => setFormOwnerEmail(e.target.value)}
-                  className="input-field text-xs"
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-pink-500"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">
+                <label className="text-xs font-bold text-slate-300 block mb-1">
                   {editingShop ? 'New Password (leave empty to keep current)' : 'Initial Password'}
                 </label>
                 <input
@@ -778,22 +1076,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                   value={formOwnerPassword}
                   onChange={(e) => setFormOwnerPassword(e.target.value)}
                   placeholder={editingShop ? '••••••••' : 'Shop#1234'}
-                  className="input-field text-xs"
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-pink-500"
                 />
               </div>
 
-              <div className="pt-3 border-t border-white/[0.08] flex justify-end gap-2">
+              <div className="pt-3 border-t border-white/10 flex justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="btn btn-secondary btn-sm"
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-300 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="btn btn-primary btn-sm font-medium"
+                  className="px-5 py-2 rounded-xl text-xs font-black btn-grad shadow-lg shadow-rose-500/25 cursor-pointer disabled:opacity-50"
                 >
                   {isSaving ? 'Saving...' : 'Save Shop'}
                 </button>
@@ -805,69 +1103,72 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
       {/* Edit/Create User Modal */}
       {showUserModal && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0f172a] border border-white/[0.12] rounded-xl max-w-md w-full p-6 text-white space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
-              <h3 className="text-sm font-bold font-['Sora'] text-white">
-                {editingUser ? 'Edit User' : 'Create User'}
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0c101e] border border-white/15 rounded-2xl max-w-md w-full p-6 text-white space-y-4 shadow-2xl shadow-black/90">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <h3 className="text-base font-extrabold font-head text-white">
+                {editingUser ? 'Edit User' : 'Create New User / Counter Login'}
               </h3>
-              <button onClick={() => setShowUserModal(false)} className="text-slate-400 hover:text-white">
-                <X className="w-4 h-4" />
+              <button onClick={() => setShowUserModal(false)} className="text-slate-400 hover:text-white cursor-pointer">
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveUser} className="space-y-3">
+            <form onSubmit={handleSaveUser} className="space-y-3.5">
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">Full Name *</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Full Name *</label>
                 <input
                   type="text"
                   required
+                  placeholder="e.g. Ramesh Kumar"
                   value={userFormName}
                   onChange={(e) => setUserFormName(e.target.value)}
-                  className="input-field text-xs"
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-pink-500"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">Email Address *</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Email Address *</label>
                 <input
                   type="email"
                   required
+                  placeholder="e.g. ramesh@example.com"
                   value={userFormEmail}
                   onChange={(e) => setUserFormEmail(e.target.value)}
-                  className="input-field text-xs"
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-pink-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-slate-300 block mb-1">Phone Number</label>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">Phone Number</label>
                   <input
                     type="tel"
+                    placeholder="+919876543210"
                     value={userFormPhone}
                     onChange={(e) => setUserFormPhone(e.target.value)}
-                    className="input-field text-xs"
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-pink-500"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-slate-300 block mb-1">Role</label>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">Role</label>
                   <select
                     value={userFormRole}
                     onChange={(e) => setUserFormRole(e.target.value as any)}
-                    className="input-field text-xs bg-[#0d1322]"
+                    className="w-full px-3.5 py-2.5 bg-[#12182b] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-pink-500"
                   >
-                    <option value="shop_owner">Shop Owner</option>
-                    <option value="admin">Administrator</option>
+                    <option value="shop_owner">Shop / Counter Owner</option>
+                    <option value="admin">Super Administrator</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">Linked Shop</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Linked Counter / Shop</label>
                 <select
                   value={userFormShopId}
                   onChange={(e) => setUserFormShopId(e.target.value)}
-                  className="input-field text-xs bg-[#0d1322]"
+                  className="w-full px-3.5 py-2.5 bg-[#12182b] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-pink-500"
                 >
                   <option value="">None / Independent</option>
                   {shops.map((s) => (
@@ -877,7 +1178,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">
+                <label className="text-xs font-bold text-slate-300 block mb-1">
                   {editingUser ? 'New Password (leave empty to keep current)' : 'Password *'}
                 </label>
                 <input
@@ -885,22 +1186,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                   value={userFormPassword}
                   onChange={(e) => setUserFormPassword(e.target.value)}
                   placeholder={editingUser ? '••••••••' : 'User#1234'}
-                  className="input-field text-xs"
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-pink-500"
                 />
               </div>
 
-              <div className="pt-3 border-t border-white/[0.08] flex justify-end gap-2">
+              <div className="pt-3 border-t border-white/10 flex justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={() => setShowUserModal(false)}
-                  className="btn btn-secondary btn-sm"
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-300 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="btn btn-primary btn-sm font-medium"
+                  className="px-5 py-2 rounded-xl text-xs font-black btn-grad shadow-lg shadow-rose-500/25 cursor-pointer disabled:opacity-50"
                 >
                   {isSaving ? 'Saving...' : 'Save User'}
                 </button>
@@ -912,10 +1213,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
       {/* Credential Confirmation Modal */}
       {createdCredentials && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0f172a] border border-white/[0.12] rounded-xl max-w-sm w-full p-6 text-white space-y-4 shadow-2xl">
-            <h3 className="text-sm font-bold font-['Sora'] text-white">{createdCredentials.title}</h3>
-            <div className="p-3 bg-[#090d16] border border-white/[0.08] rounded-lg text-xs space-y-2 font-mono">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0c101e] border border-white/15 rounded-2xl max-w-sm w-full p-6 text-white space-y-4 shadow-2xl shadow-black/90">
+            <h3 className="text-base font-extrabold font-head text-white">{createdCredentials.title}</h3>
+            <div className="p-3.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs space-y-2 font-mono">
               <div>
                 <span className="text-slate-400">Email: </span>
                 <span className="text-white font-bold">{createdCredentials.email}</span>
@@ -923,22 +1224,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
               {createdCredentials.password && (
                 <div>
                   <span className="text-slate-400">Password: </span>
-                  <span className="text-blue-400 font-bold">{createdCredentials.password}</span>
+                  <span className="text-pink-400 font-bold">{createdCredentials.password}</span>
                 </div>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2.5">
               <button
                 onClick={() => {
                   copyToClipboard(`Email: ${createdCredentials.email}\nPassword: ${createdCredentials.password || ''}`);
                 }}
-                className="btn btn-secondary btn-sm flex-1"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/15 text-white flex-1 cursor-pointer"
               >
                 Copy
               </button>
               <button
                 onClick={() => setCreatedCredentials(null)}
-                className="btn btn-primary btn-sm flex-1 font-medium"
+                className="px-4 py-2 rounded-xl text-xs font-black btn-grad flex-1 shadow-lg shadow-rose-500/25 cursor-pointer"
               >
                 Dismiss
               </button>
@@ -950,13 +1251,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       {/* Toast Feedback */}
       {toast && (
         <div className="fixed bottom-5 right-5 z-50">
-          <div className="px-4 py-3 rounded-lg bg-[#0f172a] border border-white/[0.12] text-xs font-medium text-white shadow-xl flex items-center gap-2">
+          <div className="px-4 py-3 rounded-xl bg-[#0c101e] border border-white/15 text-xs font-bold text-white shadow-2xl shadow-black flex items-center gap-2.5">
             <span>{toast.message}</span>
             <button
               onClick={() => setToast(null)}
-              className="text-slate-400 hover:text-white ml-2"
+              className="text-slate-400 hover:text-white ml-2 cursor-pointer"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
