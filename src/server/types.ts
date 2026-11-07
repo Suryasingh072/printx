@@ -57,6 +57,10 @@ export interface Shop {
   razorpayKeyId?: string;
   razorpayKeySecret?: string;
   agentOnline?: boolean;
+  trayCapacity?: number;
+  paperPrintedSinceRefill?: number;
+  lastPaperRefillAt?: string;
+  isOutOfPaper?: boolean;
   createdAt: string;
   updatedAt: string;
 }

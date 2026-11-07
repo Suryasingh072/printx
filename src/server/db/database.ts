@@ -572,18 +572,41 @@ export class Database {
 
   // --- Shop Queries ---
   public getShopBySlug(slug: string): Shop | undefined {
-    return this.data.shops.find((s) => s.slug.toLowerCase() === slug.toLowerCase());
+    const shop = this.data.shops.find((s) => s.slug.toLowerCase() === slug.toLowerCase());
+    if (shop) {
+      if (shop.trayCapacity === undefined) shop.trayCapacity = 500;
+      if (shop.paperPrintedSinceRefill === undefined) shop.paperPrintedSinceRefill = 0;
+      shop.isOutOfPaper = (shop.paperPrintedSinceRefill || 0) >= (shop.trayCapacity || 500);
+    }
+    return shop;
   }
 
   public getShopById(id: string): Shop | undefined {
-    return this.data.shops.find((s) => s.id === id);
+    const shop = this.data.shops.find((s) => s.id === id);
+    if (shop) {
+      if (shop.trayCapacity === undefined) shop.trayCapacity = 500;
+      if (shop.paperPrintedSinceRefill === undefined) shop.paperPrintedSinceRefill = 0;
+      shop.isOutOfPaper = (shop.paperPrintedSinceRefill || 0) >= (shop.trayCapacity || 500);
+    }
+    return shop;
   }
 
   public getShopByOwnerId(ownerId: string): Shop | undefined {
-    return this.data.shops.find((s) => s.ownerId === ownerId);
+    const shop = this.data.shops.find((s) => s.ownerId === ownerId);
+    if (shop) {
+      if (shop.trayCapacity === undefined) shop.trayCapacity = 500;
+      if (shop.paperPrintedSinceRefill === undefined) shop.paperPrintedSinceRefill = 0;
+      shop.isOutOfPaper = (shop.paperPrintedSinceRefill || 0) >= (shop.trayCapacity || 500);
+    }
+    return shop;
   }
 
   public getAllShops(): Shop[] {
+    for (const shop of this.data.shops) {
+      if (shop.trayCapacity === undefined) shop.trayCapacity = 500;
+      if (shop.paperPrintedSinceRefill === undefined) shop.paperPrintedSinceRefill = 0;
+      shop.isOutOfPaper = (shop.paperPrintedSinceRefill || 0) >= (shop.trayCapacity || 500);
+    }
     return this.data.shops;
   }
 
@@ -654,6 +677,42 @@ export class Database {
       ...updates,
       updatedAt: new Date().toISOString(),
     };
+    this.save();
+    return this.data.shops[idx];
+  }
+
+  public refillPaper(id: string, trayCapacity?: number): Shop | undefined {
+    const idx = this.data.shops.findIndex((s) => s.id === id);
+    if (idx === -1) return undefined;
+    this.data.shops[idx].paperPrintedSinceRefill = 0;
+    this.data.shops[idx].isOutOfPaper = false;
+    this.data.shops[idx].lastPaperRefillAt = new Date().toISOString();
+    if (trayCapacity && trayCapacity > 0) {
+      this.data.shops[idx].trayCapacity = trayCapacity;
+    } else if (this.data.shops[idx].trayCapacity === undefined) {
+      this.data.shops[idx].trayCapacity = 500;
+    }
+    this.data.shops[idx].updatedAt = new Date().toISOString();
+    this.save();
+    return this.data.shops[idx];
+  }
+
+  public updatePaperTray(id: string, updates: { trayCapacity?: number; paperPrintedSinceRefill?: number; isOutOfPaper?: boolean }): Shop | undefined {
+    const idx = this.data.shops.findIndex((s) => s.id === id);
+    if (idx === -1) return undefined;
+    if (typeof updates.trayCapacity === 'number') {
+      this.data.shops[idx].trayCapacity = updates.trayCapacity;
+    } else if (this.data.shops[idx].trayCapacity === undefined) {
+      this.data.shops[idx].trayCapacity = 500;
+    }
+    if (typeof updates.paperPrintedSinceRefill === 'number') this.data.shops[idx].paperPrintedSinceRefill = Math.max(0, updates.paperPrintedSinceRefill);
+    const capacity = this.data.shops[idx].trayCapacity || 500;
+    if (typeof updates.isOutOfPaper === 'boolean') {
+      this.data.shops[idx].isOutOfPaper = updates.isOutOfPaper;
+    } else {
+      this.data.shops[idx].isOutOfPaper = (this.data.shops[idx].paperPrintedSinceRefill || 0) >= capacity;
+    }
+    this.data.shops[idx].updatedAt = new Date().toISOString();
     this.save();
     return this.data.shops[idx];
   }
@@ -778,13 +837,14 @@ export class Database {
 
   public getOrdersByShop(shopId: string, filter?: string): Order[] {
     const now = Date.now();
-    // Exclude orders that completed and whose 5-minute queue deletion time has elapsed
+    // Exclude orders that completed or failed and whose 1-minute queue deletion time has elapsed
     let orders = this.data.orders.filter((o) => {
       if (o.shopId !== shopId) return false;
-      const isCompleted = o.status === 'completed' || Boolean(o.printedAt);
-      if (isCompleted) {
+      const isFinished = o.status === 'completed' || o.status === 'rejected' || Boolean(o.printedAt);
+      if (isFinished) {
         if (o.purgeDueAt && now >= new Date(o.purgeDueAt).getTime()) return false;
-        if (o.printedAt && now - new Date(o.printedAt).getTime() >= 5 * 60 * 1000) return false;
+        if (o.printedAt && now - new Date(o.printedAt).getTime() >= 1 * 60 * 1000) return false;
+        if (o.updatedAt && (o.status === 'completed' || o.status === 'rejected') && now - new Date(o.updatedAt).getTime() >= 1 * 60 * 1000) return false;
       }
       return true;
     });
@@ -861,8 +921,22 @@ export class Database {
       this.data.orders[idx].approvedBy = changedById;
     } else if (newStatus === 'completed') {
       this.data.orders[idx].printedAt = new Date().toISOString();
-      // Set customer files auto-purge to exactly 5 minutes from completion
-      this.data.orders[idx].purgeDueAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+      // Set customer files & order data auto-purge to exactly 1 minute from completion
+      this.data.orders[idx].purgeDueAt = new Date(Date.now() + 1 * 60 * 1000).toISOString();
+      // Track physical paper consumption in the shop tray
+      const targetOrder = this.data.orders[idx];
+      const targetShop = this.getShopById(targetOrder.shopId);
+      if (targetShop) {
+        const sheetsUsed = targetOrder.duplexMode === 'duplex'
+          ? Math.ceil((targetOrder.pageCount || 1) / 2) * (targetOrder.copies || 1)
+          : (targetOrder.pageCount || 1) * (targetOrder.copies || 1);
+        targetShop.paperPrintedSinceRefill = (targetShop.paperPrintedSinceRefill || 0) + sheetsUsed;
+        const capacity = targetShop.trayCapacity || 500;
+        targetShop.isOutOfPaper = targetShop.paperPrintedSinceRefill >= capacity;
+      }
+    } else if (newStatus === 'rejected') {
+      // Set failed/rejected orders auto-purge to exactly 1 minute
+      this.data.orders[idx].purgeDueAt = new Date(Date.now() + 1 * 60 * 1000).toISOString();
     } else if (newStatus === 'archived') {
       this.data.orders[idx].archivedAt = new Date().toISOString();
     }
@@ -912,16 +986,16 @@ export class Database {
     const remainingOrders: Order[] = [];
 
     for (const order of this.data.orders) {
-      const isCompleted = order.status === 'completed' || Boolean(order.printedAt);
+      const isFinished = order.status === 'completed' || order.status === 'rejected' || Boolean(order.printedAt);
 
       let shouldPurge = false;
-      if (isCompleted) {
+      if (isFinished) {
         if (order.purgeDueAt) {
           shouldPurge = now >= new Date(order.purgeDueAt).getTime();
         } else if (order.printedAt) {
-          shouldPurge = now - new Date(order.printedAt).getTime() >= 5 * 60 * 1000;
-        } else if (order.updatedAt && order.status === 'completed') {
-          shouldPurge = now - new Date(order.updatedAt).getTime() >= 5 * 60 * 1000;
+          shouldPurge = now - new Date(order.printedAt).getTime() >= 1 * 60 * 1000;
+        } else if (order.updatedAt && (order.status === 'completed' || order.status === 'rejected')) {
+          shouldPurge = now - new Date(order.updatedAt).getTime() >= 1 * 60 * 1000;
         }
       }
 
@@ -952,7 +1026,7 @@ export class Database {
         this.data.printJobs = this.data.printJobs.filter((j) => j.orderId !== order.id);
 
         purgedOrderIds.push(order.id);
-        console.log(`[Queue Auto-Delete] Order ${order.orderNumber} automatically deleted from Print Queue after 5 minutes.`);
+        console.log(`[Queue Auto-Delete] Order ${order.orderNumber} automatically deleted from Print Queue after 1 minute.`);
       } else {
         remainingOrders.push(order);
       }
@@ -1066,6 +1140,7 @@ export class Database {
 
     if (agent) {
       agent.status = 'online';
+      (agent as any).everConnected = true;
       agent.lastSeenAt = new Date().toISOString();
     }
 
@@ -1218,6 +1293,7 @@ export class Database {
     agent.deviceName = deviceName || agent.deviceName || 'Windows Print Agent';
     agent.ipAddress = ipAddress || agent.ipAddress;
     agent.status = 'online';
+    (agent as any).everConnected = true;
     agent.lastSeenAt = new Date().toISOString();
 
     this.save();
@@ -1439,16 +1515,26 @@ export class Database {
         if (remainingActive.length === 0) {
           order.status = 'completed';
           order.printedAt = new Date().toISOString();
-          order.purgeDueAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+          // Purge order and data after exactly 1 minute
+          order.purgeDueAt = new Date(Date.now() + 1 * 60 * 1000).toISOString();
+          // Track physical paper consumption in the shop tray
+          const targetShop = this.getShopById(order.shopId);
+          if (targetShop) {
+            const sheetsUsed = order.duplexMode === 'duplex'
+              ? Math.ceil((order.pageCount || 1) / 2) * (order.copies || 1)
+              : (order.pageCount || 1) * (order.copies || 1);
+            targetShop.paperPrintedSinceRefill = (targetShop.paperPrintedSinceRefill || 0) + sheetsUsed;
+            const capacity = targetShop.trayCapacity || 500;
+            targetShop.isOutOfPaper = targetShop.paperPrintedSinceRefill >= capacity;
+          }
         } else {
           order.status = 'printing';
         }
       } else if (status === 'failed') {
         job.retryCount += 1;
-        // Don't fail permanently on first try if under 3 retries
-        if (job.retryCount >= 3) {
-          order.status = 'queued'; // return to queue with alert
-        }
+        // If print failed on agent, reject order and auto-purge after 1 minute
+        order.status = 'rejected';
+        order.purgeDueAt = new Date(Date.now() + 1 * 60 * 1000).toISOString();
       }
     }
 

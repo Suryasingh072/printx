@@ -361,14 +361,11 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {[
                   { id: 'free', label: 'Original', sub: 'Full Image' },
-                  { id: '1:1', label: '1:1 Square', sub: 'Passport / Avatar' },
-                  { id: '3:4', label: '3:4 Portrait', sub: 'ID Card Photo' },
-                  { id: '4:3', label: '4:3 Standard', sub: 'Landscape' },
-                  { id: '16:9', label: '16:9 Banner', sub: 'Widescreen' },
                   { id: 'a4', label: 'A4 Sheet', sub: 'Document Ratio' },
+                  { id: '16:9', label: '16:9 Banner', sub: 'Widescreen' },
                 ].map((preset) => (
                   <button
                     key={preset.id}

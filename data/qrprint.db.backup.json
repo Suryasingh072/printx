@@ -130,7 +130,11 @@
       "activatedAt": "2026-10-10T07:06:39.518Z",
       "activatedBy": "usr-admin-001",
       "upiId": "surya286351@gmail.com",
-      "requiresCounterPayment": false
+      "requiresCounterPayment": false,
+      "paperPrintedSinceRefill": 0,
+      "isOutOfPaper": false,
+      "lastPaperRefillAt": "2026-11-07T16:56:58.370Z",
+      "trayCapacity": 500
     },
     {
       "slug": "test-cyber-shop",
@@ -445,12 +449,55 @@
     {
       "id": "agt-cf0f2f85",
       "shopId": "shp-00ff309e",
-      "deviceName": "DESKTOP-O5VBAF0",
+      "deviceName": "DESKTOP-EOHTQ2R",
       "status": "online",
-      "authTokenHash": "9f96ea230818de812dc60a6b2213f77e03ba8e9703e7e8f69d78fe8d8f2b6e12",
+      "authTokenHash": "165473400eff3b678994f35517b93aa78522bff37964999eb9565a5afebfd2d1",
       "utilityApiKey": "adr_util_live_db74742faaf0ea766249170ef3f11a8c",
-      "installedPrinters": [],
-      "defaultPrinter": "Canon G2010 series",
+      "installedPrinters": [
+        {
+          "name": "Send To OneNote 2010",
+          "status": "Ready",
+          "isDefault": false,
+          "supportsColor": true
+        },
+        {
+          "name": "OneNote for Windows 10",
+          "status": "Ready",
+          "isDefault": false,
+          "supportsColor": true
+        },
+        {
+          "name": "Microsoft XPS Document Writer",
+          "status": "Ready",
+          "isDefault": false,
+          "supportsColor": true
+        },
+        {
+          "name": "Microsoft Print to PDF",
+          "status": "Ready",
+          "isDefault": true,
+          "supportsColor": true
+        },
+        {
+          "name": "HP LaserJet 1020",
+          "status": "Ready",
+          "isDefault": false,
+          "supportsColor": false
+        },
+        {
+          "name": "HP Laser 103 107 108 (Copy 1)",
+          "status": "Ready",
+          "isDefault": false,
+          "supportsColor": false
+        },
+        {
+          "name": "Fax",
+          "status": "Ready",
+          "isDefault": false,
+          "supportsColor": false
+        }
+      ],
+      "defaultPrinter": "Microsoft Print to PDF",
       "bwPrinter": "HP LaserJet Pro M404dn",
       "colorPrinter": "Canon PIXMA G3010",
       "appVersion": "1.2.0",
@@ -459,7 +506,8 @@
       "pairingCode": "293843",
       "pairingCodeExpiresAt": "2026-10-16T05:37:06.202Z",
       "ipAddress": "127.0.0.1",
-      "lastSeenAt": "2026-11-06T15:12:07.686Z"
+      "lastSeenAt": "2026-11-07T16:56:54.666Z",
+      "permanentToken": "agt_token_9aabda58c1d1de92086f53acd092c3db9e05d59e32d99617"
     },
     {
       "id": "agt-7ce119ab",
@@ -1427,7 +1475,7 @@
       "customNotes": "",
       "unitPrice": 5,
       "totalAmount": 5,
-      "status": "queued",
+      "status": "printing",
       "paymentStatus": "collected",
       "files": [
         {
@@ -1444,7 +1492,7 @@
       "id": "ord-fa202fd6",
       "orderNumber": "ORD-359249",
       "createdAt": "2026-10-26T09:42:54.753Z",
-      "updatedAt": "2026-10-26T09:43:35.103Z",
+      "updatedAt": "2026-11-07T16:26:05.232Z",
       "paymentCollectedAt": "2026-10-26T09:43:35.098Z",
       "paymentCollectorName": "bbd",
       "paymentMethod": "counter_cash"
@@ -2328,6 +2376,86 @@
       },
       "id": "log-5437bfce",
       "createdAt": "2026-10-26T09:41:41.719Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "order_deleted",
+      "description": "Order ORD-359249 permanently deleted by Shopkeeper.",
+      "id": "log-e286a274",
+      "createdAt": "2026-11-07T16:40:25.390Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "order_deleted",
+      "description": "Order ORD-372582 permanently deleted by Shopkeeper.",
+      "id": "log-6ae84503",
+      "createdAt": "2026-11-07T16:40:24.184Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "order_deleted",
+      "description": "Order ORD-763244 permanently deleted by Shopkeeper.",
+      "id": "log-8a08072d",
+      "createdAt": "2026-11-07T16:40:22.216Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "order_deleted",
+      "description": "Order ORD-167953 permanently deleted by Shopkeeper.",
+      "id": "log-101d2b75",
+      "createdAt": "2026-11-07T16:40:21.636Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "order_deleted",
+      "description": "Order ORD-252913 permanently deleted by Shopkeeper.",
+      "id": "log-ec21b77b",
+      "createdAt": "2026-11-07T16:40:21.081Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "order_deleted",
+      "description": "Order ORD-880388 permanently deleted by Shopkeeper.",
+      "id": "log-0481b246",
+      "createdAt": "2026-11-07T16:40:20.467Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "order_deleted",
+      "description": "Order ORD-933027 permanently deleted by Shopkeeper.",
+      "id": "log-235cf03b",
+      "createdAt": "2026-11-07T16:40:19.884Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "order_deleted",
+      "description": "Order ORD-804340 permanently deleted by Shopkeeper.",
+      "id": "log-c4972a09",
+      "createdAt": "2026-11-07T16:40:19.330Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "order_deleted",
+      "description": "Order ORD-560449 permanently deleted by Shopkeeper.",
+      "id": "log-d37d3926",
+      "createdAt": "2026-11-07T16:40:18.766Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "userId": "usr-3129a8fa",
+      "actionType": "order_deleted",
+      "description": "Order ORD-148022 permanently deleted by Shopkeeper.",
+      "id": "log-dd38947b",
+      "createdAt": "2026-11-07T16:40:17.084Z"
     }
   ]
 }

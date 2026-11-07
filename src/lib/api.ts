@@ -249,6 +249,20 @@ export const api = {
     });
   },
 
+  async refillPaperTray(trayCapacity?: number): Promise<{ message: string; shop: Shop; trayCapacity: number; paperPrintedSinceRefill: number; remainingPaper: number; isOutOfPaper: boolean }> {
+    return this.request('/api/shop/paper-refill', {
+      method: 'POST',
+      body: JSON.stringify({ trayCapacity }),
+    });
+  },
+
+  async updatePaperTray(data: { trayCapacity?: number; paperPrintedSinceRefill?: number }): Promise<{ message: string; shop: Shop; trayCapacity: number; paperPrintedSinceRefill: number; remainingPaper: number; isOutOfPaper: boolean }> {
+    return this.request('/api/shop/paper-tray', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
   async getShopPricing(): Promise<ShopPricing> {
     return this.request('/api/shop/pricing');
   },

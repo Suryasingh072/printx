@@ -904,12 +904,19 @@ app.post('/api/admin/shops/:id/activate', requireAuth, (req, res) => {
 function isShopAgentOnline(shopId: string): boolean {
   const agent = db.getAgentByShopId(shopId);
   if (!agent) return false;
-  if (agent.status !== 'online') return false;
-  if (!agent.lastSeenAt) return false;
-  // Allow up to 90 seconds for network delay and background polling jitter so it stays continuously online
-  const diffMs = Date.now() - new Date(agent.lastSeenAt).getTime();
-  return diffMs < 90000;
+  // Once an agent is paired or connected, keep it permanently online as requested
+  if (
+    agent.status === 'online' ||
+    Boolean(agent.lastSeenAt) ||
+    Boolean((agent as any).everConnected) ||
+    Boolean((agent as any).permanentToken) ||
+    Boolean(agent.pairingCode)
+  ) {
+    return true;
+  }
+  return false;
 }
+
 
 // Get Shop Public Profile & Print Rates (supports /api/shops/:slug and /api/s/:slug)
 app.get(['/api/shops/:slug', '/api/s/:slug'], (req, res) => {
@@ -928,6 +935,10 @@ app.get(['/api/shops/:slug', '/api/s/:slug'], (req, res) => {
   const requireOnline = accountType === 'printx' ? (approvalRules.requireOnlinePayment ?? true) : false;
   const requireCounter = accountType === 'shop' ? true : false;
 
+  const trayCapacity = shop.trayCapacity ?? 500;
+  const paperPrinted = shop.paperPrintedSinceRefill ?? 0;
+  const isOutOfPaper = Boolean(shop.isOutOfPaper || paperPrinted >= trayCapacity);
+
   res.json({
     shop: {
       id: shop.id,
@@ -940,6 +951,11 @@ app.get(['/api/shops/:slug', '/api/s/:slug'], (req, res) => {
       accountType,
       paymentGatewayUrl: shop.paymentGatewayUrl || '',
       agentOnline,
+      trayCapacity,
+      paperPrintedSinceRefill: paperPrinted,
+      remainingPaper: Math.max(0, trayCapacity - paperPrinted),
+      isOutOfPaper,
+      lastPaperRefillAt: shop.lastPaperRefillAt,
     },
     pricing: accountType === 'office' ? {
       bwSinglePrice: 0,
@@ -1065,6 +1081,16 @@ app.post('/api/orders', async (req, res) => {
     return res.status(403).json({
       error: 'This shop is currently undergoing review and cannot accept print jobs yet. Please contact the shop owner.',
       shopStatus: shop.status,
+    });
+  }
+
+  // Paper tray availability check: block print order if tray is empty!
+  const trayCapacity = shop.trayCapacity ?? 500;
+  const paperPrinted = shop.paperPrintedSinceRefill ?? 0;
+  if (shop.isOutOfPaper || paperPrinted >= trayCapacity) {
+    return res.status(400).json({
+      error: 'Printer paper tray is currently empty (0 sheets remaining). Please ask the shopkeeper to refill the paper tray to place your order.',
+      isOutOfPaper: true,
     });
   }
 
@@ -1643,6 +1669,48 @@ app.get('/api/shop/current', requireAuth, (req, res) => {
   res.json(shop);
 });
 
+// Paper Tray Refill & Capacity Configuration
+app.post('/api/shop/paper-refill', requireAuth, (req, res) => {
+  const shop = getShopForSession(req);
+  if (!shop) {
+    return res.status(404).json({ error: 'No shop associated with this user.' });
+  }
+
+  const { trayCapacity } = req.body || {};
+  const updated = db.refillPaper(shop.id, trayCapacity ? Number(trayCapacity) : undefined);
+
+  res.json({
+    message: 'Paper tray successfully refilled! Print queue is active.',
+    shop: updated,
+    trayCapacity: updated?.trayCapacity || 500,
+    paperPrintedSinceRefill: 0,
+    remainingPaper: updated?.trayCapacity || 500,
+    isOutOfPaper: false,
+  });
+});
+
+app.post('/api/shop/paper-tray', requireAuth, (req, res) => {
+  const shop = getShopForSession(req);
+  if (!shop) {
+    return res.status(404).json({ error: 'No shop associated with this user.' });
+  }
+
+  const { trayCapacity, paperPrintedSinceRefill } = req.body || {};
+  const updated = db.updatePaperTray(shop.id, {
+    trayCapacity: trayCapacity !== undefined ? Number(trayCapacity) : undefined,
+    paperPrintedSinceRefill: paperPrintedSinceRefill !== undefined ? Number(paperPrintedSinceRefill) : undefined,
+  });
+
+  res.json({
+    message: 'Paper tray configuration updated.',
+    shop: updated,
+    trayCapacity: updated?.trayCapacity || 500,
+    paperPrintedSinceRefill: updated?.paperPrintedSinceRefill || 0,
+    remainingPaper: Math.max(0, (updated?.trayCapacity || 500) - (updated?.paperPrintedSinceRefill || 0)),
+    isOutOfPaper: Boolean(updated?.isOutOfPaper),
+  });
+});
+
 // Supabase Cloud Status, Config & Manual Trigger
 app.get('/api/supabase/status', (req, res) => {
   res.json(supabaseService.getStatus());
@@ -1996,7 +2064,7 @@ app.get('/api/documents/preview/:orderId', (req, res) => {
 
   if (order.isDocumentPurged) {
     return res.status(410).json({
-      error: 'Customer document files were permanently deleted 5 minutes after print completion as per customer privacy policy.',
+      error: 'Customer document files were permanently deleted 1 minute after print completion as per customer privacy policy.',
       purged: true,
       purgedAt: order.purgedAt,
     });
@@ -2558,19 +2626,19 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 });
 
 // ==========================================
-// 5.5 PRIVACY ENGINE: 5-MINUTE AUTO-PURGE
+// 5.5 PRIVACY ENGINE: 1-MINUTE AUTO-PURGE
 // ==========================================
-// Continuously checks completed/printed orders and permanently purges customer files after 5 minutes
+// Continuously checks completed/failed orders and permanently purges customer files and orders after 1 minute
 setInterval(() => {
   try {
     const result = db.purgeCompletedOrdersFiles();
     if (result.purgedCount > 0) {
-      console.log(`[Privacy Engine] 5-minute auto-purge completed: ${result.purgedCount} order files permanently erased.`);
+      console.log(`[Privacy Engine] 1-minute auto-purge completed: ${result.purgedCount} order files permanently erased.`);
     }
   } catch (err) {
     console.error('[Privacy Engine] Scheduled purge encountered error:', err);
   }
-}, 30 * 1000);
+}, 10 * 1000);
 
 // ==========================================
 // 6. VITE SSR / STATIC SERVING

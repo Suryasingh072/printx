@@ -516,9 +516,6 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
                   {[
                     { id: 'a4', label: 'A4 Sheet' },
                     { id: 'free', label: 'Original' },
-                    { id: '1:1', label: '1:1 Square' },
-                    { id: '3:4', label: '3:4 Card' },
-                    { id: '4:3', label: '4:3 Photo' },
                   ].map((preset) => (
                     <button
                       key={preset.id}

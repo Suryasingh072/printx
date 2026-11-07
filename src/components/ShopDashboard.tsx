@@ -132,6 +132,11 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
   const [agentDownloadStatus, setAgentDownloadStatus] = useState<string | null>(null);
   const [copiedPowerShell, setCopiedPowerShell] = useState(false);
 
+  // Paper Tray State
+  const [isRefillingPaper, setIsRefillingPaper] = useState(false);
+  const [showTrayConfigModal, setShowTrayConfigModal] = useState(false);
+  const [customTrayCapacity, setCustomTrayCapacity] = useState<number>(shop.trayCapacity || 500);
+
   // Stats & Reports
   const [stats, setStats] = useState<ShopStats | null>(null);
 
@@ -266,7 +271,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
   const handleCompleteOrder = async (orderId: string) => {
     try {
       await api.completeOrder(orderId);
-      showToast('Order marked as Completed! (5-min privacy timer started)', 'success');
+      showToast('Order marked as Completed! (2-min privacy timer started)', 'success');
       refreshOrders();
     } catch (e: any) {
       showToast(e.message || 'Failed to complete order', 'error');
@@ -295,7 +300,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
 
   const openDocumentPreview = async (order: Order) => {
     if (order.isDocumentPurged) {
-      showToast('Privacy Guarantee: Customer files were permanently auto-deleted 5 minutes after print completion.', 'info');
+      showToast('Privacy Guarantee: Customer files were permanently auto-deleted 2 minutes after print completion.', 'info');
       return;
     }
     const sessionToken = api.getToken();
@@ -369,6 +374,33 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
       showToast(e.message || 'Supabase sync failed', 'error');
     } finally {
       setSyncingSupabase(false);
+    }
+  };
+
+  // Paper Tray Refill & Capacity Handlers
+  const handleRefillPaper = async () => {
+    setIsRefillingPaper(true);
+    try {
+      const res = await api.refillPaperTray();
+      setShop(res.shop);
+      onShopUpdate?.(res.shop);
+      showToast('Paper tray refilled! Customer alert cleared and print queue resumed.', 'success');
+    } catch (e: any) {
+      showToast(e.message || 'Failed to refill paper', 'error');
+    } finally {
+      setIsRefillingPaper(false);
+    }
+  };
+
+  const handleSaveTrayConfig = async (capacity: number) => {
+    try {
+      const res = await api.updatePaperTray({ trayCapacity: capacity });
+      setShop(res.shop);
+      onShopUpdate?.(res.shop);
+      setShowTrayConfigModal(false);
+      showToast(`Tray capacity updated to ${capacity} sheets!`, 'success');
+    } catch (e: any) {
+      showToast(e.message || 'Failed to update tray capacity', 'error');
     }
   };
 
@@ -512,11 +544,11 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
   };
 
   const getRemainingDeleteTime = (ord: Order) => {
-    if (ord.status !== 'completed' && !ord.printedAt) return null;
+    if (ord.status !== 'completed' && ord.status !== 'rejected' && !ord.printedAt) return null;
     const due = ord.purgeDueAt
       ? new Date(ord.purgeDueAt).getTime()
-      : (ord.printedAt ? new Date(ord.printedAt).getTime() + 5 * 60 * 1000 : 0);
-    if (!due) return 'in ~5m';
+      : (ord.printedAt ? new Date(ord.printedAt).getTime() + 1 * 60 * 1000 : 0);
+    if (!due) return 'in ~1m';
     const diffSec = Math.max(0, Math.floor((due - Date.now()) / 1000));
     if (diffSec <= 0) return 'deleting now...';
     const m = Math.floor(diffSec / 60);
@@ -659,6 +691,116 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
            ======================================================== */}
         {activeTab === 'queue' && (
           <div className="space-y-6">
+            {/* Paper Tray Status & Refill Card */}
+            <div className={`card p-4 sm:p-5 border-2 transition-all ${
+              (shop.isOutOfPaper || ((shop.trayCapacity || 500) - (shop.paperPrintedSinceRefill || 0)) <= 0)
+                ? 'bg-gradient-to-r from-red-950/70 via-[#1a0e1c] to-red-950/70 border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.35)] animate-pulse'
+                : ((shop.trayCapacity || 500) - (shop.paperPrintedSinceRefill || 0)) < 100
+                ? 'bg-gradient-to-r from-amber-950/40 via-[#161224] to-amber-950/40 border-amber-500/50'
+                : 'bg-white/[0.03] border-white/10'
+            }`}>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black shadow-lg shrink-0 ${
+                    (shop.isOutOfPaper || ((shop.trayCapacity || 500) - (shop.paperPrintedSinceRefill || 0)) <= 0)
+                      ? 'bg-red-500/20 text-red-400 border border-red-500/50 shadow-red-500/30'
+                      : 'bg-grad text-white shadow-rose-500/25'
+                  }`}>
+                    <Layers className="w-6 h-6 stroke-[2.2]" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-sm font-black text-white font-head tracking-wide uppercase flex items-center gap-2">
+                        Printer Paper Tray Tracker
+                      </h4>
+                      {(shop.isOutOfPaper || ((shop.trayCapacity || 500) - (shop.paperPrintedSinceRefill || 0)) <= 0) ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-500 text-white animate-bounce">
+                          🚨 Out of Paper (Empty)
+                        </span>
+                      ) : ((shop.trayCapacity || 500) - (shop.paperPrintedSinceRefill || 0)) < 100 ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                          ⚠️ Low Paper ({Math.max(0, (shop.trayCapacity || 500) - (shop.paperPrintedSinceRefill || 0))} sheets left)
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Paper Full & Ready
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Last refill ke baad se: <strong className="text-white font-mono">{shop.paperPrintedSinceRefill || 0}</strong> sheets print hui hain ({shop.trayCapacity || 500} sheet tray capacity).
+                    </p>
+                  </div>
+                </div>
+
+                {/* Refill Button & Tray Capacity Control */}
+                <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
+                  <div className="text-right mr-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Remaining Paper:</span>
+                    <span className={`text-xl sm:text-2xl font-black font-mono ${
+                      (shop.isOutOfPaper || ((shop.trayCapacity || 500) - (shop.paperPrintedSinceRefill || 0)) <= 0)
+                        ? 'text-red-400 font-bold'
+                        : 'text-emerald-400'
+                    }`}>
+                      {Math.max(0, (shop.trayCapacity || 500) - (shop.paperPrintedSinceRefill || 0))} <span className="text-xs text-slate-400 font-normal">/ {shop.trayCapacity || 500}</span>
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleRefillPaper}
+                    disabled={isRefillingPaper}
+                    className="btn bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center gap-2 cursor-pointer transition active:scale-95"
+                    title="Click after adding paper sheets to the printer tray"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isRefillingPaper ? 'animate-spin' : ''}`} />
+                    <span>{isRefillingPaper ? 'Updating...' : 'Paper Refill Done (Full Tray)'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomTrayCapacity(shop.trayCapacity || 500);
+                      setShowTrayConfigModal(true);
+                    }}
+                    className="btn btn-ghost text-xs font-bold text-slate-300 hover:text-white px-2.5 py-2 rounded-xl flex items-center gap-1 cursor-pointer"
+                    title="Change Tray Capacity (e.g. 250, 500, 1000 sheets)"
+                  >
+                    <Settings className="w-3.5 h-3.5 text-slate-400" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="mt-3.5">
+                <div className="w-full bg-white/10 rounded-full h-2.5 overflow-hidden p-0.5">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      (shop.isOutOfPaper || ((shop.trayCapacity || 500) - (shop.paperPrintedSinceRefill || 0)) <= 0)
+                        ? 'bg-red-500'
+                        : ((shop.trayCapacity || 500) - (shop.paperPrintedSinceRefill || 0)) < 100
+                        ? 'bg-amber-400'
+                        : 'bg-emerald-400'
+                    }`}
+                    style={{
+                      width: `${Math.min(100, Math.max(0, (((shop.trayCapacity || 500) - (shop.paperPrintedSinceRefill || 0)) / (shop.trayCapacity || 500)) * 100))}%`
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between items-center text-[10px] text-slate-400 mt-1">
+                  <span>0 sheets (Empty)</span>
+                  <span>
+                    {(shop.isOutOfPaper || ((shop.trayCapacity || 500) - (shop.paperPrintedSinceRefill || 0)) <= 0) ? (
+                      <strong className="text-red-400">Customer page is currently blinking: NO PAPER</strong>
+                    ) : (
+                      <span>{Math.round((Math.max(0, (shop.trayCapacity || 500) - (shop.paperPrintedSinceRefill || 0)) / (shop.trayCapacity || 500)) * 100)}% paper remaining in tray</span>
+                    )}
+                  </span>
+                  <span>{shop.trayCapacity || 500} sheets (Full Tray)</span>
+                </div>
+              </div>
+            </div>
+
             {/* Filter Bar & Controls */}
             <div className="card p-3 sm:p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] w-full sm:w-auto">
@@ -766,11 +908,11 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                               {isPaid ? `PAID (₹${ord.totalAmount.toFixed(2)})` : `UNPAID (₹${ord.totalAmount.toFixed(2)})`}
                             </span>
 
-                            {/* 5-Min Print Queue Auto-Delete Badge */}
-                            {(ord.status === 'completed' || Boolean(ord.printedAt)) && (
+                            {/* 1-Min Print Queue Auto-Delete Badge */}
+                            {(ord.status === 'completed' || ord.status === 'rejected' || Boolean(ord.printedAt)) && (
                               <span
                                 className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 inline-flex items-center gap-1 animate-pulse"
-                                title="Order will automatically be deleted from Print Queue 5 minutes after print completion"
+                                title="Order and files will automatically be deleted from Print Queue 1 minute after completion or failure"
                               >
                                 ⏱️ Auto-delete in {getRemainingDeleteTime(ord)}
                               </span>
@@ -826,46 +968,6 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                             <span>Collect Payment & Print</span>
                           </button>
                         )}
-
-                        {/* Preview */}
-                        <button
-                          onClick={() => openDocumentPreview(ord)}
-                          className="btn btn-ghost btn-sm text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <Eye className="w-3.5 h-3.5" /> Preview
-                        </button>
-
-                        {/* Dispatch to Print */}
-                        {(ord.status === 'queued' || (ord.status === 'payment_pending' && isPaid)) && (
-                          <button
-                            onClick={() => handleDispatchPrint(ord.id)}
-                            className="btn-grad text-white font-black text-xs px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-lg shadow-rose-500/30 cursor-pointer"
-                          >
-                            <Printer className="w-3.5 h-3.5" /> Print Now
-                          </button>
-                        )}
-
-                        {/* Mark Completed / Done */}
-                        {(ord.status === 'printing' || ord.status === 'queued') && (
-                          <button
-                            onClick={() => handleCompleteOrder(ord.id)}
-                            className="px-3.5 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1"
-                            title="Mark order printed & complete (starts 5-min auto-delete timer)"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Mark Done
-                          </button>
-                        )}
-
-
-
-                        {/* Delete Order button */}
-                        <button
-                          onClick={() => handleDeleteOrder(ord.id)}
-                          className="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 rounded-xl text-xs font-semibold transition flex items-center gap-1 cursor-pointer"
-                          title="Delete Order Permanently"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" /> Delete
-                        </button>
                       </div>
                     </div>
                   );
@@ -1580,18 +1682,9 @@ create table if not exists public.shops (
                       Permanent 6-Digit Pairing Key
                     </span>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Auto-reconnects on system restart or internet drop. Never expires unless reset manually.
+                      Auto-reconnects on system restart or internet drop. Fixed permanent pairing key.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleGeneratePairingCode(true)}
-                    className="btn btn-ghost btn-sm text-xs font-bold text-slate-300 hover:text-white flex items-center gap-1.5 shrink-0 cursor-pointer"
-                    title="Generate a different 6-digit code if needed"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
-                    Reset Code
-                  </button>
                 </div>
 
                 {pairingCodeInfo ? (
@@ -1651,56 +1744,6 @@ create table if not exists public.shops (
                     <p className="text-xs text-slate-400">
                       Loading your permanent 6-digit code...
                     </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Alternative: Utility API Key */}
-              <div>
-                <span className="text-xs font-bold text-slate-300 block mb-2">
-                  Alternative: Permanent Shop Utility API Key
-                </span>
-                {!utilityKey ? (
-                  <button
-                    type="button"
-                    onClick={handleCreateUtilityKey}
-                    disabled={isCreatingKey}
-                    className="btn btn-ghost text-xs font-bold flex items-center gap-2 cursor-pointer"
-                  >
-                    <Key className="w-4 h-4 text-pink-400" />
-                    {isCreatingKey ? 'Creating key...' : 'Create Utility API Key'}
-                  </button>
-                ) : (
-                  <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-300">Permanent Utility Key:</span>
-                      <button
-                        type="button"
-                        onClick={handleCreateUtilityKey}
-                        className="text-[11px] text-pink-400 hover:underline cursor-pointer"
-                      >
-                        Regenerate Key
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={utilityKey}
-                        className="w-full bg-[#080b14] px-3 py-2 border border-white/10 rounded-xl text-xs font-mono font-semibold text-slate-200 select-all"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(utilityKey);
-                          showToast('Utility Key copied to clipboard!', 'success');
-                        }}
-                        className="btn btn-primary text-xs font-bold shrink-0 flex items-center gap-1 cursor-pointer"
-                      >
-                        <Copy className="w-3.5 h-3.5" /> Copy
-                      </button>
-                    </div>
                   </div>
                 )}
               </div>
@@ -1938,231 +1981,75 @@ create table if not exists public.shops (
         </div>
       )}
 
-      {/* ========================================================
-          WINDOWS AGENT SETUP & DOWNLOAD PACKAGE MODAL
-         ======================================================== */}
-      {showAgentSetupModal && (
+
+
+      {/* Paper Tray Capacity Settings Modal */}
+      {showTrayConfigModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0d1220] border border-white/15 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto text-white">
-            <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-grad flex items-center justify-center text-white font-black shadow-lg shadow-rose-500/30">
-                  <Laptop className="w-5 h-5" />
+          <div className="bg-[#0d1220] border border-white/15 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 text-white">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-pink-500/20 text-pink-400 rounded-xl">
+                  <Layers className="w-5 h-5" />
                 </div>
-                <div>
-                  <h3 className="text-lg font-black font-head text-white">printx Desktop for Windows</h3>
-                  <p className="text-xs text-slate-400">Official Windows Spooler background agent v2.4</p>
-                </div>
+                <h3 className="text-base font-black font-head">Paper Tray Capacity</h3>
               </div>
               <button
                 type="button"
-                onClick={() => setShowAgentSetupModal(false)}
-                className="text-slate-400 hover:text-white font-bold p-1 cursor-pointer rounded-lg hover:bg-white/5"
+                onClick={() => setShowTrayConfigModal(false)}
+                className="text-slate-400 hover:text-white font-bold p-1 cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            {agentDownloadStatus && (
-              <div className="mb-4 p-3.5 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl text-xs text-emerald-300 flex items-center justify-between">
-                <span>{agentDownloadStatus}</span>
-                <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Ready</span>
-              </div>
-            )}
+            <p className="text-xs text-slate-300">
+              Aapke printer tray me ek baar me kitna paper (sheets) aata hai select karein ya custom number likhein. Jab utne paper print ho jayenge to customer page par auto alert show ho jayega.
+            </p>
 
-            <div className="space-y-6">
-              {/* Step 1: Download package */}
-              <div>
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
-                  Step 1: Download the application package
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadAgent('bat')}
-                    disabled={isDownloadingAgent}
-                    className="btn btn-primary p-3 text-xs font-black shadow-lg shadow-rose-500/30 flex items-center gap-2 justify-center cursor-pointer"
-                  >
-                    <Play className="w-4 h-4 fill-white" />
-                    <span>Start_Agent (.BAT)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadAgent('zip')}
-                    disabled={isDownloadingAgent}
-                    className="btn btn-ghost p-3 text-xs font-bold flex items-center gap-2 justify-center cursor-pointer"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Download App (.ZIP)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadAgent('script')}
-                    disabled={isDownloadingAgent}
-                    className="btn btn-ghost p-3 text-xs font-bold flex items-center gap-2 justify-center cursor-pointer"
-                  >
-                    <FileCode className="w-4 h-4 text-pink-400" />
-                    <span>Python Code (.PY)</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Step 2: 6-Digit Pairing Code & Server URL */}
-              <div>
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
-                  Step 2: Connect with Fixed 6-Digit Quick Pairing Code
-                </h4>
-                <div className="p-5 bg-gradient-to-br from-pink-500/10 via-purple-500/10 to-transparent border-2 border-pink-500/40 rounded-2xl space-y-4">
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="px-5 py-2.5 bg-[#080b14] border-2 border-pink-500 rounded-xl shadow-[0_0_20px_rgba(255,46,99,0.3)]">
-                        <span className="text-2xl sm:text-3xl font-black font-mono tracking-widest text-pink-400">
-                          {pairingCodeInfo?.code || agent?.pairingCode || '------'}
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-300">
-                        <p className="font-bold text-white">Fixed Permanent Code</p>
-                        <p className="text-[11px] text-emerald-400 font-semibold">Stays connected 24/7 until logout</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const code = pairingCodeInfo?.code || agent?.pairingCode;
-                          if (code) {
-                            navigator.clipboard.writeText(code);
-                            showToast(`Pairing code ${code} copied!`, 'success');
-                          }
-                        }}
-                        className="btn btn-primary text-xs font-black py-2 px-3.5 shadow-lg shadow-rose-500/30 flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Copy className="w-3.5 h-3.5" /> Copy Code
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleGeneratePairingCode(true)}
-                        className="btn btn-ghost btn-sm text-xs font-bold cursor-pointer"
-                        title="Generate a new code if needed"
-                      >
-                        Reset
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Server URL Box */}
-                  <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                    <div>
-                      <span className="font-bold text-slate-300">App "Server URL":</span>
-                      <code className="ml-1.5 font-mono text-pink-300 font-bold bg-[#080b14] px-2 py-0.5 rounded border border-white/10 text-[11px]">
-                        {typeof window !== 'undefined' ? window.location.origin : ''}
-                      </code>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(window.location.origin);
-                        showToast('Server URL copied!', 'success');
-                      }}
-                      className="btn btn-ghost btn-sm text-[11px] font-bold self-start sm:self-auto cursor-pointer"
-                    >
-                      <Copy className="w-3 h-3" /> Copy URL
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Step 3: Alternative Utility API Key */}
-              <div>
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
-                  Alternative: Permanent Shop Utility Key
-                </h4>
-                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-2">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={utilityKey || 'Click generate key for permanent token'}
-                      className="flex-1 font-mono text-xs bg-[#080b14] border border-white/10 rounded-xl py-2 px-3 text-slate-200 select-all"
-                    />
-                    {utilityKey ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(utilityKey);
-                          showToast('Utility key copied to clipboard!', 'success');
-                        }}
-                        className="btn btn-primary text-xs font-bold py-2 px-3.5 flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Copy className="w-3.5 h-3.5" /> Copy
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleCreateUtilityKey}
-                        className="btn btn-primary text-xs font-bold py-2 px-3.5 flex items-center gap-1.5 cursor-pointer shrink-0"
-                      >
-                        <Key className="w-3.5 h-3.5" /> Generate Key
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* PowerShell 1-liner */}
-              <div>
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
-                  Option: Run directly in Windows PowerShell
-                </h4>
-                <div className="p-3.5 bg-[#080b14] rounded-2xl border border-white/10 text-slate-200 text-xs font-mono flex items-center justify-between gap-2 overflow-x-auto">
-                  <div className="flex items-center gap-2 truncate">
-                    <Terminal className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span className="truncate">curl -O {window.location.origin}/api/agent/download-windows-exe</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(`curl -O ${window.location.origin}/api/agent/download-windows-exe`);
-                      setCopiedPowerShell(true);
-                      setTimeout(() => setCopiedPowerShell(false), 2000);
-                    }}
-                    className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg shrink-0 cursor-pointer text-[11px] flex items-center gap-1"
-                  >
-                    {copiedPowerShell ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    {copiedPowerShell ? 'Copied' : 'Copy'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Instant Browser Test Simulator */}
-              <div className="p-4 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-emerald-300">Test Agent Connection Live</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Simulate active Windows Spooler connection directly in this session.
-                  </p>
-                </div>
+            <div className="grid grid-cols-3 gap-2">
+              {[250, 500, 1000].map((cap) => (
                 <button
+                  key={cap}
                   type="button"
-                  onClick={handleSimulateAgentJob}
-                  disabled={isSimulatingAgent}
-                  className="btn btn-primary text-xs font-black shadow-lg shadow-rose-500/30 flex items-center gap-1.5 cursor-pointer shrink-0"
+                  onClick={() => setCustomTrayCapacity(cap)}
+                  className={`py-2 px-3 rounded-xl border text-xs font-black cursor-pointer transition ${
+                    customTrayCapacity === cap
+                      ? 'border-pink-500 bg-pink-500/20 text-pink-300 shadow-md shadow-pink-500/20'
+                      : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
+                  }`}
                 >
-                  {isSimulatingAgent ? 'Connecting...' : 'Run Simulation'}
+                  {cap} Sheets {cap === 500 ? '(Default)' : ''}
                 </button>
-              </div>
+              ))}
             </div>
 
-            <div className="mt-6 pt-4 border-t border-white/10 flex justify-end">
+            <div>
+              <label className="text-xs font-bold text-slate-300 block mb-1">Custom Tray Capacity (Sheets)</label>
+              <input
+                type="number"
+                min={10}
+                max={5000}
+                value={customTrayCapacity}
+                onChange={(e) => setCustomTrayCapacity(Number(e.target.value) || 500)}
+                className="w-full bg-[#080b14] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono font-bold focus:outline-none focus:border-pink-500"
+              />
+            </div>
+
+            <div className="flex gap-2.5 pt-2 border-t border-white/10">
               <button
                 type="button"
-                onClick={() => setShowAgentSetupModal(false)}
-                className="btn btn-ghost text-xs font-bold py-2.5 px-5 cursor-pointer"
+                onClick={() => setShowTrayConfigModal(false)}
+                className="btn btn-ghost flex-1 py-2.5 text-xs font-bold cursor-pointer"
               >
-                Close
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveTrayConfig(customTrayCapacity)}
+                className="btn btn-primary flex-1 py-2.5 text-xs font-black shadow-lg shadow-rose-500/30 cursor-pointer"
+              >
+                Save Capacity
               </button>
             </div>
           </div>

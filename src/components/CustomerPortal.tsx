@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  AlertTriangle,
   Phone,
   MapPin,
   ShieldCheck,
@@ -218,6 +219,20 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
       }
     };
     fetchShop();
+
+    // Background live polling: updates paper tray status in real-time
+    const interval = setInterval(async () => {
+      try {
+        const data = await api.getPublicShop(shopSlug);
+        if (data?.shop) {
+          setShop((prev) => (prev ? { ...prev, ...data.shop } : data.shop));
+        }
+      } catch (_) {
+        // silent background poll
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
   }, [shopSlug]);
 
   // Client-side ultra-fast image optimization for phone camera photos (up to 50x faster)
@@ -556,6 +571,11 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
   // Submit Multi-File Order
   const handleSubmitBatchOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (shop?.isOutOfPaper) {
+      alert(`⚠️ Printer Paper Tray is currently Empty (${shop.paperPrintedSinceRefill ?? 500} / ${shop.trayCapacity ?? 500} sheets printed). Please ask the shopkeeper to refill paper.`);
+      return;
+    }
+
     if (fileQueue.length === 0) {
       alert('Pehle kam se kam ek document ya photo upload karein.');
       return;
@@ -734,6 +754,35 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
 
       {/* Main Container */}
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-7 relative z-10">
+        {/* Out of Paper Blinking Alert */}
+        {shop.isOutOfPaper && (
+          <div className="p-4 sm:p-5 bg-gradient-to-r from-red-950/85 via-rose-950/90 to-red-950/85 border-2 border-red-500 rounded-3xl shadow-[0_0_35px_rgba(239,68,68,0.45)] flex flex-col sm:flex-row items-center justify-between gap-4 animate-pulse">
+            <div className="flex items-center gap-3.5">
+              <div className="w-13 h-13 rounded-2xl bg-red-500/25 border-2 border-red-500 flex items-center justify-center text-red-200 shadow-[0_0_20px_rgba(239,68,68,0.5)] shrink-0 animate-bounce">
+                <AlertTriangle className="w-7 h-7 stroke-[2.5]" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base sm:text-lg font-black text-white tracking-wide uppercase font-head">
+                    🚨 NO PAPER IN PRINTER! (Tray Empty)
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-600 text-white animate-ping">
+                    EMPTY
+                  </span>
+                </div>
+                <p className="text-xs text-red-200 mt-1 font-medium">
+                  Printer tray me paper khatam ho gaya hai ({shop.paperPrintedSinceRefill ?? 500} / {shop.trayCapacity ?? 500} sheets printed). Kripya shopkeeper ko paper refill karne ko bolein. Refill hote hi print turant chalu ho jayega.
+                </p>
+              </div>
+            </div>
+            <div className="shrink-0 flex items-center gap-2 self-end sm:self-auto">
+              <span className="px-3.5 py-1.5 bg-black/50 border border-red-500/50 rounded-xl text-xs font-mono font-bold text-red-300">
+                0 / {shop.trayCapacity ?? 500} Sheets Left
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Live Active Order Status & Payment Banner (No Exit Page) */}
         {placedOrder && (
           <div className="card bg-gradient-to-br from-[#0d1326] via-[#14122d] to-[#0c101d] border-2 border-emerald-500/40 rounded-3xl p-5 sm:p-7 shadow-[0_12px_40px_rgba(34,197,94,0.18)] space-y-5 animate-in fade-in duration-300 relative overflow-hidden">
@@ -1331,7 +1380,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                 </div>
 
                 {/* Customer Details */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                <div className="pt-1">
                   <div>
                     <label className="text-xs font-bold text-slate-300 block mb-1">Your Name (Optional)</label>
                     <input
@@ -1342,28 +1391,6 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                       className="w-full py-2.5 px-3 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pink-500"
                     />
                   </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-300 block mb-1">WhatsApp / Phone (Optional)</label>
-                    <input
-                      type="text"
-                      placeholder="+91 98765 43210"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="w-full py-2.5 px-3 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pink-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Special Instructions */}
-                <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">Special Instructions (Optional)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Staple on top-left, print in sequence"
-                    value={customNotes}
-                    onChange={(e) => setCustomNotes(e.target.value)}
-                    className="w-full py-2.5 px-3 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pink-500"
-                  />
                 </div>
 
                 {/* Account Type Mode Notification */}
@@ -1402,9 +1429,11 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={fileQueue.length === 0 || isSubmitting || isBulkUploading}
+                  disabled={fileQueue.length === 0 || isSubmitting || isBulkUploading || Boolean(shop?.isOutOfPaper)}
                   className={`btn ${
-                    accountType === 'office'
+                    shop?.isOutOfPaper
+                      ? 'bg-red-600/60 hover:bg-red-600/70 border border-red-500 text-white shadow-[0_0_25px_rgba(239,68,68,0.4)] animate-pulse'
+                      : accountType === 'office'
                       ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 hover:from-cyan-400 hover:to-indigo-400 shadow-[0_8px_25px_rgba(6,182,212,0.35)]'
                       : (!requireOnlinePayment || accountType === 'shop')
                       ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 shadow-[0_8px_25px_rgba(34,197,94,0.35)]'
@@ -1414,6 +1443,10 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                   {isSubmitting ? (
                     <>
                       <RefreshCw className="w-5 h-5 animate-spin" /> Submitting Order...
+                    </>
+                  ) : shop?.isOutOfPaper ? (
+                    <>
+                      <AlertTriangle className="w-5 h-5 text-red-300 animate-bounce" /> ⚠️ Cannot Print — Paper Tray Empty (Refill Required)
                     </>
                   ) : accountType === 'office' ? (
                     <>
