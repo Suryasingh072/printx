@@ -987,6 +987,12 @@ export class Database {
 
     for (const order of this.data.orders) {
       const isFinished = order.status === 'completed' || order.status === 'rejected' || Boolean(order.printedAt);
+      const isStalePrinting =
+        order.status === 'printing' &&
+        now - new Date(order.updatedAt || order.createdAt).getTime() >= 4 * 60 * 1000;
+      const isStalePayment =
+        order.status === 'payment_pending' &&
+        now - new Date(order.createdAt).getTime() >= 20 * 60 * 1000;
 
       let shouldPurge = false;
       if (isFinished) {
@@ -996,7 +1002,11 @@ export class Database {
           shouldPurge = now - new Date(order.printedAt).getTime() >= 1 * 60 * 1000;
         } else if (order.updatedAt && (order.status === 'completed' || order.status === 'rejected')) {
           shouldPurge = now - new Date(order.updatedAt).getTime() >= 1 * 60 * 1000;
+        } else {
+          shouldPurge = true;
         }
+      } else if (isStalePrinting || isStalePayment) {
+        shouldPurge = true;
       }
 
       if (shouldPurge) {
@@ -1026,7 +1036,7 @@ export class Database {
         this.data.printJobs = this.data.printJobs.filter((j) => j.orderId !== order.id);
 
         purgedOrderIds.push(order.id);
-        console.log(`[Queue Auto-Delete] Order ${order.orderNumber} automatically deleted from Print Queue after 1 minute.`);
+        console.log(`[Queue Auto-Delete] Order ${order.orderNumber} automatically deleted from Print Queue (1-minute purge / stale cleanup).`);
       } else {
         remainingOrders.push(order);
       }
@@ -1038,6 +1048,40 @@ export class Database {
     }
 
     return { purgedCount: purgedOrderIds.length, purgedOrderIds };
+  }
+
+  /**
+   * Immediately clears all completed, rejected, stuck or stale orders
+   */
+  public clearAllStaleOrders(shopId?: string): number {
+    const toPurge = this.data.orders.filter((o) => {
+      if (shopId && o.shopId !== shopId) return false;
+      return true; // clear all queue orders requested
+    });
+
+    for (const order of toPurge) {
+      if (order.filePath) {
+        try { storageService.purgeDocument(order.filePath); } catch (_) {}
+      }
+      if (order.files && Array.isArray(order.files)) {
+        for (const f of order.files) {
+          if (f.filePath) {
+            try { storageService.purgeDocument(f.filePath); } catch (_) {}
+          }
+        }
+      }
+    }
+
+    const purgedCount = toPurge.length;
+    if (shopId) {
+      this.data.orders = this.data.orders.filter((o) => o.shopId !== shopId);
+      this.data.printJobs = this.data.printJobs.filter((j) => j.shopId !== shopId);
+    } else {
+      this.data.orders = [];
+      this.data.printJobs = [];
+    }
+    this.save();
+    return purgedCount;
   }
 
   public deleteOrder(orderId: string): boolean {
@@ -1113,7 +1157,15 @@ export class Database {
 
   // --- Windows Agent & Print Jobs ---
   public getAgentByShopId(shopId: string): WindowsAgent | undefined {
-    return this.data.agents.find((a) => a.shopId === shopId && a.status !== 'revoked');
+    // STRICT RULE: Exactly 1 agent per shop! Deduplicate any multiple records immediately.
+    const matching = this.data.agents.filter((a) => a.shopId === shopId && a.status !== 'revoked');
+    if (matching.length > 1) {
+      const singleAgent = matching[matching.length - 1];
+      this.data.agents = this.data.agents.filter((a) => a.shopId !== shopId || a.id === singleAgent.id);
+      this.save();
+      return singleAgent;
+    }
+    return matching[0];
   }
 
   public getAgentByToken(token: string): WindowsAgent | undefined {
@@ -1139,9 +1191,12 @@ export class Database {
     });
 
     if (agent) {
+      // STRICT RULE: Only 1 agent per shop allowed at any time!
+      this.data.agents = this.data.agents.filter((a) => a.shopId !== agent.shopId || a.id === agent.id);
       agent.status = 'online';
       (agent as any).everConnected = true;
       agent.lastSeenAt = new Date().toISOString();
+      this.save();
     }
 
     return agent;
@@ -1286,6 +1341,9 @@ export class Database {
     }
 
     if (!agent) return null;
+
+    // STRICT RULE: Exactly 1 agent per shop! Any other agent entries for this shop are cleaned up.
+    this.data.agents = this.data.agents.filter((a) => a.shopId !== agent!.shopId || a.id === agent!.id);
 
     const token = `agt_token_${crypto.randomBytes(24).toString('hex')}`;
     agent.authTokenHash = crypto.createHash('sha256').update(token).digest('hex');

@@ -194,6 +194,24 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
     isDraggingRef.current = false;
   };
 
+  // Mobile Touch Pan Handlers (smooth zero-lag finger panning on smartphones)
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (e.touches.length === 1) {
+      isDraggingRef.current = true;
+      dragStartRef.current = { x: e.touches[0].clientX - panX, y: e.touches[0].clientY - panY };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDraggingRef.current || e.touches.length !== 1) return;
+    setPanX(e.touches[0].clientX - dragStartRef.current.x);
+    setPanY(e.touches[0].clientY - dragStartRef.current.y);
+  };
+
+  const handleTouchEnd = () => {
+    isDraggingRef.current = false;
+  };
+
   const handleApplyChanges = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -288,7 +306,11 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            className={`max-h-[44vh] max-w-full rounded-xl shadow-2xl border border-white/10 object-contain ${
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
+            className={`touch-none max-h-[36vh] sm:max-h-[44vh] max-w-full rounded-xl shadow-2xl border border-white/10 object-contain ${
               zoom > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
             }`}
           />
@@ -296,13 +318,13 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
           {/* Floating Zoom Indicator */}
           {zoom > 1 && (
             <div className="absolute bottom-3 left-4 bg-black/70 backdrop-blur-md px-3 py-1 rounded-xl text-xs font-mono font-bold text-cyan-300 border border-white/10">
-              Zoom: {Math.round(zoom * 100)}% (Drag to pan)
+              Zoom: {Math.round(zoom * 100)}% (Drag with finger or mouse)
             </div>
           )}
         </div>
 
         {/* Controls Sub-tabs */}
-        <div className="border-t border-white/10 bg-white/[0.02] px-6 pt-3 flex gap-2">
+        <div className="border-t border-white/10 bg-white/[0.02] px-3 sm:px-6 pt-2.5 pb-2 flex gap-1.5 sm:gap-2 overflow-x-auto">
           {[
             { id: 'crop', label: 'Crop & Ratio', icon: Crop },
             { id: 'rotate', label: 'Rotate & Flip', icon: RotateCw },
@@ -315,7 +337,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`px-4 py-2 text-xs font-black rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3 sm:px-4 py-2 text-xs font-black rounded-xl transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
                   isActive
                     ? 'bg-grad text-white shadow-[0_4px_16px_rgba(255,46,99,0.3)]'
                     : 'text-slate-400 hover:text-white hover:bg-white/5'
@@ -329,7 +351,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
         </div>
 
         {/* Tab Content Panel */}
-        <div className="p-6 bg-[#0c101d] space-y-4">
+        <div className="p-4 sm:p-6 bg-[#0c101d] space-y-4">
           {/* TAB 1: CROP & ASPECT RATIO */}
           {activeTab === 'crop' && (
             <div className="space-y-4">
@@ -361,10 +383,13 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
                 {[
-                  { id: 'free', label: 'Original', sub: 'Full Image' },
-                  { id: 'a4', label: 'A4 Sheet', sub: 'Document Ratio' },
+                  { id: 'a4', label: 'A4 Sheet', sub: 'Standard Document' },
+                  { id: 'free', label: 'Original', sub: 'Custom / Full' },
+                  { id: '1:1', label: '1:1 Square', sub: 'Passport / Avatar' },
+                  { id: '3:4', label: '3:4 Card', sub: 'ID Card Photo' },
+                  { id: '4:3', label: '4:3 Photo', sub: 'Standard Photo' },
                   { id: '16:9', label: '16:9 Banner', sub: 'Widescreen' },
                 ].map((preset) => (
                   <button

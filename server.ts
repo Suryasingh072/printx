@@ -12,9 +12,14 @@ import { calculateOrderPrice } from './src/server/services/pricing.js';
 import { User, Shop, Order, OrderStatus, PaymentStatus } from './src/server/types.js';
 import { supabaseService } from './src/server/db/supabase.js';
 
+import compression from 'compression';
+
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const AUTH_SECRET = process.env.AUTH_SECRET || 'adrtech-printqr-auth-session-key-2026';
+
+// Enable Gzip/Brotli compression for high-speed response delivery
+app.use(compression());
 
 // Middleware
 app.use((req, res, next) => {
@@ -1329,6 +1334,14 @@ app.post('/api/orders/:orderNumber/pay-online', (req, res) => {
     message: 'Payment completed successfully! Your document is printing directly on the shop printer.',
     order: db.getOrderById(order.id),
   });
+});
+
+// Purge Stale / Finished Orders manually by Shop Owner or Admin
+app.post('/api/orders/purge-stale', requireAuth, (req, res) => {
+  const session = (req as any).user;
+  const shopId = session.role === 'admin' ? (req.body?.shopId as string) : session.shopId;
+  const purged = db.clearAllStaleOrders(shopId);
+  res.json({ success: true, purgedCount: purged, message: `${purged} orders cleared from queue.` });
 });
 
 // ==========================================

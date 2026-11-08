@@ -303,6 +303,24 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
     isDraggingRef.current = false;
   };
 
+  // Mobile Touch Pan Handlers (zero-lag finger panning on smartphones)
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (e.touches.length === 1) {
+      isDraggingRef.current = true;
+      dragStartRef.current = { x: e.touches[0].clientX - panX, y: e.touches[0].clientY - panY };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDraggingRef.current || e.touches.length !== 1) return;
+    setPanX(e.touches[0].clientX - dragStartRef.current.x);
+    setPanY(e.touches[0].clientY - dragStartRef.current.y);
+  };
+
+  const handleTouchEnd = () => {
+    isDraggingRef.current = false;
+  };
+
   // Toggle exclusion of a single page
   const handleTogglePage = (pageNum: number) => {
     setExcludedPages((prev) => {
@@ -464,7 +482,11 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
                   onMouseLeave={handleMouseUp}
-                  className={`max-h-[38vh] max-w-full rounded-xl shadow-2xl border border-white/10 object-contain ${
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchCancel={handleTouchEnd}
+                  className={`touch-none max-h-[38vh] max-w-full rounded-xl shadow-2xl border border-white/10 object-contain ${
                     zoom > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
                   }`}
                 />
@@ -516,6 +538,9 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
                   {[
                     { id: 'a4', label: 'A4 Sheet' },
                     { id: 'free', label: 'Original' },
+                    { id: '1:1', label: '1:1 Square' },
+                    { id: '3:4', label: '3:4 Card' },
+                    { id: '4:3', label: '4:3 Photo' },
                   ].map((preset) => (
                     <button
                       key={preset.id}

@@ -543,6 +543,16 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
     }
   };
 
+  const handlePurgeStaleOrders = async () => {
+    try {
+      const res = await api.purgeStaleOrders(shop.id);
+      showToast(res.message || 'Queue cleaned up successfully', 'success');
+      refreshOrders();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to clear queue', 'error');
+    }
+  };
+
   const getRemainingDeleteTime = (ord: Order) => {
     if (ord.status !== 'completed' && ord.status !== 'rejected' && !ord.printedAt) return null;
     const due = ord.purgeDueAt
@@ -838,6 +848,16 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                     className="w-full pl-9 pr-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pink-500"
                   />
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handlePurgeStaleOrders}
+                  className="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                  title="Purge all finished or stuck test orders from Print Queue"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Clear Queue</span>
+                </button>
 
                 <button
                   onClick={refreshOrders}

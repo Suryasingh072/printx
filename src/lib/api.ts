@@ -237,6 +237,13 @@ export const api = {
     return this.request(`/api/orders/${orderNumber}`);
   },
 
+  async purgeStaleOrders(shopId?: string): Promise<{ success: boolean; purgedCount: number; message: string }> {
+    return this.request('/api/orders/purge-stale', {
+      method: 'POST',
+      body: JSON.stringify({ shopId }),
+    });
+  },
+
   // Shop Dashboard
   async getCurrentShop(): Promise<Shop> {
     return this.request('/api/shop/current');

@@ -238,8 +238,8 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
   // Client-side ultra-fast image optimization for phone camera photos (up to 50x faster)
   const optimizeImageForFastUpload = async (file: File): Promise<File> => {
     if (!file.type.startsWith('image/')) return file;
-    // If under 750KB, already small enough
-    if (file.size < 750 * 1024) return file;
+    // Fast upload: if under 1.5MB, upload immediately without client-side recompression delay
+    if (file.size < 1.5 * 1024 * 1024) return file;
 
     try {
       if (typeof window !== 'undefined' && 'createImageBitmap' in window) {
@@ -887,20 +887,33 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                   </p>
                 </div>
 
-                {/* Optional Online Payment Option */}
-                <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-white/10">
-                  <p className="text-xs text-slate-400">
-                    Counter par line se bachne ke liye online bhi pay kar sakte hain:
-                  </p>
+                {/* Actions: Naya Print Karein & Optional Online Pay */}
+                <div className="pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-white/10">
                   <button
                     type="button"
-                    onClick={() => handlePayWithRazorpay()}
-                    disabled={isRazorpayLoading}
-                    className="btn bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-black py-2.5 px-5 rounded-xl text-xs flex items-center gap-2 cursor-pointer shrink-0"
+                    onClick={() => {
+                      setPlacedOrder(null);
+                      setFileQueue([]);
+                      setOnlineUpiSuccess(false);
+                      setRazorpayMessage(null);
+                    }}
+                    className="btn btn-primary py-2.5 px-5 text-xs font-black shadow-[0_4px_16px_rgba(255,46,99,0.35)] flex items-center justify-center gap-2 cursor-pointer order-2 sm:order-1"
                   >
-                    <CreditCard className="w-4 h-4" />
-                    Pay ₹{placedOrder.totalAmount.toFixed(2)} with Razorpay
+                    <Plus className="w-4 h-4 stroke-[3]" />
+                    Naya Print / Upload Karein
                   </button>
+
+                  <div className="flex items-center gap-2 order-1 sm:order-2">
+                    <button
+                      type="button"
+                      onClick={() => handlePayWithRazorpay()}
+                      disabled={isRazorpayLoading}
+                      className="btn bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-black py-2.5 px-4 rounded-xl text-xs flex items-center gap-2 cursor-pointer shrink-0"
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      Pay ₹{placedOrder.totalAmount.toFixed(2)} with Razorpay
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -998,8 +1011,10 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
           </div>
         )}
 
-        {/* Service Selector: 2 Clean Options (Document & ID Card) */}
-        <div className="grid grid-cols-2 p-1.5 bg-white/[0.04] border border-white/10 rounded-2xl max-w-xl mx-auto shadow-inner text-xs font-black gap-1.5 sm:gap-2">
+        {/* Service Selector & Upload Form (Shown when placing a new order) */}
+        {!placedOrder && (
+          <>
+            <div className="grid grid-cols-2 p-1.5 bg-white/[0.04] border border-white/10 rounded-2xl max-w-xl mx-auto shadow-inner text-xs font-black gap-1.5 sm:gap-2">
           <button
             type="button"
             onClick={() => setActiveTab('document')}
@@ -1570,6 +1585,8 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
               </div>
             </div>
           </div>
+        )}
+          </>
         )}
       </main>
 
