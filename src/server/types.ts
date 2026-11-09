@@ -164,6 +164,7 @@ export interface Order {
   isDocumentPurged?: boolean;
   purgedAt?: string;
   purgeDueAt?: string;
+  isRecordedInLedger?: boolean;
   createdAt: string;
   updatedAt: string;
 }

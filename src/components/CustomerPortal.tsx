@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import {
   Upload,
@@ -90,6 +90,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
   // Multi-File Print Queue (5 to 10 files support)
   const [fileQueue, setFileQueue] = useState<MultiFileQueueItem[]>([]);
   const [isBulkUploading, setIsBulkUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Phone Se Hi Editing Modal States (Image Editor + Document/PDF Editor)
   const [editingItem, setEditingItem] = useState<MultiFileQueueItem | null>(null);
@@ -118,6 +119,19 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
   const [isRazorpayLoading, setIsRazorpayLoading] = useState(false);
   const [razorpayMessage, setRazorpayMessage] = useState<{ type: 'error' | 'info' | 'success'; text: string } | null>(null);
 
+  const handleResetForNewPrint = () => {
+    setPlacedOrder(null);
+    setFileQueue([]);
+    setOnlineUpiSuccess(false);
+    setRazorpayMessage(null);
+    setIsRazorpayLoading(false);
+    setIsSubmitting(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handlePayWithRazorpay = async (orderToPay?: any) => {
     const order = (orderToPay && typeof orderToPay === 'object' && ('totalAmount' in orderToPay || 'orderNumber' in orderToPay) ? orderToPay : null) || placedOrder;
     if (!order) return;
@@ -138,6 +152,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
       await initiateRazorpayCheckout({
         amountInRupees: payableAmount,
         orderNumber: order.orderNumber,
+        orderId: order.id,
         customerName: order.customerName || customerName,
         customerPhone: order.customerPhone || customerPhone,
         description: `Print Order ${order.orderNumber || ''}`,
@@ -679,7 +694,8 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
       const totalSizeBytes = fileQueue.reduce((acc, curr) => acc + curr.sizeBytes, 0);
 
       const isOffice = accountType === 'office';
-      const isShopCounter = !isOffice && (accountType === 'shop' || !requireOnlinePayment);
+      const isOnline = paymentChoice === 'online' || requireOnlinePayment;
+      const isShopCounter = !isOffice && !isOnline;
 
       const res = await api.createOrder({
         shopSlug,
@@ -709,8 +725,8 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
         spread: 70,
         origin: { y: 0.6 },
       });
-      // ONLY trigger Razorpay if NOT office AND NOT shop/counter (i.e. printx or requireOnlinePayment is explicitly true)
-      if (!isOffice && !isShopCounter && requireOnlinePayment) {
+      // Trigger Razorpay immediately for online orders
+      if (!isOffice && isOnline) {
         handlePayWithRazorpay(res.order);
       }
     } catch (err: any) {
@@ -864,11 +880,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    setPlacedOrder(null);
-                    setFileQueue([]);
-                    setOnlineUpiSuccess(false);
-                  }}
+                  onClick={handleResetForNewPrint}
                   className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition cursor-pointer"
                   title="Dismiss order banner"
                 >
@@ -891,11 +903,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setPlacedOrder(null);
-                    setFileQueue([]);
-                    setOnlineUpiSuccess(false);
-                  }}
+                  onClick={handleResetForNewPrint}
                   className="btn btn-primary py-2.5 px-5 text-xs font-black shadow-[0_4px_16px_rgba(255,46,99,0.35)] flex items-center gap-2 cursor-pointer shrink-0"
                 >
                   <Plus className="w-4 h-4 stroke-[3]" />
@@ -942,12 +950,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                 <div className="pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-white/10">
                   <button
                     type="button"
-                    onClick={() => {
-                      setPlacedOrder(null);
-                      setFileQueue([]);
-                      setOnlineUpiSuccess(false);
-                      setRazorpayMessage(null);
-                    }}
+                    onClick={handleResetForNewPrint}
                     className="btn btn-primary py-2.5 px-5 text-xs font-black shadow-[0_4px_16px_rgba(255,46,99,0.35)] flex items-center justify-center gap-2 cursor-pointer order-2 sm:order-1"
                   >
                     <Plus className="w-4 h-4 stroke-[3]" />
@@ -1134,6 +1137,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                   className="border-2 border-dashed border-pink-500/35 hover:border-pink-500/75 rounded-3xl p-6 sm:p-8 text-center transition bg-white/[0.02] hover:bg-white/[0.05] cursor-pointer group shadow-inner"
                 >
                   <input
+                    ref={fileInputRef}
                     type="file"
                     id="multi-upload"
                     multiple

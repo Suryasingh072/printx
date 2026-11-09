@@ -433,6 +433,7 @@ export const api = {
     razorpay_payment_id: string;
     razorpay_signature: string;
     orderNumber?: string;
+    orderId?: string;
     receipt?: string;
   }): Promise<{
     success: boolean;

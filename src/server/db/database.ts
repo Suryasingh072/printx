@@ -65,6 +65,16 @@ export function resolveTargetPrinter(
   return preferred || agent.defaultPrinter || 'Default Windows Printer';
 }
 
+export interface CumulativeSalesLedger {
+  totalRevenue: number;
+  totalOrders: number;
+  totalPages: number;
+  completedJobs: number;
+  dailyRevenue: Record<string, number>; // YYYY-MM-DD -> amount
+  dailyOrders: Record<string, number>;  // YYYY-MM-DD -> count
+  dailyPages: Record<string, number>;   // YYYY-MM-DD -> page count
+}
+
 interface DatabaseSchema {
   users: User[];
   shops: Shop[];
@@ -76,6 +86,7 @@ interface DatabaseSchema {
   payments: PaymentRecord[];
   printJobs: PrintJob[];
   activityLogs: ActivityLog[];
+  salesLedger?: Record<string, CumulativeSalesLedger>;
 }
 
 const isVercel = Boolean(process.env.VERCEL);
@@ -264,6 +275,7 @@ export class Database {
       payments: [],
       printJobs: [],
       activityLogs: [],
+      salesLedger: {},
     };
 
     let foundAnyFile = false;
@@ -369,6 +381,33 @@ export class Database {
                 if (!l || !l.id) continue;
                 if (!merged.activityLogs.some((item) => item.id === l.id)) {
                   merged.activityLogs.push(l);
+                }
+              }
+            }
+
+            // Merge persistent sales ledger
+            if (parsed.salesLedger && typeof parsed.salesLedger === 'object') {
+              if (!merged.salesLedger) merged.salesLedger = {};
+              for (const [sId, sData] of Object.entries(parsed.salesLedger)) {
+                if (sData && typeof sData === 'object') {
+                  const existing = merged.salesLedger[sId] || {
+                    totalRevenue: 0,
+                    totalOrders: 0,
+                    totalPages: 0,
+                    completedJobs: 0,
+                    dailyRevenue: {},
+                    dailyOrders: {},
+                    dailyPages: {},
+                  };
+                  merged.salesLedger[sId] = {
+                    totalRevenue: Math.max(existing.totalRevenue, (sData as any).totalRevenue || 0),
+                    totalOrders: Math.max(existing.totalOrders, (sData as any).totalOrders || 0),
+                    totalPages: Math.max(existing.totalPages, (sData as any).totalPages || 0),
+                    completedJobs: Math.max(existing.completedJobs, (sData as any).completedJobs || 0),
+                    dailyRevenue: { ...(existing.dailyRevenue || {}), ...((sData as any).dailyRevenue || {}) },
+                    dailyOrders: { ...(existing.dailyOrders || {}), ...((sData as any).dailyOrders || {}) },
+                    dailyPages: { ...(existing.dailyPages || {}), ...((sData as any).dailyPages || {}) },
+                  };
                 }
               }
             }
@@ -902,6 +941,36 @@ export class Database {
     return newOrder;
   }
 
+  public recordOrderIntoSalesLedger(order: Order, isCompleted: boolean = false): void {
+    if (!this.data.salesLedger) this.data.salesLedger = {};
+    if (!this.data.salesLedger[order.shopId]) {
+      this.data.salesLedger[order.shopId] = {
+        totalRevenue: 0,
+        totalOrders: 0,
+        totalPages: 0,
+        completedJobs: 0,
+        dailyRevenue: {},
+        dailyOrders: {},
+        dailyPages: {},
+      };
+    }
+    const ledger = this.data.salesLedger[order.shopId];
+    const orderDate = (order.createdAt ? new Date(order.createdAt) : new Date()).toISOString().slice(0, 10);
+    const pages = (order.pageCount || 1) * (order.copies || 1);
+    const amount = Number(order.totalAmount || 0);
+
+    ledger.totalRevenue = Number((ledger.totalRevenue + amount).toFixed(2));
+    ledger.totalOrders += 1;
+    ledger.totalPages += pages;
+    if (isCompleted || order.status === 'completed') {
+      ledger.completedJobs += 1;
+    }
+
+    ledger.dailyRevenue[orderDate] = Number(((ledger.dailyRevenue[orderDate] || 0) + amount).toFixed(2));
+    ledger.dailyOrders[orderDate] = (ledger.dailyOrders[orderDate] || 0) + 1;
+    ledger.dailyPages[orderDate] = (ledger.dailyPages[orderDate] || 0) + pages;
+  }
+
   public updateOrderStatus(
     orderId: string,
     newStatus: OrderStatus,
@@ -923,10 +992,17 @@ export class Database {
       this.data.orders[idx].printedAt = new Date().toISOString();
       // Set customer files & order data auto-purge to exactly 1 minute from completion
       this.data.orders[idx].purgeDueAt = new Date(Date.now() + 1 * 60 * 1000).toISOString();
-      // Track physical paper consumption in the shop tray
+
+      // Record in cumulative persistent sales ledger
       const targetOrder = this.data.orders[idx];
+      if (!targetOrder.isRecordedInLedger) {
+        this.recordOrderIntoSalesLedger(targetOrder, true);
+        targetOrder.isRecordedInLedger = true;
+      }
+
+      // Track physical paper consumption in the shop tray
       const targetShop = this.getShopById(targetOrder.shopId);
-      if (targetShop) {
+      if (targetShop && previousStatus !== 'completed') {
         const sheetsUsed = targetOrder.duplexMode === 'duplex'
           ? Math.ceil((targetOrder.pageCount || 1) / 2) * (targetOrder.copies || 1)
           : (targetOrder.pageCount || 1) * (targetOrder.copies || 1);
@@ -1010,6 +1086,12 @@ export class Database {
       }
 
       if (shouldPurge) {
+        // Ensure cumulative sales ledger retains all revenue, orders, and page numbers forever
+        if (!order.isRecordedInLedger && (order.paymentStatus === 'collected' || order.status === 'completed')) {
+          this.recordOrderIntoSalesLedger(order, order.status === 'completed');
+          order.isRecordedInLedger = true;
+        }
+
         // Purge main document file
         if (order.filePath) {
           try {
@@ -1145,6 +1227,11 @@ export class Database {
     order.paymentCollectorName = params.collectorName;
     order.paymentMethod = params.method;
     order.updatedAt = new Date().toISOString();
+
+    if (!order.isRecordedInLedger) {
+      this.recordOrderIntoSalesLedger(order, order.status === 'completed');
+      order.isRecordedInLedger = true;
+    }
 
     // If order was in payment_pending and already approved, transition to queued
     if (order.status === 'payment_pending') {
@@ -1546,11 +1633,11 @@ export class Database {
 
   public reportPrintJobStatus(
     jobId: string,
-    claimToken: string,
-    status: 'spooling' | 'printed' | 'failed',
+    claimToken?: string,
+    status: 'spooling' | 'printed' | 'failed' = 'printed',
     errorMessage?: string
   ): boolean {
-    const job = this.data.printJobs.find((j) => j.id === jobId && j.claimToken === claimToken);
+    const job = this.data.printJobs.find((j) => j.id === jobId && (!claimToken || !j.claimToken || j.claimToken === claimToken));
     if (!job) return false;
 
     job.status = status;
@@ -1575,6 +1662,13 @@ export class Database {
           order.printedAt = new Date().toISOString();
           // Purge order and data after exactly 1 minute
           order.purgeDueAt = new Date(Date.now() + 1 * 60 * 1000).toISOString();
+
+          // Record in cumulative persistent sales ledger
+          if (!order.isRecordedInLedger) {
+            this.recordOrderIntoSalesLedger(order, true);
+            order.isRecordedInLedger = true;
+          }
+
           // Track physical paper consumption in the shop tray
           const targetShop = this.getShopById(order.shopId);
           if (targetShop) {
@@ -1622,74 +1716,126 @@ export class Database {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
-  // --- Statistics & Reports ---
+  // --- Statistics & Reports (Accurate & Persistent) ---
   public getShopStats(shopId: string): ShopStats {
     const orders = this.data.orders.filter((o) => o.shopId === shopId && o.status !== 'rejected');
-    const payments = this.data.payments.filter((p) => p.shopId === shopId && p.status === 'collected');
+
+    const ledger: CumulativeSalesLedger = (this.data.salesLedger && this.data.salesLedger[shopId]) || {
+      totalRevenue: 0,
+      totalOrders: 0,
+      totalPages: 0,
+      completedJobs: 0,
+      dailyRevenue: {},
+      dailyOrders: {},
+      dailyPages: {},
+    };
 
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const startOfWeek = startOfToday - 7 * 24 * 60 * 60 * 1000;
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
-    let todayOrders = 0;
-    let todayRevenue = 0;
-    let weeklyOrders = 0;
-    let weeklyRevenue = 0;
-    let monthlyOrders = 0;
-    let monthlyRevenue = 0;
-    let lifetimeOrders = orders.length;
-    let lifetimeRevenue = 0;
-    let totalPageCount = 0;
+    // Sum ledger daily records within today, week, month
+    let ledgerTodayRevenue = 0;
+    let ledgerTodayOrders = 0;
+    let ledgerWeeklyRevenue = 0;
+    let ledgerWeeklyOrders = 0;
+    let ledgerMonthlyRevenue = 0;
+    let ledgerMonthlyOrders = 0;
+
+    for (const [dateStr, rev] of Object.entries(ledger.dailyRevenue || {})) {
+      const dTime = new Date(`${dateStr}T00:00:00`).getTime();
+      const ordCount = ledger.dailyOrders[dateStr] || 0;
+      if (dTime >= startOfToday) {
+        ledgerTodayRevenue += rev;
+        ledgerTodayOrders += ordCount;
+      }
+      if (dTime >= startOfWeek) {
+        ledgerWeeklyRevenue += rev;
+        ledgerWeeklyOrders += ordCount;
+      }
+      if (dTime >= startOfMonth) {
+        ledgerMonthlyRevenue += rev;
+        ledgerMonthlyOrders += ordCount;
+      }
+    }
+
+    let unrecordedTodayOrders = 0;
+    let unrecordedTodayRevenue = 0;
+    let unrecordedWeeklyOrders = 0;
+    let unrecordedWeeklyRevenue = 0;
+    let unrecordedMonthlyOrders = 0;
+    let unrecordedMonthlyRevenue = 0;
+    let unrecordedLifetimeOrders = 0;
+    let unrecordedLifetimeRevenue = 0;
+    let unrecordedPages = 0;
+    let unrecordedCompletedJobs = 0;
+
     let pendingOrders = 0;
-    let completedJobs = 0;
 
     for (const order of orders) {
-      const orderTime = new Date(order.createdAt).getTime();
-      totalPageCount += (order.pageCount || 1) * (order.copies || 1);
-
       if (order.status === 'pending_approval' || order.status === 'payment_pending' || order.status === 'queued') {
         pendingOrders += 1;
       }
-      if (order.status === 'completed') {
-        completedJobs += 1;
-      }
 
-      if (orderTime >= startOfToday) {
-        todayOrders += 1;
-      }
-      if (orderTime >= startOfWeek) {
-        weeklyOrders += 1;
-      }
-      if (orderTime >= startOfMonth) {
-        monthlyOrders += 1;
+      // If this order is not yet consolidated into the ledger:
+      if (!order.isRecordedInLedger) {
+        const orderTime = new Date(order.createdAt).getTime();
+        const pages = (order.pageCount || 1) * (order.copies || 1);
+        const amount = Number(order.totalAmount || 0);
+
+        unrecordedLifetimeOrders += 1;
+        unrecordedPages += pages;
+
+        if (order.paymentStatus === 'collected' || order.status === 'completed') {
+          unrecordedLifetimeRevenue += amount;
+        }
+
+        if (order.status === 'completed') {
+          unrecordedCompletedJobs += 1;
+        }
+
+        if (orderTime >= startOfToday) {
+          unrecordedTodayOrders += 1;
+          if (order.paymentStatus === 'collected' || order.status === 'completed') {
+            unrecordedTodayRevenue += amount;
+          }
+        }
+        if (orderTime >= startOfWeek) {
+          unrecordedWeeklyOrders += 1;
+          if (order.paymentStatus === 'collected' || order.status === 'completed') {
+            unrecordedWeeklyRevenue += amount;
+          }
+        }
+        if (orderTime >= startOfMonth) {
+          unrecordedMonthlyOrders += 1;
+          if (order.paymentStatus === 'collected' || order.status === 'completed') {
+            unrecordedMonthlyRevenue += amount;
+          }
+        }
       }
     }
 
-    for (const p of payments) {
-      const pTime = new Date(p.collectedAt).getTime();
-      lifetimeRevenue += p.amount;
-
-      if (pTime >= startOfToday) {
-        todayRevenue += p.amount;
-      }
-      if (pTime >= startOfWeek) {
-        weeklyRevenue += p.amount;
-      }
-      if (pTime >= startOfMonth) {
-        monthlyRevenue += p.amount;
-      }
-    }
+    const todayOrders = ledgerTodayOrders + unrecordedTodayOrders;
+    const todayRevenue = Number((ledgerTodayRevenue + unrecordedTodayRevenue).toFixed(2));
+    const weeklyOrders = ledgerWeeklyOrders + unrecordedWeeklyOrders;
+    const weeklyRevenue = Number((ledgerWeeklyRevenue + unrecordedWeeklyRevenue).toFixed(2));
+    const monthlyOrders = ledgerMonthlyOrders + unrecordedMonthlyOrders;
+    const monthlyRevenue = Number((ledgerMonthlyRevenue + unrecordedMonthlyRevenue).toFixed(2));
+    const lifetimeOrders = ledger.totalOrders + unrecordedLifetimeOrders;
+    const lifetimeRevenue = Number((ledger.totalRevenue + unrecordedLifetimeRevenue).toFixed(2));
+    const totalPageCount = ledger.totalPages + unrecordedPages;
+    const completedJobs = ledger.completedJobs + unrecordedCompletedJobs;
 
     return {
       todayOrders,
-      todayRevenue: Number(todayRevenue.toFixed(2)),
+      todayRevenue,
       weeklyOrders,
-      weeklyRevenue: Number(weeklyRevenue.toFixed(2)),
+      weeklyRevenue,
       monthlyOrders,
-      monthlyRevenue: Number(monthlyRevenue.toFixed(2)),
+      monthlyRevenue,
       lifetimeOrders,
-      lifetimeRevenue: Number(lifetimeRevenue.toFixed(2)),
+      lifetimeRevenue,
       totalPageCount,
       pendingOrders,
       completedJobs,

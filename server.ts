@@ -1192,6 +1192,8 @@ app.post('/api/orders', async (req, res) => {
       ? 'Order placed successfully! Please collect your print at the counter and pay.'
       : 'Order placed successfully! Please complete online payment via Razorpay.',
     order: {
+      id: order.id,
+      shopId: order.shopId,
       orderNumber: order.orderNumber,
       customerName: order.customerName,
       documentName: order.documentName,
@@ -1487,14 +1489,14 @@ app.post('/api/verify-payment', (req, res) => {
     }
 
     // If payment belongs to a print shop order, mark it as collected and auto-spool to printer!
-    const orderRef = req.body.orderNumber || req.body.orderRef || req.body.receipt;
+    const orderRef = req.body.orderNumber || req.body.orderId || req.body.orderRef || req.body.receipt;
     let existingOrder = null;
     if (orderRef) {
       const cleanRef = String(orderRef).replace(/^rcpt_/, '').trim();
       existingOrder = db.getOrderByNumber(cleanRef) || db.getOrderById(cleanRef) || db.getOrderByNumber(orderRef) || db.getOrderById(orderRef);
     }
     if (!existingOrder && order_id) {
-      existingOrder = (db as any).data.orders.find((o: any) => o.gatewayOrderId === order_id);
+      existingOrder = (db as any).data.orders.find((o: any) => o.gatewayOrderId === order_id || (o.gatewayCheckLink && o.gatewayCheckLink.includes(order_id)));
     }
 
     let orderRecord = null;
@@ -2526,14 +2528,10 @@ app.post('/api/agent/jobs/:jobId/claim', requireAgentAuth, (req, res) => {
   });
 });
 
-// Agent Reports Print Spooler Status
-app.post('/api/agent/jobs/:jobId/report', requireAgentAuth, (req, res) => {
+// Agent Reports Print Spooler Status (Supports both /report and /status endpoints)
+const handleAgentJobReport = (req: Request, res: Response) => {
   const { jobId } = req.params;
-  const { claimToken, status, errorMessage } = req.body; // status: 'spooling' | 'printed' | 'failed'
-
-  if (!claimToken || !status) {
-    return res.status(400).json({ error: 'claimToken and status are required.' });
-  }
+  const { claimToken, status = 'printed', errorMessage } = req.body || {};
 
   const success = db.reportPrintJobStatus(jobId, claimToken, status, errorMessage);
   if (!success) {
@@ -2541,7 +2539,10 @@ app.post('/api/agent/jobs/:jobId/report', requireAgentAuth, (req, res) => {
   }
 
   res.json({ message: `Job status recorded as ${status}` });
-});
+};
+
+app.post('/api/agent/jobs/:jobId/report', requireAgentAuth, handleAgentJobReport);
+app.post('/api/agent/jobs/:jobId/status', requireAgentAuth, handleAgentJobReport);
 
 // Agent Downloads Document for Spooling (Supports both /api/agent/download-job/:jobId and /api/agent/jobs/:jobId/document)
 const handleAgentJobDownload = (req: Request, res: Response) => {

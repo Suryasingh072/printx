@@ -10,6 +10,7 @@ export interface RazorpayCheckoutOptions {
   amountInPaise?: number;
   currency?: string;
   orderNumber?: string;
+  orderId?: string;
   receipt?: string;
   customerName?: string;
   customerPhone?: string;
@@ -102,6 +103,7 @@ export async function initiateRazorpayCheckout(options: RazorpayCheckoutOptions)
     receipt,
     {
       orderNumber: options.orderNumber || '',
+      orderId: (options as any).orderId || options.orderNumber || '',
       ...(options.notes || {}),
     }
   );
@@ -169,6 +171,7 @@ export async function initiateRazorpayCheckout(options: RazorpayCheckoutOptions)
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature,
             orderNumber: options.orderNumber,
+            orderId: (options as any).orderId,
             receipt: createdOrder.receipt,
           });
 

@@ -57,6 +57,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
   const [activeTab, setActiveTab] = useState<'crop' | 'adjust' | 'rotate'>('crop');
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const previewContainerRef = useRef<HTMLDivElement | null>(null);
   const imageObjRef = useRef<HTMLImageElement | null>(null);
   const isDraggingRef = useRef<boolean>(false);
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -108,7 +109,6 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
     const rotatedW = img.width * cos + img.height * sin;
     const rotatedH = img.width * sin + img.height * cos;
 
-    // Determine target canvas dimensions according to crop preset
     let targetW = rotatedW;
     let targetH = rotatedH;
 
@@ -121,14 +121,8 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
         targetW = rotatedW;
         targetH = rotatedW / ratio;
       }
-    } else if (cropPreset === 'custom') {
-      // Free manual crop based on user's custom edge adjustments
-      const visibleW = Math.max(0.1, 1 - (cropLeft + cropRight) / 100);
-      const visibleH = Math.max(0.1, 1 - (cropTop + cropBottom) / 100);
-      targetW = rotatedW * visibleW;
-      targetH = rotatedH * visibleH;
     } else {
-      // Full original
+      // Full document displayed cleanly so Doc Scanner touch crop overlay can frame it
       targetW = rotatedW;
       targetH = rotatedH;
     }
@@ -143,12 +137,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
     ctx.filter = `brightness(${100 + brightness}%) contrast(${100 + contrast}%) saturate(${saturation}%)`;
 
     ctx.save();
-
-    // Translate to center of canvas with pan and custom crop offsets
-    const cropOffsetX = cropPreset === 'custom' ? ((cropRight - cropLeft) / 200) * rotatedW : 0;
-    const cropOffsetY = cropPreset === 'custom' ? ((cropBottom - cropTop) / 200) * rotatedH : 0;
-
-    ctx.translate(canvas.width / 2 + panX + cropOffsetX, canvas.height / 2 + panY + cropOffsetY);
+    ctx.translate(canvas.width / 2 + panX, canvas.height / 2 + panY);
 
     // Apply scale for zoom and flips
     const scaleX = (flipH ? -1 : 1) * zoom;
@@ -160,9 +149,8 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
 
     // Draw the image centered
     ctx.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height);
-
     ctx.restore();
-  }, [rotation, fineAngle, flipH, flipV, brightness, contrast, saturation, cropPreset, cropTop, cropBottom, cropLeft, cropRight, zoom, panX, panY]);
+  }, [rotation, fineAngle, flipH, flipV, brightness, contrast, saturation, cropPreset, zoom, panX, panY]);
 
   // Re-render whenever parameters change
   useEffect(() => {
@@ -170,6 +158,115 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
       renderCanvas();
     }
   }, [isOpen, renderCanvas]);
+
+  // Doc Scanner / CamScanner Touch Drag Handler (4 Corners + 4 Edges + Box Movement)
+  const startCropDrag = (
+    e: React.MouseEvent | React.TouchEvent,
+    handle: 'tl' | 'tr' | 'bl' | 'br' | 'top' | 'bottom' | 'left' | 'right' | 'box'
+  ) => {
+    e.preventDefault();
+    if (!previewContainerRef.current) return;
+
+    const rect = previewContainerRef.current.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+
+    const startX = clientX;
+    const startY = clientY;
+    const initTop = cropTop;
+    const initBottom = cropBottom;
+    const initLeft = cropLeft;
+    const initRight = cropRight;
+
+    const onPointerMove = (moveEvt: MouseEvent | TouchEvent) => {
+      const currentX = 'touches' in moveEvt ? moveEvt.touches[0].clientX : (moveEvt as MouseEvent).clientX;
+      const currentY = 'touches' in moveEvt ? moveEvt.touches[0].clientY : (moveEvt as MouseEvent).clientY;
+
+      const deltaXPercent = ((currentX - startX) / rect.width) * 100;
+      const deltaYPercent = ((currentY - startY) / rect.height) * 100;
+      const minMargin = 8; // Keep crop box at least 8%
+
+      if (handle === 'tl') {
+        const newTop = Math.max(0, Math.min(100 - initBottom - minMargin, initTop + deltaYPercent));
+        const newLeft = Math.max(0, Math.min(100 - initRight - minMargin, initLeft + deltaXPercent));
+        setCropTop(Math.round(newTop));
+        setCropLeft(Math.round(newLeft));
+      } else if (handle === 'tr') {
+        const newTop = Math.max(0, Math.min(100 - initBottom - minMargin, initTop + deltaYPercent));
+        const newRight = Math.max(0, Math.min(100 - initLeft - minMargin, initRight - deltaXPercent));
+        setCropTop(Math.round(newTop));
+        setCropRight(Math.round(newRight));
+      } else if (handle === 'bl') {
+        const newBottom = Math.max(0, Math.min(100 - initTop - minMargin, initBottom - deltaYPercent));
+        const newLeft = Math.max(0, Math.min(100 - initRight - minMargin, initLeft + deltaXPercent));
+        setCropBottom(Math.round(newBottom));
+        setCropLeft(Math.round(newLeft));
+      } else if (handle === 'br') {
+        const newBottom = Math.max(0, Math.min(100 - initTop - minMargin, initBottom - deltaYPercent));
+        const newRight = Math.max(0, Math.min(100 - initLeft - minMargin, initRight - deltaXPercent));
+        setCropBottom(Math.round(newBottom));
+        setCropRight(Math.round(newRight));
+      } else if (handle === 'top') {
+        const newTop = Math.max(0, Math.min(100 - initBottom - minMargin, initTop + deltaYPercent));
+        setCropTop(Math.round(newTop));
+      } else if (handle === 'bottom') {
+        const newBottom = Math.max(0, Math.min(100 - initTop - minMargin, initBottom - deltaYPercent));
+        setCropBottom(Math.round(newBottom));
+      } else if (handle === 'left') {
+        const newLeft = Math.max(0, Math.min(100 - initRight - minMargin, initLeft + deltaXPercent));
+        setCropLeft(Math.round(newLeft));
+      } else if (handle === 'right') {
+        const newRight = Math.max(0, Math.min(100 - initLeft - minMargin, initRight - deltaXPercent));
+        setCropRight(Math.round(newRight));
+      } else if (handle === 'box') {
+        const boxWidth = 100 - initLeft - initRight;
+        const boxHeight = 100 - initTop - initBottom;
+
+        let newLeft = initLeft + deltaXPercent;
+        let newRight = 100 - (newLeft + boxWidth);
+
+        if (newLeft < 0) {
+          newLeft = 0;
+          newRight = 100 - boxWidth;
+        } else if (newRight < 0) {
+          newRight = 0;
+          newLeft = 100 - boxWidth;
+        }
+
+        let newTop = initTop + deltaYPercent;
+        let newBottom = 100 - (newTop + boxHeight);
+
+        if (newTop < 0) {
+          newTop = 0;
+          newBottom = 100 - boxHeight;
+        } else if (newBottom < 0) {
+          newBottom = 0;
+          newTop = 100 - boxHeight;
+        }
+
+        setCropLeft(Math.round(newLeft));
+        setCropRight(Math.round(newRight));
+        setCropTop(Math.round(newTop));
+        setCropBottom(Math.round(newBottom));
+      }
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener('mousemove', onPointerMove);
+      window.removeEventListener('mouseup', onPointerUp);
+      window.removeEventListener('touchmove', onPointerMove);
+      window.removeEventListener('touchend', onPointerUp);
+      window.removeEventListener('touchcancel', onPointerUp);
+    };
+
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mouseup', onPointerUp);
+    window.addEventListener('touchmove', onPointerMove, { passive: false });
+    window.addEventListener('touchend', onPointerUp);
+    window.addEventListener('touchcancel', onPointerUp);
+  };
 
   // Mouse / Touch Drag to Pan when zoomed
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -205,23 +302,79 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
     isDraggingRef.current = false;
   };
 
-  const handleApplyChanges = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  const generateCroppedBlob = async (): Promise<Blob | null> => {
+    const img = imageObjRef.current;
+    if (!img) return null;
 
+    const totalAngle = (rotation + fineAngle) % 360;
+    const rad = (totalAngle * Math.PI) / 180;
+    const sin = Math.abs(Math.sin(rad));
+    const cos = Math.abs(Math.cos(rad));
+    const rotatedW = img.width * cos + img.height * sin;
+    const rotatedH = img.width * sin + img.height * cos;
+
+    const temp = document.createElement('canvas');
+    temp.width = Math.round(rotatedW);
+    temp.height = Math.round(rotatedH);
+    const tCtx = temp.getContext('2d');
+    if (!tCtx) return null;
+
+    tCtx.filter = `brightness(${100 + brightness}%) contrast(${100 + contrast}%) saturate(${saturation}%)`;
+    tCtx.translate(temp.width / 2, temp.height / 2);
+    tCtx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
+    tCtx.rotate(rad);
+    tCtx.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height);
+
+    if (cropPreset === 'custom' && (cropTop > 0 || cropBottom > 0 || cropLeft > 0 || cropRight > 0)) {
+      const sx = (cropLeft / 100) * rotatedW;
+      const sy = (cropTop / 100) * rotatedH;
+      const sw = Math.max(10, rotatedW * (1 - (cropLeft + cropRight) / 100));
+      const sh = Math.max(10, rotatedH * (1 - (cropTop + cropBottom) / 100));
+
+      const out = document.createElement('canvas');
+      out.width = Math.round(sw);
+      out.height = Math.round(sh);
+      const oCtx = out.getContext('2d');
+      if (!oCtx) return null;
+
+      oCtx.drawImage(temp, sx, sy, sw, sh, 0, 0, out.width, out.height);
+      return new Promise((res) => out.toBlob((b) => res(b), 'image/jpeg', 0.95));
+    } else if (cropPreset === 'a4') {
+      const ratio = 1 / 1.414;
+      let targetW = rotatedW;
+      let targetH = rotatedH;
+      if (rotatedW / rotatedH > ratio) {
+        targetW = rotatedH * ratio;
+      } else {
+        targetH = rotatedW / ratio;
+      }
+      const sx = (rotatedW - targetW) / 2;
+      const sy = (rotatedH - targetH) / 2;
+      const out = document.createElement('canvas');
+      out.width = Math.round(targetW);
+      out.height = Math.round(targetH);
+      const oCtx = out.getContext('2d');
+      if (!oCtx) return null;
+      oCtx.drawImage(temp, sx, sy, targetW, targetH, 0, 0, out.width, out.height);
+      return new Promise((res) => out.toBlob((b) => res(b), 'image/jpeg', 0.95));
+    }
+
+    return new Promise((res) => temp.toBlob((b) => res(b), 'image/jpeg', 0.95));
+  };
+
+  const handleApplyChanges = async () => {
     setIsProcessing(true);
-    canvas.toBlob(
-      (blob) => {
-        setIsProcessing(false);
-        if (blob) {
-          const previewUrl = URL.createObjectURL(blob);
-          onSave(blob, previewUrl);
-          onClose();
-        }
-      },
-      'image/jpeg',
-      0.95
-    );
+    try {
+      const blob = await generateCroppedBlob();
+      setIsProcessing(false);
+      if (blob) {
+        const previewUrl = URL.createObjectURL(blob);
+        onSave(blob, previewUrl);
+        onClose();
+      }
+    } catch (e) {
+      setIsProcessing(false);
+    }
   };
 
   const handleResetAll = () => {
@@ -297,20 +450,143 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
             backgroundPosition: '0 0, 0 12px, 12px -12px, -12px 0px',
           }}
         >
-          <canvas
-            ref={canvasRef}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onTouchCancel={handleTouchEnd}
-            className={`touch-none max-h-[36vh] sm:max-h-[44vh] max-w-full rounded-xl shadow-2xl border border-white/10 object-contain ${
-              zoom > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
-            }`}
-          />
+          <div
+            ref={previewContainerRef}
+            className="relative inline-block select-none max-h-[38vh] sm:max-h-[46vh] max-w-full rounded-xl overflow-hidden shadow-2xl border border-white/10"
+          >
+            <canvas
+              ref={canvasRef}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={handleTouchEnd}
+              className={`touch-none block max-h-[36vh] sm:max-h-[44vh] max-w-full object-contain ${
+                zoom > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
+              }`}
+            />
+
+            {/* Doc Scanner Touch Crop Frame Overlay */}
+            {activeTab === 'crop' && cropPreset === 'custom' && (
+              <div className="absolute inset-0 pointer-events-none">
+                {/* Darkened Mask Outside Crop Window */}
+                <div
+                  className="absolute top-0 left-0 right-0 bg-black/65 backdrop-blur-[1px] transition-all"
+                  style={{ height: `${cropTop}%` }}
+                />
+                <div
+                  className="absolute bottom-0 left-0 right-0 bg-black/65 backdrop-blur-[1px] transition-all"
+                  style={{ height: `${cropBottom}%` }}
+                />
+                <div
+                  className="absolute left-0 bg-black/65 backdrop-blur-[1px] transition-all"
+                  style={{ top: `${cropTop}%`, bottom: `${cropBottom}%`, width: `${cropLeft}%` }}
+                />
+                <div
+                  className="absolute right-0 bg-black/65 backdrop-blur-[1px] transition-all"
+                  style={{ top: `${cropTop}%`, bottom: `${cropBottom}%`, width: `${cropRight}%` }}
+                />
+
+                {/* Active Crop Box with Neon Border & Touch Handles */}
+                <div
+                  className="absolute border-2 border-pink-500 shadow-[0_0_20px_rgba(255,46,99,0.55)] pointer-events-auto cursor-move select-none touch-none"
+                  style={{
+                    top: `${cropTop}%`,
+                    bottom: `${cropBottom}%`,
+                    left: `${cropLeft}%`,
+                    right: `${cropRight}%`,
+                  }}
+                  onMouseDown={(e) => startCropDrag(e, 'box')}
+                  onTouchStart={(e) => startCropDrag(e, 'box')}
+                >
+                  {/* CamScanner Rule of Thirds Guide Lines */}
+                  <div className="absolute inset-0 pointer-events-none opacity-40">
+                    <div className="absolute left-1/3 top-0 bottom-0 border-r border-dashed border-white/60" />
+                    <div className="absolute left-2/3 top-0 bottom-0 border-r border-dashed border-white/60" />
+                    <div className="absolute top-1/3 left-0 right-0 border-b border-dashed border-white/60" />
+                    <div className="absolute top-2/3 left-0 right-0 border-b border-dashed border-white/60" />
+                  </div>
+
+                  {/* Top-Left Corner Handle */}
+                  <div
+                    className="absolute -top-4 -left-4 w-9 h-9 flex items-center justify-center cursor-nwse-resize touch-none z-30 group"
+                    onMouseDown={(e) => { e.stopPropagation(); startCropDrag(e, 'tl'); }}
+                    onTouchStart={(e) => { e.stopPropagation(); startCropDrag(e, 'tl'); }}
+                  >
+                    <div className="w-5 h-5 rounded-full bg-pink-500 border-2 border-white shadow-lg flex items-center justify-center group-hover:scale-125 transition-transform">
+                      <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                    </div>
+                  </div>
+
+                  {/* Top-Right Corner Handle */}
+                  <div
+                    className="absolute -top-4 -right-4 w-9 h-9 flex items-center justify-center cursor-nesw-resize touch-none z-30 group"
+                    onMouseDown={(e) => { e.stopPropagation(); startCropDrag(e, 'tr'); }}
+                    onTouchStart={(e) => { e.stopPropagation(); startCropDrag(e, 'tr'); }}
+                  >
+                    <div className="w-5 h-5 rounded-full bg-pink-500 border-2 border-white shadow-lg flex items-center justify-center group-hover:scale-125 transition-transform">
+                      <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                    </div>
+                  </div>
+
+                  {/* Bottom-Left Corner Handle */}
+                  <div
+                    className="absolute -bottom-4 -left-4 w-9 h-9 flex items-center justify-center cursor-nesw-resize touch-none z-30 group"
+                    onMouseDown={(e) => { e.stopPropagation(); startCropDrag(e, 'bl'); }}
+                    onTouchStart={(e) => { e.stopPropagation(); startCropDrag(e, 'bl'); }}
+                  >
+                    <div className="w-5 h-5 rounded-full bg-pink-500 border-2 border-white shadow-lg flex items-center justify-center group-hover:scale-125 transition-transform">
+                      <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                    </div>
+                  </div>
+
+                  {/* Bottom-Right Corner Handle */}
+                  <div
+                    className="absolute -bottom-4 -right-4 w-9 h-9 flex items-center justify-center cursor-nwse-resize touch-none z-30 group"
+                    onMouseDown={(e) => { e.stopPropagation(); startCropDrag(e, 'br'); }}
+                    onTouchStart={(e) => { e.stopPropagation(); startCropDrag(e, 'br'); }}
+                  >
+                    <div className="w-5 h-5 rounded-full bg-pink-500 border-2 border-white shadow-lg flex items-center justify-center group-hover:scale-125 transition-transform">
+                      <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                    </div>
+                  </div>
+
+                  {/* Edge Midpoint Handles */}
+                  <div
+                    className="absolute -top-3 left-1/2 -translate-x-1/2 w-12 h-6 flex items-center justify-center cursor-ns-resize touch-none z-20"
+                    onMouseDown={(e) => { e.stopPropagation(); startCropDrag(e, 'top'); }}
+                    onTouchStart={(e) => { e.stopPropagation(); startCropDrag(e, 'top'); }}
+                  >
+                    <div className="w-8 h-2 rounded-full bg-pink-500 border border-white/90 shadow-md" />
+                  </div>
+                  <div
+                    className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-12 h-6 flex items-center justify-center cursor-ns-resize touch-none z-20"
+                    onMouseDown={(e) => { e.stopPropagation(); startCropDrag(e, 'bottom'); }}
+                    onTouchStart={(e) => { e.stopPropagation(); startCropDrag(e, 'bottom'); }}
+                  >
+                    <div className="w-8 h-2 rounded-full bg-pink-500 border border-white/90 shadow-md" />
+                  </div>
+                  <div
+                    className="absolute top-1/2 -translate-y-1/2 -left-3 w-6 h-12 flex items-center justify-center cursor-ew-resize touch-none z-20"
+                    onMouseDown={(e) => { e.stopPropagation(); startCropDrag(e, 'left'); }}
+                    onTouchStart={(e) => { e.stopPropagation(); startCropDrag(e, 'left'); }}
+                  >
+                    <div className="w-2 h-8 rounded-full bg-pink-500 border border-white/90 shadow-md" />
+                  </div>
+                  <div
+                    className="absolute top-1/2 -translate-y-1/2 -right-3 w-6 h-12 flex items-center justify-center cursor-ew-resize touch-none z-20"
+                    onMouseDown={(e) => { e.stopPropagation(); startCropDrag(e, 'right'); }}
+                    onTouchStart={(e) => { e.stopPropagation(); startCropDrag(e, 'right'); }}
+                  >
+                    <div className="w-2 h-8 rounded-full bg-pink-500 border border-white/90 shadow-md" />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Floating Zoom Indicator */}
           {zoom > 1 && (
@@ -348,10 +624,18 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
         </div>
 
         {/* Tab Content Panel */}
-        <div className="p-4 sm:p-6 bg-[#0c101d] space-y-4">
+        <div className="p-4 sm:p-6 bg-[#0c101d] space-y-4 max-h-[42vh] overflow-y-auto">
           {/* TAB 1: CROP & ASPECT RATIO */}
           {activeTab === 'crop' && (
             <div className="space-y-4">
+              {/* CamScanner Style Touch Crop Notice */}
+              <div className="bg-pink-500/10 border border-pink-500/30 rounded-2xl p-2.5 sm:p-3 flex items-start gap-2.5">
+                <Crop className="w-4 h-4 text-pink-400 shrink-0 mt-0.5" />
+                <div className="text-xs text-pink-200">
+                  <span className="font-bold">Doc Scanner Touch Crop:</span> Upar preview ke 4 corners (kone) ya edges ko seedha apni ungli (touch screen) ya mouse se drag karke crop karein.
+                </div>
+              </div>
+
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-bold text-slate-300 uppercase tracking-wider font-head">
                   Crop Selection Mode:
@@ -670,11 +954,11 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
           )}
 
           {/* Bottom Actions Bar */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 pt-3 border-t border-white/10">
             <button
               type="button"
               onClick={onClose}
-              className="btn btn-ghost py-2.5 px-5 text-xs font-bold text-slate-300 hover:text-white"
+              className="btn btn-ghost py-2.5 px-4 text-xs font-bold text-slate-300 hover:text-white w-full sm:w-auto text-center"
             >
               Cancel
             </button>
@@ -682,7 +966,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
               type="button"
               onClick={handleApplyChanges}
               disabled={isProcessing}
-              className="btn btn-primary py-2.5 px-7 text-xs font-black shadow-[0_4px_20px_rgba(255,46,99,0.4)] flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              className="btn btn-primary py-2.5 px-6 text-xs font-black shadow-[0_4px_20px_rgba(255,46,99,0.4)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 w-full sm:w-auto"
             >
               <Check className="w-4 h-4 stroke-[3]" />
               {isProcessing ? 'Processing High-Res Image...' : 'Apply & Save Edits'}
