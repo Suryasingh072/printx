@@ -190,32 +190,84 @@ export default function App() {
     );
   }
 
-  // 2. Admin Dashboard Route
-  if (currentUser && currentUser.role === 'admin') {
+  // 1b. If user opens bare /shop or /shop/ without a slug, safely redirect to landing page
+  if (currentPath === '/shop' || currentPath === '/shop/' || currentPath === '/s' || currentPath === '/s/') {
+    // Never show shop dashboard on /shop URL
     return (
-      <AdminDashboard
-        user={currentUser}
-        onLogout={handleLogout}
-        onNavigateHome={() => navigateTo('/')}
-      />
+      <div className="min-h-screen bg-[#080b14] text-[#f1f5f9] flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-[#0f172a] border border-white/15 rounded-3xl p-8 text-center space-y-5 shadow-2xl">
+          <div className="w-14 h-14 rounded-2xl bg-pink-500/15 border border-pink-500/30 flex items-center justify-center text-pink-400 text-2xl mx-auto">
+            📱
+          </div>
+          <div>
+            <h2 className="text-xl font-bold font-['Sora'] text-white">Shop Address Required</h2>
+            <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+              Print karne ke liye dukaan par lage printx QR Code ko scan karein ya shop ka address enter karein.
+            </p>
+          </div>
+          <div className="pt-2 flex flex-col gap-3">
+            <button
+              onClick={() => navigateTo('/')}
+              className="btn btn-primary py-2.5 text-xs font-bold cursor-pointer"
+            >
+              Go to Home Page →
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 
-  // 3. Authenticated Shop Owner Dashboard
-  if (currentUser && currentShop) {
-    return (
-      <ShopDashboard
-        user={currentUser}
-        shop={currentShop}
-        onLogout={handleLogout}
-        onNavigateHome={() => navigateTo('/')}
-        onShopUpdate={(updated) => setCurrentShop(updated)}
-      />
-    );
-  }
+  // 2. Protected Dashboard Routes (/dashboard, /admin, /counter)
+  const isDashboardRoute =
+    currentPath === '/dashboard' ||
+    currentPath === '/admin' ||
+    currentPath === '/counter' ||
+    currentPath === '/shop-dashboard';
 
-  // 3b. Authenticated user without linked shop
-  if (currentUser && !currentShop) {
+  if (isDashboardRoute) {
+    // If not authenticated, redirect to home page
+    if (!currentUser) {
+      return (
+        <LandingPage
+          onOpenCustomerPortal={(slug) => navigateTo(`/shop/${slug}`)}
+          onLoginSuccess={(user, shop) => {
+            handleLoginSuccess(user, shop);
+            navigateTo('/dashboard');
+          }}
+          onNavigatePolicy={(path) => navigateTo(path)}
+          currentUser={currentUser}
+          currentShop={currentShop}
+          onOpenDashboard={() => navigateTo('/dashboard')}
+        />
+      );
+    }
+
+    // Admin Dashboard Route
+    if (currentUser.role === 'admin') {
+      return (
+        <AdminDashboard
+          user={currentUser}
+          onLogout={handleLogout}
+          onNavigateHome={() => navigateTo('/')}
+        />
+      );
+    }
+
+    // Authenticated Shop Owner Dashboard
+    if (currentShop) {
+      return (
+        <ShopDashboard
+          user={currentUser}
+          shop={currentShop}
+          onLogout={handleLogout}
+          onNavigateHome={() => navigateTo('/')}
+          onShopUpdate={(updated) => setCurrentShop(updated)}
+        />
+      );
+    }
+
+    // Authenticated user without linked shop
     return (
       <div className="min-h-screen bg-[#080b14] text-[#f1f5f9] flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-[#0f172a] border border-white/15 rounded-3xl p-8 text-center space-y-5 shadow-2xl">
@@ -260,12 +312,18 @@ export default function App() {
     );
   }
 
-  // 4. Public Landing Page
+  // 3. Public Home / Landing Page (Default for / and any other public route)
   return (
     <LandingPage
       onOpenCustomerPortal={(slug) => navigateTo(`/shop/${slug}`)}
-      onLoginSuccess={handleLoginSuccess}
+      onLoginSuccess={(user, shop) => {
+        handleLoginSuccess(user, shop);
+        navigateTo('/dashboard');
+      }}
       onNavigatePolicy={(path) => navigateTo(path)}
+      currentUser={currentUser}
+      currentShop={currentShop}
+      onOpenDashboard={() => navigateTo('/dashboard')}
     />
   );
 }

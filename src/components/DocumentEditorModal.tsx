@@ -53,6 +53,8 @@ interface DocumentEditorModalProps {
     pageRange: string;
     excludedPages: number[];
     customNotes?: string;
+    editedBlob?: Blob;
+    previewUrl?: string;
   }) => void;
 }
 
@@ -62,7 +64,7 @@ interface PageThumbnail {
   isLoading: boolean;
 }
 
-type AspectRatioPreset = 'free' | 'a4' | '1:1' | '3:4' | '4:3' | '16:9';
+type CropPreset = 'custom' | 'a4' | 'original';
 
 export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
   isOpen,
@@ -84,11 +86,19 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
   const [brightness, setBrightness] = useState<number>(0); // -100 to +100
   const [contrast, setContrast] = useState<number>(0); // -100 to +100
   const [saturation, setSaturation] = useState<number>(100); // 0 to 200
-  const [aspectRatio, setAspectRatio] = useState<AspectRatioPreset>('a4');
+
+  // Manual Custom Crop & Framing
+  const [cropPreset, setCropPreset] = useState<CropPreset>('custom');
+  const [cropTop, setCropTop] = useState<number>(0); // 0% to 50%
+  const [cropBottom, setCropBottom] = useState<number>(0); // 0% to 50%
+  const [cropLeft, setCropLeft] = useState<number>(0); // 0% to 50%
+  const [cropRight, setCropRight] = useState<number>(0); // 0% to 50%
+
   const [zoom, setZoom] = useState<number>(1);
   const [panX, setPanX] = useState<number>(0);
   const [panY, setPanY] = useState<number>(0);
 
+  const [editSubTab, setEditSubTab] = useState<'crop' | 'rotate' | 'adjust'>('crop');
   const [activeTab, setActiveTab] = useState<'edit' | 'pages'>('edit');
   const [selectedPageNum, setSelectedPageNum] = useState<number>(1);
   const [excludedPages, setExcludedPages] = useState<number[]>(initialExcludedPages);
@@ -200,7 +210,7 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
     }
   };
 
-  // Live Canvas Rendering with Crop, Rotate, Brightness, Contrast & Zoom
+  // Live Canvas Rendering with Custom Manual Crop, Rotate, Brightness & Contrast
   const renderLiveCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const img = currentImageRef.current;
@@ -220,7 +230,7 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
     let targetW = rotatedW;
     let targetH = rotatedH;
 
-    if (aspectRatio === 'a4') {
+    if (cropPreset === 'a4') {
       const ratio = 1 / 1.414; // Standard A4 ratio
       if (rotatedW / rotatedH > ratio) {
         targetW = rotatedH * ratio;
@@ -229,37 +239,16 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
         targetW = rotatedW;
         targetH = rotatedW / ratio;
       }
-    } else if (aspectRatio === '1:1') {
-      const minDim = Math.min(rotatedW, rotatedH);
-      targetW = minDim;
-      targetH = minDim;
-    } else if (aspectRatio === '3:4') {
-      const ratio = 3 / 4;
-      if (rotatedW / rotatedH > ratio) {
-        targetW = rotatedH * ratio;
-        targetH = rotatedH;
-      } else {
-        targetW = rotatedW;
-        targetH = rotatedW / ratio;
-      }
-    } else if (aspectRatio === '4:3') {
-      const ratio = 4 / 3;
-      if (rotatedW / rotatedH > ratio) {
-        targetW = rotatedH * ratio;
-        targetH = rotatedH;
-      } else {
-        targetW = rotatedW;
-        targetH = rotatedW / ratio;
-      }
-    } else if (aspectRatio === '16:9') {
-      const ratio = 16 / 9;
-      if (rotatedW / rotatedH > ratio) {
-        targetW = rotatedH * ratio;
-        targetH = rotatedH;
-      } else {
-        targetW = rotatedW;
-        targetH = rotatedW / ratio;
-      }
+    } else if (cropPreset === 'custom') {
+      // Free manual crop based on user's custom edge adjustments
+      const visibleW = Math.max(0.1, 1 - (cropLeft + cropRight) / 100);
+      const visibleH = Math.max(0.1, 1 - (cropTop + cropBottom) / 100);
+      targetW = rotatedW * visibleW;
+      targetH = rotatedH * visibleH;
+    } else {
+      // Full original
+      targetW = rotatedW;
+      targetH = rotatedH;
     }
 
     canvas.width = Math.round(targetW);
@@ -271,7 +260,12 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
     ctx.filter = `brightness(${100 + brightness}%) contrast(${100 + contrast}%) saturate(${saturation}%)`;
 
     ctx.save();
-    ctx.translate(canvas.width / 2 + panX, canvas.height / 2 + panY);
+
+    // Adjust center with pan and custom crop edge offsets
+    const cropOffsetX = cropPreset === 'custom' ? ((cropRight - cropLeft) / 200) * rotatedW : 0;
+    const cropOffsetY = cropPreset === 'custom' ? ((cropBottom - cropTop) / 200) * rotatedH : 0;
+
+    ctx.translate(canvas.width / 2 + panX + cropOffsetX, canvas.height / 2 + panY + cropOffsetY);
 
     const scaleX = (flipH ? -1 : 1) * zoom;
     const scaleY = (flipV ? -1 : 1) * zoom;
@@ -280,7 +274,7 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
     ctx.rotate(rad);
     ctx.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height);
     ctx.restore();
-  }, [rotation, fineAngle, flipH, flipV, brightness, contrast, saturation, aspectRatio, zoom, panX, panY]);
+  }, [rotation, fineAngle, flipH, flipV, brightness, contrast, saturation, cropPreset, cropTop, cropBottom, cropLeft, cropRight, zoom, panX, panY]);
 
   useEffect(() => {
     if (isOpen && currentImageRef.current) {
@@ -363,7 +357,11 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
     setBrightness(0);
     setContrast(0);
     setSaturation(100);
-    setAspectRatio('a4');
+    setCropPreset('custom');
+    setCropTop(0);
+    setCropBottom(0);
+    setCropLeft(0);
+    setCropRight(0);
     setZoom(1);
     setPanX(0);
     setPanY(0);
@@ -379,15 +377,65 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
   const effectivePageCount = Math.max(1, totalPages - excludedPages.length);
 
   const handleSaveAndApply = () => {
-    onSave({
-      name: docName.trim() || fileName,
-      pageCount: effectivePageCount,
-      rotation,
-      pageRange: excludedPages.length > 0 ? `${effectivePageCount} of ${totalPages} pages` : 'all',
-      excludedPages,
-      customNotes: notes.trim() || undefined,
-    });
-    onClose();
+    const canvas = canvasRef.current;
+    const isCustomized =
+      cropPreset !== 'original' ||
+      cropTop > 0 ||
+      cropBottom > 0 ||
+      cropLeft > 0 ||
+      cropRight > 0 ||
+      zoom !== 1 ||
+      panX !== 0 ||
+      panY !== 0 ||
+      rotation !== 0 ||
+      fineAngle !== 0 ||
+      flipH ||
+      flipV ||
+      brightness !== 0 ||
+      contrast !== 0 ||
+      saturation !== 100;
+
+    if (canvas && isCustomized) {
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            const previewUrl = URL.createObjectURL(blob);
+            onSave({
+              name: docName.trim() || fileName,
+              pageCount: effectivePageCount,
+              rotation,
+              pageRange: excludedPages.length > 0 ? `${effectivePageCount} of ${totalPages} pages` : 'all',
+              excludedPages,
+              customNotes: notes.trim() || undefined,
+              editedBlob: blob,
+              previewUrl,
+            });
+          } else {
+            onSave({
+              name: docName.trim() || fileName,
+              pageCount: effectivePageCount,
+              rotation,
+              pageRange: excludedPages.length > 0 ? `${effectivePageCount} of ${totalPages} pages` : 'all',
+              excludedPages,
+              customNotes: notes.trim() || undefined,
+            });
+          }
+          onClose();
+        },
+        'image/jpeg',
+        0.95
+      );
+    } else {
+      onSave({
+        name: docName.trim() || fileName,
+        pageCount: effectivePageCount,
+        rotation,
+        pageRange: excludedPages.length > 0 ? `${effectivePageCount} of ${totalPages} pages` : 'all',
+        excludedPages,
+        customNotes: notes.trim() || undefined,
+      });
+      onClose();
+    }
   };
 
   if (!isOpen) return null;
@@ -396,7 +444,7 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto">
       <div className="bg-[#0c101d] border border-white/15 rounded-3xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-slate-100 my-auto">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+        <div className="px-5 sm:px-6 py-3.5 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
           <div className="flex items-center gap-3 truncate">
             <div className="w-10 h-10 rounded-xl bg-grad grid place-items-center shadow-[0_4px_16px_rgba(255,46,99,0.35)] shrink-0">
               <Crop className="w-5 h-5 text-white stroke-[2.2]" />
@@ -406,7 +454,7 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
                 Edit & Crop Document: {fileName}
               </h3>
               <p className="text-xs text-slate-400 truncate">
-                Crop, rotate, and adjust brightness with live preview right inside the browser • {totalPages} {totalPages === 1 ? 'Page' : 'Pages'}
+                Aspect Ratio Crop, rotation, and document enhancement • {totalPages} {totalPages === 1 ? 'Page' : 'Pages'}
               </p>
             </div>
           </div>
@@ -429,24 +477,24 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="border-b border-white/10 bg-white/[0.02] px-6 pt-3 flex gap-2">
+        {/* Main Tabs */}
+        <div className="border-b border-white/10 bg-white/[0.02] px-4 sm:px-6 pt-2.5 flex gap-2">
           <button
             type="button"
             onClick={() => setActiveTab('edit')}
-            className={`px-4 py-2 text-xs font-black rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3.5 sm:px-4 py-2 text-xs font-black rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'edit'
                 ? 'bg-grad text-white shadow-[0_4px_16px_rgba(255,46,99,0.3)]'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
             <Crop className="w-3.5 h-3.5" />
-            Crop, Rotate & Brightness (Live Preview)
+            Aspect Ratio Crop & Edit
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('pages')}
-            className={`px-4 py-2 text-xs font-black rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3.5 sm:px-4 py-2 text-xs font-black rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'pages'
                 ? 'bg-grad text-white shadow-[0_4px_16px_rgba(255,46,99,0.3)]'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
@@ -462,7 +510,7 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
           <div className="flex flex-col flex-1 overflow-hidden">
             {/* Live Interactive Viewport */}
             <div
-              className="p-4 sm:p-5 bg-[#050810] flex items-center justify-center min-h-[260px] flex-1 overflow-hidden relative select-none"
+              className="p-3 sm:p-5 bg-[#050810] flex items-center justify-center min-h-[240px] sm:min-h-[280px] flex-1 overflow-hidden relative select-none"
               style={{
                 backgroundImage:
                   'linear-gradient(45deg, #090d19 25%, transparent 25%), linear-gradient(-45deg, #090d19 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #090d19 75%), linear-gradient(-45deg, transparent 75%, #090d19 75%)',
@@ -486,7 +534,7 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
                   onTouchCancel={handleTouchEnd}
-                  className={`touch-none max-h-[38vh] max-w-full rounded-xl shadow-2xl border border-white/10 object-contain ${
+                  className={`touch-none max-h-[36vh] max-w-full rounded-xl shadow-2xl border border-white/10 object-contain ${
                     zoom > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
                   }`}
                 />
@@ -494,7 +542,7 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
 
               {/* Floating Page Indicator */}
               <div className="absolute top-3 left-4 bg-black/75 backdrop-blur-md px-3 py-1 rounded-xl text-xs font-mono font-bold text-pink-300 border border-white/10">
-                Viewing Page {selectedPageNum} of {totalPages}
+                Page {selectedPageNum} of {totalPages} • {cropPreset === 'custom' ? 'CUSTOM MANUAL CROP' : cropPreset.toUpperCase()}
               </div>
 
               {/* Quick Clean Document Button */}
@@ -508,9 +556,9 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
               </button>
             </div>
 
-            {/* Editing Controls Bar */}
-            <div className="p-5 bg-[#0c101d] border-t border-white/10 space-y-4 max-h-[34vh] overflow-y-auto">
-              {/* Row 1: Page Picker (if multi-page) */}
+            {/* Editing Subtabs & Controls Bar */}
+            <div className="p-4 sm:p-5 bg-[#0c101d] border-t border-white/10 space-y-3.5 max-h-[38vh] overflow-y-auto">
+              {/* Multi-page Selector if > 1 page */}
               {totalPages > 1 && (
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
                   <span className="text-slate-400 font-bold shrink-0">Select Page:</span>
@@ -531,126 +579,375 @@ export const DocumentEditorModal: React.FC<DocumentEditorModalProps> = ({
                 </div>
               )}
 
-              {/* Row 2: Crop Aspect Ratio & Zoom */}
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 text-xs">
-                  <span className="text-[10px] font-bold text-slate-400 px-2 uppercase">Ratio:</span>
-                  {[
-                    { id: 'a4', label: 'A4 Sheet' },
-                    { id: 'free', label: 'Original' },
-                    { id: '1:1', label: '1:1 Square' },
-                    { id: '3:4', label: '3:4 Card' },
-                    { id: '4:3', label: '4:3 Photo' },
-                  ].map((preset) => (
+              {/* Sub-Tab Switcher: Aspect Ratio Crop | Rotate & Straighten | Brightness & Clean */}
+              <div className="grid grid-cols-3 gap-2 bg-white/5 p-1 rounded-2xl border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setEditSubTab('crop')}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                    editSubTab === 'crop'
+                      ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-sm'
+                      : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Crop className="w-3.5 h-3.5" />
+                  Aspect Ratio Crop
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditSubTab('rotate')}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                    editSubTab === 'rotate'
+                      ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-sm'
+                      : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <RotateCw className="w-3.5 h-3.5" />
+                  Rotate & Straighten
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditSubTab('adjust')}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                    editSubTab === 'adjust'
+                      ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-sm'
+                      : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Sliders className="w-3.5 h-3.5" />
+                  Clean & Brightness
+                </button>
+              </div>
+
+              {/* SubTab 1: Custom Manual Crop & Zoom */}
+              {editSubTab === 'crop' && (
+                <div className="space-y-3.5 animate-fade-in">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block mb-2">
+                      Crop Selection Mode:
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'custom', label: '✂️ Manual Free Crop', desc: 'Apne hisaab se crop karein' },
+                        { id: 'a4', label: '📄 A4 Standard Fit', desc: 'Standard Xerox sheet ratio' },
+                        { id: 'original', label: '📐 Full Original', desc: 'Poora page bina crop' },
+                      ].map((preset) => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => setCropPreset(preset.id as CropPreset)}
+                          className={`p-2.5 rounded-xl border text-center transition flex flex-col items-center justify-center cursor-pointer ${
+                            cropPreset === preset.id
+                              ? 'bg-pink-500/20 border-pink-500 text-white ring-1 ring-pink-500 shadow-[0_0_15px_rgba(255,46,99,0.3)]'
+                              : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <span className="text-xs font-black">{preset.label}</span>
+                          <span className="text-[10px] text-slate-400 mt-0.5">{preset.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Manual Edge Adjusters (Top, Bottom, Left, Right) */}
+                  {cropPreset === 'custom' && (
+                    <div className="bg-white/5 p-3.5 rounded-2xl border border-white/10 space-y-3">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-200">
+                        <span className="flex items-center gap-1.5 text-pink-300">
+                          <Crop className="w-3.5 h-3.5" /> Manual Crop Edges (Kinare Cut Karein):
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCropTop(5);
+                              setCropBottom(5);
+                              setCropLeft(5);
+                              setCropRight(5);
+                            }}
+                            className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-[10px] font-bold text-slate-200 cursor-pointer"
+                            title="Remove scanner borders"
+                          >
+                            Trim Borders (5%)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCropTop(0);
+                              setCropBottom(50);
+                              setCropLeft(0);
+                              setCropRight(0);
+                            }}
+                            className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-[10px] font-bold text-slate-200 cursor-pointer"
+                            title="Keep top half"
+                          >
+                            Top Half
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCropTop(50);
+                              setCropBottom(0);
+                              setCropLeft(0);
+                              setCropRight(0);
+                            }}
+                            className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-[10px] font-bold text-slate-200 cursor-pointer"
+                            title="Keep bottom half"
+                          >
+                            Bottom Half
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCropTop(0);
+                              setCropBottom(0);
+                              setCropLeft(0);
+                              setCropRight(0);
+                            }}
+                            className="px-2 py-1 rounded-lg bg-pink-500/20 text-pink-300 hover:bg-pink-500/30 text-[10px] font-bold cursor-pointer"
+                            title="Reset all edge cuts"
+                          >
+                            Reset
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                        {/* Top Margin */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[11px] text-slate-300">
+                            <span>⬆️ Top Cut:</span>
+                            <span className="font-mono text-pink-400 font-bold">{cropTop}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="50"
+                            value={cropTop}
+                            onChange={(e) => setCropTop(parseInt(e.target.value, 10))}
+                            className="w-full accent-pink-500 cursor-pointer"
+                          />
+                        </div>
+
+                        {/* Bottom Margin */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[11px] text-slate-300">
+                            <span>⬇️ Bottom Cut:</span>
+                            <span className="font-mono text-pink-400 font-bold">{cropBottom}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="50"
+                            value={cropBottom}
+                            onChange={(e) => setCropBottom(parseInt(e.target.value, 10))}
+                            className="w-full accent-pink-500 cursor-pointer"
+                          />
+                        </div>
+
+                        {/* Left Margin */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[11px] text-slate-300">
+                            <span>⬅️ Left Cut:</span>
+                            <span className="font-mono text-pink-400 font-bold">{cropLeft}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="50"
+                            value={cropLeft}
+                            onChange={(e) => setCropLeft(parseInt(e.target.value, 10))}
+                            className="w-full accent-pink-500 cursor-pointer"
+                          />
+                        </div>
+
+                        {/* Right Margin */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[11px] text-slate-300">
+                            <span>➡️ Right Cut:</span>
+                            <span className="font-mono text-pink-400 font-bold">{cropRight}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="50"
+                            value={cropRight}
+                            onChange={(e) => setCropRight(parseInt(e.target.value, 10))}
+                            className="w-full accent-pink-500 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Zoom & Pan Guidance */}
+                  <div className="bg-white/5 p-3 rounded-2xl border border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-300 font-bold">Zoom Document:</span>
+                      <button
+                        type="button"
+                        onClick={() => setZoom((z) => Math.max(1, +(z - 0.25).toFixed(2)))}
+                        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white"
+                        title="Zoom out"
+                      >
+                        <ZoomOut className="w-3.5 h-3.5" />
+                      </button>
+                      <input
+                        type="range"
+                        min="1"
+                        max="3"
+                        step="0.05"
+                        value={zoom}
+                        onChange={(e) => setZoom(parseFloat(e.target.value))}
+                        className="w-24 accent-pink-500 cursor-pointer"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setZoom((z) => Math.min(3, +(z + 0.25).toFixed(2)))}
+                        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white"
+                        title="Zoom in"
+                      >
+                        <ZoomIn className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="font-mono text-pink-400 font-bold w-12 text-center">
+                        {Math.round(zoom * 100)}%
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] text-slate-400 italic">
+                      💡 Tip: Ungli ya mouse se drag karke crop position adjust karein
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SubTab 2: Rotate & Straighten */}
+              {editSubTab === 'rotate' && (
+                <div className="space-y-3 animate-fade-in">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <button
-                      key={preset.id}
                       type="button"
-                      onClick={() => setAspectRatio(preset.id as AspectRatioPreset)}
-                      className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${
-                        aspectRatio === preset.id
-                          ? 'bg-pink-500 text-white shadow-xs'
-                          : 'text-slate-300 hover:text-white'
+                      onClick={() => setRotation((r) => (r - 90 + 360) % 360)}
+                      className="py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-200 hover:text-white flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-violet-400" /> Rotate -90°
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRotation((r) => (r + 90) % 360)}
+                      className="py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-200 hover:text-white flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <RotateCw className="w-3.5 h-3.5 text-pink-400" /> Rotate +90° ({rotation}°)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFlipH((f) => !f)}
+                      className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
+                        flipH ? 'bg-pink-500/20 border-pink-500 text-pink-300' : 'bg-white/5 border-white/10 text-slate-300'
                       }`}
                     >
-                      {preset.label}
+                      <FlipHorizontal className="w-3.5 h-3.5 text-cyan-400" /> Flip Horizontal
                     </button>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-slate-400">Zoom:</span>
-                  <button
-                    type="button"
-                    onClick={() => setZoom((z) => Math.max(1, z - 0.25))}
-                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white border border-white/10"
-                  >
-                    <ZoomOut className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="font-mono text-xs font-bold text-cyan-400 w-10 text-center">
-                    {Math.round(zoom * 100)}%
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setZoom((z) => Math.min(3, z + 0.25))}
-                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white border border-white/10"
-                  >
-                    <ZoomIn className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Row 3: Rotation & Flips */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRotation((r) => (r - 90 + 360) % 360)}
-                  className="py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-200 hover:text-white flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 text-violet-400" /> Rotate -90°
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRotation((r) => (r + 90) % 360)}
-                  className="py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-200 hover:text-white flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <RotateCw className="w-3.5 h-3.5 text-pink-400" /> Rotate +90° ({rotation}°)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFlipH((f) => !f)}
-                  className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
-                    flipH ? 'bg-pink-500/20 border-pink-500 text-pink-300' : 'bg-white/5 border-white/10 text-slate-300'
-                  }`}
-                >
-                  <FlipHorizontal className="w-3.5 h-3.5 text-cyan-400" /> Flip H
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFlipV((f) => !f)}
-                  className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
-                    flipV ? 'bg-pink-500/20 border-pink-500 text-pink-300' : 'bg-white/5 border-white/10 text-slate-300'
-                  }`}
-                >
-                  <FlipVertical className="w-3.5 h-3.5 text-emerald-400" /> Flip V
-                </button>
-              </div>
-
-              {/* Row 4: Brightness & Contrast Sliders */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <div className="bg-white/5 p-3 rounded-xl border border-white/10 space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-300 font-semibold flex items-center gap-1.5">
-                      <Sun className="w-3.5 h-3.5 text-amber-400" /> Brightness
-                    </span>
-                    <span className="font-mono text-pink-400 font-bold">{brightness > 0 ? `+${brightness}%` : `${brightness}%`}</span>
+                    <button
+                      type="button"
+                      onClick={() => setFlipV((f) => !f)}
+                      className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
+                        flipV ? 'bg-pink-500/20 border-pink-500 text-pink-300' : 'bg-white/5 border-white/10 text-slate-300'
+                      }`}
+                    >
+                      <FlipVertical className="w-3.5 h-3.5 text-emerald-400" /> Flip Vertical
+                    </button>
                   </div>
-                  <input
-                    type="range"
-                    min="-100"
-                    max="100"
-                    value={brightness}
-                    onChange={(e) => setBrightness(parseInt(e.target.value, 10))}
-                    className="w-full accent-pink-500 cursor-pointer"
-                  />
-                </div>
 
-                <div className="bg-white/5 p-3 rounded-xl border border-white/10 space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-300 font-semibold flex items-center gap-1.5">
-                      <Contrast className="w-3.5 h-3.5 text-violet-400" /> Contrast
-                    </span>
-                    <span className="font-mono text-pink-400 font-bold">{contrast > 0 ? `+${contrast}%` : `${contrast}%`}</span>
+                  {/* Fine Straighten Angle Slider */}
+                  <div className="bg-white/5 p-3 rounded-2xl border border-white/10 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-300 font-semibold flex items-center gap-1.5">
+                        <RotateCw className="w-3.5 h-3.5 text-amber-400" /> Fine Angle Straightener
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-pink-400 font-bold">{fineAngle > 0 ? `+${fineAngle}°` : `${fineAngle}°`}</span>
+                        {fineAngle !== 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setFineAngle(0)}
+                            className="text-[10px] text-slate-400 hover:text-white underline cursor-pointer"
+                          >
+                            Reset
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <input
+                      type="range"
+                      min="-45"
+                      max="45"
+                      value={fineAngle}
+                      onChange={(e) => setFineAngle(parseInt(e.target.value, 10))}
+                      className="w-full accent-pink-500 cursor-pointer"
+                    />
                   </div>
-                  <input
-                    type="range"
-                    min="-100"
-                    max="100"
-                    value={contrast}
-                    onChange={(e) => setContrast(parseInt(e.target.value, 10))}
-                    className="w-full accent-pink-500 cursor-pointer"
-                  />
                 </div>
-              </div>
+              )}
+
+              {/* SubTab 3: Adjust & Clean Document */}
+              {editSubTab === 'adjust' && (
+                <div className="space-y-3 animate-fade-in">
+                  <div className="flex items-center justify-between bg-gradient-to-r from-pink-500/10 to-purple-500/10 border border-pink-500/20 p-3 rounded-2xl">
+                    <div>
+                      <div className="text-xs font-black text-pink-300 flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-pink-400" /> 1-Tap Clean Document Preset
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Removes grey shadows, bleeds, and enhances black text for ultra-crisp printing.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCleanDocumentPreset}
+                      className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-rose-600 text-white text-xs font-bold shadow-md hover:brightness-110 cursor-pointer shrink-0"
+                    >
+                      Apply Clean B&W
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="bg-white/5 p-3 rounded-2xl border border-white/10 space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-300 font-semibold flex items-center gap-1.5">
+                          <Sun className="w-3.5 h-3.5 text-amber-400" /> Brightness
+                        </span>
+                        <span className="font-mono text-pink-400 font-bold">{brightness > 0 ? `+${brightness}%` : `${brightness}%`}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="-100"
+                        max="100"
+                        value={brightness}
+                        onChange={(e) => setBrightness(parseInt(e.target.value, 10))}
+                        className="w-full accent-pink-500 cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="bg-white/5 p-3 rounded-2xl border border-white/10 space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-300 font-semibold flex items-center gap-1.5">
+                          <Contrast className="w-3.5 h-3.5 text-violet-400" /> Contrast
+                        </span>
+                        <span className="font-mono text-pink-400 font-bold">{contrast > 0 ? `+${contrast}%` : `${contrast}%`}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="-100"
+                        max="100"
+                        value={contrast}
+                        onChange={(e) => setContrast(parseInt(e.target.value, 10))}
+                        className="w-full accent-pink-500 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

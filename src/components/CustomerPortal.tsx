@@ -464,34 +464,85 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
     }
   };
 
-  // Save Edited Document Options (Page Range, Excluded Pages, Rotation, Notes)
-  const handleSaveEditedDocument = (edits: {
+  // Save Edited Document Options (Page Range, Excluded Pages, Rotation, Notes, or Cropped Canvas)
+  const handleSaveEditedDocument = async (edits: {
     name: string;
     pageCount: number;
     rotation: number;
     pageRange: string;
     excludedPages: number[];
     customNotes?: string;
+    editedBlob?: Blob;
+    previewUrl?: string;
   }) => {
     if (!editingDocItem) return;
-
-    setFileQueue((prev) =>
-      prev.map((item) =>
-        item.id === editingDocItem.id
-          ? {
-              ...item,
-              name: edits.name,
-              pageCount: edits.pageCount,
-              rotation: edits.rotation,
-              pageRange: edits.pageRange,
-              excludedPages: edits.excludedPages,
-              customNotes: edits.customNotes,
-              isEdited: true,
-            }
-          : item
-      )
-    );
+    const currentItem = editingDocItem;
     setEditingDocItem(null);
+
+    if (edits.editedBlob) {
+      const cleanBaseName = edits.name.replace(/\.[^/.]+$/, '');
+      const editedFile = new File([edits.editedBlob], `Cropped_${cleanBaseName}.jpg`, {
+        type: 'image/jpeg',
+      });
+
+      setFileQueue((prev) =>
+        prev.map((item) =>
+          item.id === currentItem.id
+            ? {
+                ...item,
+                name: edits.name,
+                file: editedFile,
+                previewUrl: edits.previewUrl || item.previewUrl,
+                sizeBytes: edits.editedBlob!.size,
+                pageCount: edits.pageCount,
+                rotation: edits.rotation,
+                pageRange: edits.pageRange,
+                excludedPages: edits.excludedPages,
+                customNotes: edits.customNotes,
+                isEdited: true,
+                isUploading: true,
+              }
+            : item
+        )
+      );
+
+      try {
+        const res = await api.uploadFile(editedFile);
+        setFileQueue((prev) =>
+          prev.map((item) =>
+            item.id === currentItem.id
+              ? {
+                  ...item,
+                  serverInfo: res,
+                  isUploading: false,
+                }
+              : item
+          )
+        );
+      } catch (err) {
+        console.error('Failed to upload cropped document:', err);
+        setFileQueue((prev) =>
+          prev.map((item) => (item.id === currentItem.id ? { ...item, isUploading: false } : item))
+        );
+      }
+    } else {
+      setFileQueue((prev) =>
+        prev.map((item) =>
+          item.id === currentItem.id
+            ? {
+                ...item,
+                name: edits.name,
+                pageCount: edits.pageCount,
+                rotation: edits.rotation,
+                pageRange: edits.pageRange,
+                excludedPages: edits.excludedPages,
+                customNotes: edits.customNotes,
+                isEdited: true,
+              }
+            : item
+        )
+      );
+    }
   };
 
   // Handle Prepared ID Card Sheet Output

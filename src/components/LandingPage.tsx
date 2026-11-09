@@ -41,9 +41,19 @@ interface LandingPageProps {
   onOpenCustomerPortal: (slug: string) => void;
   onLoginSuccess: (user: any, shop?: any) => void;
   onNavigatePolicy?: (path: string) => void;
+  currentUser?: any;
+  currentShop?: any;
+  onOpenDashboard?: () => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, onLoginSuccess, onNavigatePolicy }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({
+  onOpenCustomerPortal,
+  onLoginSuccess,
+  onNavigatePolicy,
+  currentUser,
+  currentShop,
+  onOpenDashboard,
+}) => {
   useEffect(() => {
     document.documentElement.dataset.theme = 'dark';
     try {
@@ -218,13 +228,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenCustomerPortal, 
 
           {/* Nav Right CTA */}
           <div className="flex items-center gap-2.5">
-            <button
-              onClick={() => setShowLoginModal(true)}
-              className="px-4 py-2 text-xs sm:text-sm font-black btn-grad rounded-xl cursor-pointer flex items-center gap-2 shadow-[0_4px_16px_rgba(255,46,99,0.35)]"
-            >
-              <LogIn className="w-3.5 h-3.5" />
-              Sign in
-            </button>
+            {currentUser && onOpenDashboard ? (
+              <button
+                onClick={onOpenDashboard}
+                className="px-4 py-2 text-xs sm:text-sm font-black btn-grad rounded-xl cursor-pointer flex items-center gap-2 shadow-[0_4px_16px_rgba(255,46,99,0.35)]"
+              >
+                <span>🏪 Dashboard</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowLoginModal(true)}
+                className="px-4 py-2 text-xs sm:text-sm font-black btn-grad rounded-xl cursor-pointer flex items-center gap-2 shadow-[0_4px_16px_rgba(255,46,99,0.35)]"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                Sign in
+              </button>
+            )}
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

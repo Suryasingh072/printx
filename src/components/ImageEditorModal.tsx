@@ -25,7 +25,7 @@ interface ImageEditorModalProps {
   onSave: (editedBlob: Blob, previewUrl: string) => void;
 }
 
-type AspectRatioPreset = 'free' | '1:1' | '3:4' | '4:3' | '16:9' | 'a4';
+type CropPreset = 'custom' | 'a4' | 'original';
 
 export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
   imageUrl,
@@ -42,7 +42,14 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
   const [brightness, setBrightness] = useState<number>(0); // -100 to +100
   const [contrast, setContrast] = useState<number>(0); // -100 to +100
   const [saturation, setSaturation] = useState<number>(100); // 0 (B&W) to 200 (Vivid)
-  const [aspectRatio, setAspectRatio] = useState<AspectRatioPreset>('free');
+
+  // Custom Manual Crop & Framing
+  const [cropPreset, setCropPreset] = useState<CropPreset>('custom');
+  const [cropTop, setCropTop] = useState<number>(0); // 0% to 50%
+  const [cropBottom, setCropBottom] = useState<number>(0); // 0% to 50%
+  const [cropLeft, setCropLeft] = useState<number>(0); // 0% to 50%
+  const [cropRight, setCropRight] = useState<number>(0); // 0% to 50%
+
   const [zoom, setZoom] = useState<number>(1); // 1x to 3x
   const [panX, setPanX] = useState<number>(0);
   const [panY, setPanY] = useState<number>(0);
@@ -64,7 +71,11 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
     setBrightness(0);
     setContrast(0);
     setSaturation(100);
-    setAspectRatio('free');
+    setCropPreset('custom');
+    setCropTop(0);
+    setCropBottom(0);
+    setCropLeft(0);
+    setCropRight(0);
     setZoom(1);
     setPanX(0);
     setPanY(0);
@@ -97,42 +108,11 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
     const rotatedW = img.width * cos + img.height * sin;
     const rotatedH = img.width * sin + img.height * cos;
 
-    // Determine target canvas dimensions according to aspect ratio
+    // Determine target canvas dimensions according to crop preset
     let targetW = rotatedW;
     let targetH = rotatedH;
 
-    if (aspectRatio === '1:1') {
-      const minDim = Math.min(rotatedW, rotatedH);
-      targetW = minDim;
-      targetH = minDim;
-    } else if (aspectRatio === '3:4') {
-      const ratio = 3 / 4;
-      if (rotatedW / rotatedH > ratio) {
-        targetW = rotatedH * ratio;
-        targetH = rotatedH;
-      } else {
-        targetW = rotatedW;
-        targetH = rotatedW / ratio;
-      }
-    } else if (aspectRatio === '4:3') {
-      const ratio = 4 / 3;
-      if (rotatedW / rotatedH > ratio) {
-        targetW = rotatedH * ratio;
-        targetH = rotatedH;
-      } else {
-        targetW = rotatedW;
-        targetH = rotatedW / ratio;
-      }
-    } else if (aspectRatio === '16:9') {
-      const ratio = 16 / 9;
-      if (rotatedW / rotatedH > ratio) {
-        targetW = rotatedH * ratio;
-        targetH = rotatedH;
-      } else {
-        targetW = rotatedW;
-        targetH = rotatedW / ratio;
-      }
-    } else if (aspectRatio === 'a4') {
+    if (cropPreset === 'a4') {
       const ratio = 1 / 1.414; // A4 portrait
       if (rotatedW / rotatedH > ratio) {
         targetW = rotatedH * ratio;
@@ -141,6 +121,16 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
         targetW = rotatedW;
         targetH = rotatedW / ratio;
       }
+    } else if (cropPreset === 'custom') {
+      // Free manual crop based on user's custom edge adjustments
+      const visibleW = Math.max(0.1, 1 - (cropLeft + cropRight) / 100);
+      const visibleH = Math.max(0.1, 1 - (cropTop + cropBottom) / 100);
+      targetW = rotatedW * visibleW;
+      targetH = rotatedH * visibleH;
+    } else {
+      // Full original
+      targetW = rotatedW;
+      targetH = rotatedH;
     }
 
     // Set canvas dimensions
@@ -154,8 +144,11 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
 
     ctx.save();
 
-    // Translate to center of canvas
-    ctx.translate(canvas.width / 2 + panX, canvas.height / 2 + panY);
+    // Translate to center of canvas with pan and custom crop offsets
+    const cropOffsetX = cropPreset === 'custom' ? ((cropRight - cropLeft) / 200) * rotatedW : 0;
+    const cropOffsetY = cropPreset === 'custom' ? ((cropBottom - cropTop) / 200) * rotatedH : 0;
+
+    ctx.translate(canvas.width / 2 + panX + cropOffsetX, canvas.height / 2 + panY + cropOffsetY);
 
     // Apply scale for zoom and flips
     const scaleX = (flipH ? -1 : 1) * zoom;
@@ -169,7 +162,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
     ctx.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height);
 
     ctx.restore();
-  }, [rotation, fineAngle, flipH, flipV, brightness, contrast, saturation, aspectRatio, zoom, panX, panY]);
+  }, [rotation, fineAngle, flipH, flipV, brightness, contrast, saturation, cropPreset, cropTop, cropBottom, cropLeft, cropRight, zoom, panX, panY]);
 
   // Re-render whenever parameters change
   useEffect(() => {
@@ -239,7 +232,11 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
     setBrightness(0);
     setContrast(0);
     setSaturation(100);
-    setAspectRatio('free');
+    setCropPreset('custom');
+    setCropTop(0);
+    setCropBottom(0);
+    setCropLeft(0);
+    setCropRight(0);
     setZoom(1);
     setPanX(0);
     setPanY(0);
@@ -357,7 +354,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-bold text-slate-300 uppercase tracking-wider font-head">
-                  Aspect Ratio Presets:
+                  Crop Selection Mode:
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-400">Zoom:</span>
@@ -383,21 +380,18 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {[
-                  { id: 'a4', label: 'A4 Sheet', sub: 'Standard Document' },
-                  { id: 'free', label: 'Original', sub: 'Custom / Full' },
-                  { id: '1:1', label: '1:1 Square', sub: 'Passport / Avatar' },
-                  { id: '3:4', label: '3:4 Card', sub: 'ID Card Photo' },
-                  { id: '4:3', label: '4:3 Photo', sub: 'Standard Photo' },
-                  { id: '16:9', label: '16:9 Banner', sub: 'Widescreen' },
+                  { id: 'custom', label: '✂️ Manual Free Crop', sub: 'Apne hisaab se crop karein' },
+                  { id: 'a4', label: '📄 A4 Sheet', sub: 'Standard Document Fit' },
+                  { id: 'original', label: '📐 Full Original', sub: 'Poori photo bina cut' },
                 ].map((preset) => (
                   <button
                     key={preset.id}
                     type="button"
-                    onClick={() => setAspectRatio(preset.id as AspectRatioPreset)}
-                    className={`p-2.5 rounded-2xl border text-center transition cursor-pointer ${
-                      aspectRatio === preset.id
+                    onClick={() => setCropPreset(preset.id as CropPreset)}
+                    className={`p-2.5 rounded-2xl border text-center transition cursor-pointer flex flex-col items-center justify-center ${
+                      cropPreset === preset.id
                         ? 'border-pink-500 bg-pink-500/15 text-pink-300 shadow-[0_2px_12px_rgba(255,46,99,0.25)]'
                         : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:text-white'
                     }`}
@@ -406,6 +400,141 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
                     <p className="text-[10px] text-slate-400 mt-0.5">{preset.sub}</p>
                   </button>
                 ))}
+              </div>
+
+              {/* Manual Crop Margin Cut Controls */}
+              {cropPreset === 'custom' && (
+                <div className="bg-white/5 p-3.5 rounded-2xl border border-white/10 space-y-3">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-200">
+                    <span className="flex items-center gap-1.5 text-pink-300">
+                      <Crop className="w-3.5 h-3.5" /> Manual Crop Edges (Kinare Cut Karein):
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCropTop(5);
+                          setCropBottom(5);
+                          setCropLeft(5);
+                          setCropRight(5);
+                        }}
+                        className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-[10px] font-bold text-slate-200 cursor-pointer"
+                        title="Remove image borders"
+                      >
+                        Trim Borders (5%)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCropTop(0);
+                          setCropBottom(50);
+                          setCropLeft(0);
+                          setCropRight(0);
+                        }}
+                        className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-[10px] font-bold text-slate-200 cursor-pointer"
+                        title="Keep upper portion"
+                      >
+                        Top Half
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCropTop(50);
+                          setCropBottom(0);
+                          setCropLeft(0);
+                          setCropRight(0);
+                        }}
+                        className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-[10px] font-bold text-slate-200 cursor-pointer"
+                        title="Keep lower portion"
+                      >
+                        Bottom Half
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCropTop(0);
+                          setCropBottom(0);
+                          setCropLeft(0);
+                          setCropRight(0);
+                        }}
+                        className="px-2 py-1 rounded-lg bg-pink-500/20 text-pink-300 hover:bg-pink-500/30 text-[10px] font-bold cursor-pointer"
+                        title="Reset all edge cuts"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    {/* Top Margin */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px] text-slate-300">
+                        <span>⬆️ Top Cut:</span>
+                        <span className="font-mono text-pink-400 font-bold">{cropTop}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="50"
+                        value={cropTop}
+                        onChange={(e) => setCropTop(parseInt(e.target.value, 10))}
+                        className="w-full accent-pink-500 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Bottom Margin */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px] text-slate-300">
+                        <span>⬇️ Bottom Cut:</span>
+                        <span className="font-mono text-pink-400 font-bold">{cropBottom}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="50"
+                        value={cropBottom}
+                        onChange={(e) => setCropBottom(parseInt(e.target.value, 10))}
+                        className="w-full accent-pink-500 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Left Margin */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px] text-slate-300">
+                        <span>⬅️ Left Cut:</span>
+                        <span className="font-mono text-pink-400 font-bold">{cropLeft}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="50"
+                        value={cropLeft}
+                        onChange={(e) => setCropLeft(parseInt(e.target.value, 10))}
+                        className="w-full accent-pink-500 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Right Margin */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px] text-slate-300">
+                        <span>➡️ Right Cut:</span>
+                        <span className="font-mono text-pink-400 font-bold">{cropRight}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="50"
+                        value={cropRight}
+                        onChange={(e) => setCropRight(parseInt(e.target.value, 10))}
+                        className="w-full accent-pink-500 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="text-[11px] text-slate-400 italic">
+                💡 Tip: Ungli ya mouse se drag karke crop position adjust karein
               </div>
             </div>
           )}
