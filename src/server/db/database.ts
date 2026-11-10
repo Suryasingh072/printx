@@ -1605,6 +1605,18 @@ export class Database {
         result.push({ job, order });
       }
     }
+
+    // Strict Serial FIFO Ordering: Oldest orders print first when agent connects/reconnects
+    result.sort((a, b) => {
+      const timeA = new Date(a.order.createdAt || a.job.createdAt || 0).getTime();
+      const timeB = new Date(b.order.createdAt || b.job.createdAt || 0).getTime();
+      if (timeA !== timeB) return timeA - timeB;
+      const numA = parseInt(a.order.orderNumber?.replace(/\D/g, '') || '0', 10);
+      const numB = parseInt(b.order.orderNumber?.replace(/\D/g, '') || '0', 10);
+      if (numA !== numB) return numA - numB;
+      return (a.job.fileIndex || 1) - (b.job.fileIndex || 1);
+    });
+
     return result;
   }
 

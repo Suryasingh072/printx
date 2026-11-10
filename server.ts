@@ -936,13 +936,13 @@ app.get(['/api/shops/:slug', '/api/s/:slug'], (req, res) => {
   const approvalRules = db.getShopApprovalRules(shop.id);
   const agentOnline = isShopAgentOnline(shop.id);
 
-  const accountType = shop.accountType || (approvalRules.requireOnlinePayment ? 'printx' : 'shop');
-  const requireOnline = accountType === 'printx' ? (approvalRules.requireOnlinePayment ?? true) : false;
-  const requireCounter = accountType === 'shop' ? true : false;
+  const accountType = 'printx';
+  const requireOnline = true;
+  const requireCounter = false;
 
   const trayCapacity = shop.trayCapacity ?? 500;
   const paperPrinted = shop.paperPrintedSinceRefill ?? 0;
-  const isOutOfPaper = Boolean(shop.isOutOfPaper || paperPrinted >= trayCapacity);
+  const isOutOfPaper = false;
 
   res.json({
     shop: {
@@ -959,19 +959,10 @@ app.get(['/api/shops/:slug', '/api/s/:slug'], (req, res) => {
       trayCapacity,
       paperPrintedSinceRefill: paperPrinted,
       remainingPaper: Math.max(0, trayCapacity - paperPrinted),
-      isOutOfPaper,
+      isOutOfPaper: false,
       lastPaperRefillAt: shop.lastPaperRefillAt,
     },
-    pricing: accountType === 'office' ? {
-      bwSinglePrice: 0,
-      bwDuplexPrice: 0,
-      colorSinglePrice: 0,
-      colorDuplexPrice: 0,
-      legalExtra: 0,
-      photo4x6Price: 0,
-      idCardSinglePrice: 0,
-      currency: pricing.currency,
-    } : {
+    pricing: {
       bwSinglePrice: pricing.bwSinglePrice,
       bwDuplexPrice: pricing.bwDuplexPrice,
       colorSinglePrice: pricing.colorSinglePrice,
@@ -981,8 +972,8 @@ app.get(['/api/shops/:slug', '/api/s/:slug'], (req, res) => {
       idCardSinglePrice: pricing.idCardSinglePrice,
       currency: pricing.currency,
     },
-    requiresCounterPayment: requireCounter,
-    requireOnlinePayment: requireOnline,
+    requiresCounterPayment: false,
+    requireOnlinePayment: true,
     accountType,
     rules: approvalRules,
     agentOnline,
@@ -1089,18 +1080,7 @@ app.post('/api/orders', async (req, res) => {
     });
   }
 
-  // Paper tray availability check: block print order if tray is empty!
-  const trayCapacity = shop.trayCapacity ?? 500;
-  const paperPrinted = shop.paperPrintedSinceRefill ?? 0;
-  if (shop.isOutOfPaper || paperPrinted >= trayCapacity) {
-    return res.status(400).json({
-      error: 'Printer paper tray is currently empty (0 sheets remaining). Please ask the shopkeeper to refill the paper tray to place your order.',
-      isOutOfPaper: true,
-    });
-  }
-
   const pricing = db.getShopPricing(shop.id);
-  const rules = db.getShopApprovalRules(shop.id);
 
   // Server computes exact price snapshot! Never trust client calculations.
   const priceCalc = calculateOrderPrice(pricing, {
@@ -1112,39 +1092,11 @@ app.post('/api/orders', async (req, res) => {
     orderType: orderType || 'document',
   });
 
-  const accountType = shop.accountType || (rules.requireOnlinePayment ? 'printx' : 'shop');
-  const isOnlinePaymentRequired = accountType === 'printx' && rules.requireOnlinePayment !== false;
-  const isCounterPaymentRequested = accountType === 'shop' || req.body.paymentMethod === 'counter_cash' || req.body.paymentMethod === 'counter_upi' || req.body.isCounterPayment === true;
-  const totalPages = (pageCount || 1) * (copies || 1);
-  const isAutoApproved =
-    accountType === 'office' ||
-    rules.mode === 'auto' ||
-    (rules.mode === 'smart' &&
-      totalPages <= rules.maxAutoPages &&
-      priceCalc.totalAmount <= rules.maxAutoAmount);
-
-  let initialStatus: OrderStatus = 'payment_pending';
-  let orderPaymentStatus: PaymentStatus = 'unpaid';
-  let orderUnitPrice = priceCalc.unitPrice;
-  let orderTotalAmount = priceCalc.totalAmount;
-
-  if (accountType === 'office') {
-    // Office mode: 100% Free / Internal, zero payment, directly queued for printing!
-    orderUnitPrice = 0;
-    orderTotalAmount = 0;
-    orderPaymentStatus = 'collected';
-    initialStatus = 'queued';
-  } else if (!isAutoApproved) {
-    initialStatus = 'pending_approval';
-    orderPaymentStatus = 'unpaid';
-  } else if (accountType === 'shop' || !isOnlinePaymentRequired || isCounterPaymentRequested) {
-    // Shop mode: Pay on counter workflow, immediately goes to queue so shopkeeper can Collect & Print
-    initialStatus = 'queued';
-    orderPaymentStatus = 'unpaid';
-  } else {
-    initialStatus = 'payment_pending';
-    orderPaymentStatus = 'unpaid';
-  }
+  // All public orders are 100% online payment (Razorpay UPI / Cards) -> Full Automatic Print
+  const initialStatus: OrderStatus = 'payment_pending';
+  const orderPaymentStatus: PaymentStatus = 'unpaid';
+  const orderUnitPrice = priceCalc.unitPrice;
+  const orderTotalAmount = priceCalc.totalAmount;
 
   const order = db.createOrder({
     shopId: shop.id,
@@ -1169,28 +1121,17 @@ app.post('/api/orders', async (req, res) => {
     files: Array.isArray(req.body.files) ? req.body.files : undefined,
   });
 
-  // If office mode and agent online, auto-spool to printer immediately
-  if (accountType === 'office') {
-    const agent = db.getAgentByShopId(shop.id);
-    const targetPrinter = resolveTargetPrinter(agent, colorMode);
-    db.createPrintJobsForOrder(order.id, targetPrinter);
-  }
-
-  const orderDesc = (!isOnlinePaymentRequired && isCounterPaymentRequested)
-    ? `Order ${order.orderNumber} placed by ${order.customerName} (${order.documentName}, ₹${order.totalAmount}). Pay at Counter chosen.`
-    : `Order ${order.orderNumber} placed by ${order.customerName} (${order.documentName}, ₹${order.totalAmount}). Online checkout ready.`;
+  const orderDesc = `Order ${order.orderNumber} placed by ${order.customerName} (${order.documentName}, ₹${order.totalAmount}). Online checkout ready.`;
 
   db.logActivity({
     shopId: shop.id,
     actionType: 'order_submitted',
     description: orderDesc,
-    metadata: { orderNumber: order.orderNumber, amount: order.totalAmount, counterPayment: !isOnlinePaymentRequired && isCounterPaymentRequested },
+    metadata: { orderNumber: order.orderNumber, amount: order.totalAmount, onlinePayment: true },
   });
 
   res.status(201).json({
-    message: (!isOnlinePaymentRequired && isCounterPaymentRequested)
-      ? 'Order placed successfully! Please collect your print at the counter and pay.'
-      : 'Order placed successfully! Please complete online payment via Razorpay.',
+    message: 'Order placed successfully! Please complete online payment via Razorpay.',
     order: {
       id: order.id,
       shopId: order.shopId,

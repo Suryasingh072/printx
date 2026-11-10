@@ -637,10 +637,6 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
   // Submit Multi-File Order
   const handleSubmitBatchOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (shop?.isOutOfPaper) {
-      alert(`⚠️ Printer Paper Tray is currently Empty (${shop.paperPrintedSinceRefill ?? 500} / ${shop.trayCapacity ?? 500} sheets printed). Please ask the shopkeeper to refill paper.`);
-      return;
-    }
 
     if (fileQueue.length === 0) {
       alert('Pehle kam se kam ek document ya photo upload karein.');
@@ -693,10 +689,6 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
       const totalPages = fileQueue.reduce((acc, curr) => acc + curr.pageCount, 0);
       const totalSizeBytes = fileQueue.reduce((acc, curr) => acc + curr.sizeBytes, 0);
 
-      const isOffice = accountType === 'office';
-      const isOnline = paymentChoice === 'online' || requireOnlinePayment;
-      const isShopCounter = !isOffice && !isOnline;
-
       const res = await api.createOrder({
         shopSlug,
         customerName: customerName ? customerName.trim() : 'Online Customer',
@@ -713,8 +705,8 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
         orderType,
         pageRange: 'all',
         customNotes,
-        paymentMethod: isOffice ? 'other' : (isShopCounter ? 'counter_cash' : 'online_upi'),
-        isCounterPayment: isShopCounter,
+        paymentMethod: 'online_upi',
+        isCounterPayment: false,
         files: filesPayload as any,
       });
 
@@ -726,9 +718,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
         origin: { y: 0.6 },
       });
       // Trigger Razorpay immediately for online orders
-      if (!isOffice && isOnline) {
-        handlePayWithRazorpay(res.order);
-      }
+      handlePayWithRazorpay(res.order);
     } catch (err: any) {
       alert(err.message || 'Order submission failed.');
     } finally {
@@ -821,34 +811,6 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
 
       {/* Main Container */}
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-7 relative z-10">
-        {/* Out of Paper Blinking Alert */}
-        {shop.isOutOfPaper && (
-          <div className="p-4 sm:p-5 bg-gradient-to-r from-red-950/85 via-rose-950/90 to-red-950/85 border-2 border-red-500 rounded-3xl shadow-[0_0_35px_rgba(239,68,68,0.45)] flex flex-col sm:flex-row items-center justify-between gap-4 animate-pulse">
-            <div className="flex items-center gap-3.5">
-              <div className="w-13 h-13 rounded-2xl bg-red-500/25 border-2 border-red-500 flex items-center justify-center text-red-200 shadow-[0_0_20px_rgba(239,68,68,0.5)] shrink-0 animate-bounce">
-                <AlertTriangle className="w-7 h-7 stroke-[2.5]" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-base sm:text-lg font-black text-white tracking-wide uppercase font-head">
-                    🚨 NO PAPER IN PRINTER! (Tray Empty)
-                  </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-600 text-white animate-ping">
-                    EMPTY
-                  </span>
-                </div>
-                <p className="text-xs text-red-200 mt-1 font-medium">
-                  Printer tray me paper khatam ho gaya hai ({shop.paperPrintedSinceRefill ?? 500} / {shop.trayCapacity ?? 500} sheets printed). Kripya shopkeeper ko paper refill karne ko bolein. Refill hote hi print turant chalu ho jayega.
-                </p>
-              </div>
-            </div>
-            <div className="shrink-0 flex items-center gap-2 self-end sm:self-auto">
-              <span className="px-3.5 py-1.5 bg-black/50 border border-red-500/50 rounded-xl text-xs font-mono font-bold text-red-300">
-                0 / {shop.trayCapacity ?? 500} Sheets Left
-              </span>
-            </div>
-          </div>
-        )}
 
         {/* Live Active Order Status & Payment Banner (No Exit Page) */}
         {placedOrder && (
@@ -891,84 +853,33 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
 
             {/* Payment Row / Razorpay Standard Checkout */}
             {isPaid ? (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-emerald-950/30 border border-emerald-500/40 p-4 sm:p-5 rounded-2xl">
-                <div className="space-y-1">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-emerald-950/40 border border-emerald-500/50 p-4 sm:p-5 rounded-2xl shadow-[0_8px_24px_rgba(34,197,94,0.2)]">
+                <div className="space-y-1.5">
                   <div className="flex items-center gap-2 text-emerald-400 font-black text-sm">
-                    <Check className="w-5 h-5 stroke-[3]" /> Payment Verified via Razorpay & Dispatched to Printer!
+                    <Check className="w-5 h-5 stroke-[3] shrink-0" />
+                    <span>Payment Verified via Razorpay & Dispatched to Printer!</span>
                   </div>
-                  <p className="text-[11px] text-slate-300">
-                    Aapka order automatically printer queue me chala gaya hai. Print machine se turant collect karein.
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Aapka online payment successfully verify ho gaya hai aur print order directly printer spool queue me dispatch ho chuka hai. Printer se apna printout collect karein!
                   </p>
+                  <div className="flex items-center gap-2 pt-1 flex-wrap">
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-[11px] font-bold border border-emerald-500/30">
+                      ✓ Paid ₹{placedOrder.totalAmount.toFixed(2)}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-pink-500/20 text-pink-300 text-[11px] font-bold border border-pink-500/30">
+                      ⚡ Full Automatic Print
+                    </span>
+                  </div>
                 </div>
 
                 <button
                   type="button"
                   onClick={handleResetForNewPrint}
-                  className="btn btn-primary py-2.5 px-5 text-xs font-black shadow-[0_4px_16px_rgba(255,46,99,0.35)] flex items-center gap-2 cursor-pointer shrink-0"
+                  className="btn btn-primary py-3 px-5 text-xs font-black shadow-[0_4px_16px_rgba(255,46,99,0.35)] flex items-center justify-center gap-2 cursor-pointer shrink-0 w-full sm:w-auto"
                 >
                   <Plus className="w-4 h-4 stroke-[3]" />
                   Naya Print / Upload Karein
                 </button>
-              </div>
-            ) : !requireOnlinePayment && paymentChoice === 'counter' ? (
-              <div className="space-y-4 bg-gradient-to-br from-[#121c2d] via-[#101b33] to-[#0a1224] p-5 sm:p-6 rounded-2xl border-2 border-amber-500/40 shadow-[0_8px_30px_rgba(245,158,11,0.15)]">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 shadow-lg shadow-amber-500/20 shrink-0">
-                      <Store className="w-6 h-6 stroke-[2.5]" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-base font-black text-white font-head">Order Queued • Pay at Shop Counter</h4>
-                        <span className="badge text-[10px] font-black uppercase tracking-wider py-0.5 px-2 bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                          Cash / Counter UPI
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-300 mt-0.5">
-                        Order #{placedOrder.orderNumber} shop ke Print Queue me successfully submit ho gaya hai.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="text-right self-end sm:self-auto">
-                    <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Amount Due:</span>
-                    <p className="text-2xl font-black text-white font-mono grad font-head">₹{placedOrder.totalAmount.toFixed(2)}</p>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-amber-500/10 border border-amber-500/25 rounded-xl space-y-1.5 text-xs text-amber-200">
-                  <p className="font-bold flex items-center gap-1.5 text-amber-300">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    Aapka Document Print Queue Me Ready Hai
-                  </p>
-                  <p className="text-[11px] text-slate-300 leading-relaxed">
-                    Kripya shop counter par apna Order No. <strong>{placedOrder.orderNumber}</strong> batayein aur <strong>₹{placedOrder.totalAmount.toFixed(2)}</strong> Cash ya UPI se pay karein. Shopkeeper payment receive karke turant print nikal dega.
-                  </p>
-                </div>
-
-                {/* Actions: Naya Print Karein & Optional Online Pay */}
-                <div className="pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-white/10">
-                  <button
-                    type="button"
-                    onClick={handleResetForNewPrint}
-                    className="btn btn-primary py-2.5 px-5 text-xs font-black shadow-[0_4px_16px_rgba(255,46,99,0.35)] flex items-center justify-center gap-2 cursor-pointer order-2 sm:order-1"
-                  >
-                    <Plus className="w-4 h-4 stroke-[3]" />
-                    Naya Print / Upload Karein
-                  </button>
-
-                  <div className="flex items-center gap-2 order-1 sm:order-2">
-                    <button
-                      type="button"
-                      onClick={() => handlePayWithRazorpay()}
-                      disabled={isRazorpayLoading}
-                      className="btn bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-black py-2.5 px-4 rounded-xl text-xs flex items-center gap-2 cursor-pointer shrink-0"
-                    >
-                      <CreditCard className="w-4 h-4" />
-                      Pay ₹{placedOrder.totalAmount.toFixed(2)} with Razorpay
-                    </button>
-                  </div>
-                </div>
               </div>
             ) : (
               <div className="space-y-5 bg-gradient-to-br from-[#0c1830] via-[#0f172a] to-[#0a1120] p-5 sm:p-6 rounded-2xl border-2 border-sky-500/40 shadow-[0_8px_30px_rgba(14,165,233,0.15)]">
@@ -1463,72 +1374,30 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                   </div>
                 </div>
 
-                {/* Account Type Mode Notification */}
-                {accountType === 'office' ? (
-                  <div className="p-3.5 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl flex items-center gap-3 text-xs text-cyan-200">
-                    <div className="p-2 bg-cyan-500/20 rounded-xl text-cyan-300">
-                      <Printer className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-white text-sm">🏢 Office Internal Print</p>
-                      <p className="text-[11px] text-cyan-300/80">No payment required. Directly sends to the local print queue.</p>
-                    </div>
+                {/* 100% Online Payment Auto-Print Notice */}
+                <div className="p-3.5 bg-pink-500/10 border border-pink-500/25 rounded-2xl flex items-center gap-3 text-xs text-pink-200">
+                  <div className="p-2 bg-pink-500/20 rounded-xl text-pink-300 shrink-0">
+                    <CreditCard className="w-5 h-5" />
                   </div>
-                ) : (!requireOnlinePayment || accountType === 'shop') ? (
-                  <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl flex items-center gap-3 text-xs text-emerald-200">
-                    <div className="p-2 bg-emerald-500/20 rounded-xl text-emerald-300">
-                      <Store className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-white text-sm">🏪 Pay at Shop Counter</p>
-                      <p className="text-[11px] text-emerald-300/80">Place order directly. Pay cash or shopkeeper's QR at the counter when collecting printout.</p>
-                    </div>
+                  <div>
+                    <p className="font-bold text-white text-sm">💳 100% Online Payment (Razorpay UPI / Cards)</p>
+                    <p className="text-[11px] text-pink-300/80">Online payment hote hi document automatically printer par print ho jayega (Full Automatic Print).</p>
                   </div>
-                ) : (
-                  <div className="p-3.5 bg-pink-500/10 border border-pink-500/25 rounded-2xl flex items-center gap-3 text-xs text-pink-200">
-                    <div className="p-2 bg-pink-500/20 rounded-xl text-pink-300">
-                      <CreditCard className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-white text-sm">💳 Instant Online Payment (Razorpay)</p>
-                      <p className="text-[11px] text-pink-300/80">UPI / QR, Cards & Netbanking. Spools immediately after payment.</p>
-                    </div>
-                  </div>
-                )}
+                </div>
 
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={fileQueue.length === 0 || isSubmitting || isBulkUploading || Boolean(shop?.isOutOfPaper)}
-                  className={`btn ${
-                    shop?.isOutOfPaper
-                      ? 'bg-red-600/60 hover:bg-red-600/70 border border-red-500 text-white shadow-[0_0_25px_rgba(239,68,68,0.4)] animate-pulse'
-                      : accountType === 'office'
-                      ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 hover:from-cyan-400 hover:to-indigo-400 shadow-[0_8px_25px_rgba(6,182,212,0.35)]'
-                      : (!requireOnlinePayment || accountType === 'shop')
-                      ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 shadow-[0_8px_25px_rgba(34,197,94,0.35)]'
-                      : 'btn-primary shadow-rose-500/30'
-                  } w-full py-4 text-sm font-black disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex items-center justify-center gap-2`}
+                  disabled={fileQueue.length === 0 || isSubmitting || isBulkUploading}
+                  className="btn btn-primary shadow-rose-500/30 w-full py-4 text-sm font-black disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
                     <>
                       <RefreshCw className="w-5 h-5 animate-spin" /> Submitting Order...
                     </>
-                  ) : shop?.isOutOfPaper ? (
-                    <>
-                      <AlertTriangle className="w-5 h-5 text-red-300 animate-bounce" /> ⚠️ Cannot Print — Paper Tray Empty (Refill Required)
-                    </>
-                  ) : accountType === 'office' ? (
-                    <>
-                      <Printer className="w-5 h-5 stroke-[2.5]" /> Place Order & Print (Free)
-                    </>
-                  ) : (!requireOnlinePayment || accountType === 'shop') ? (
-                    <>
-                      <Store className="w-5 h-5 stroke-[2.5]" /> Place Order (Pay at Counter) • ₹{total.toFixed(2)}
-                    </>
                   ) : (
                     <>
-                      <FileCheck className="w-5 h-5 stroke-[2.5]" /> Place Order & Pay with Razorpay • ₹{total.toFixed(2)}
+                      <FileCheck className="w-5 h-5 stroke-[2.5]" /> Pay Online & Auto-Print • ₹{total.toFixed(2)}
                     </>
                   )}
                 </button>
@@ -1574,52 +1443,20 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                   </div>
 
                   {/* Payment Gateway / Workflow Badge */}
-                  {accountType === 'office' ? (
-                    <div className="p-3 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-indigo-500/10 rounded-2xl border border-cyan-500/25 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 text-xs font-black text-cyan-300">
-                          <Printer className="w-3.5 h-3.5 text-cyan-400" />
-                          Office Account
-                        </span>
-                        <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                          Zero Billing
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-300 leading-snug">
-                        Internal printing active. No payment required. Order is instantly queued for printing.
-                      </p>
+                  <div className="p-3 bg-gradient-to-r from-sky-500/10 via-blue-500/10 to-indigo-500/10 rounded-2xl border border-sky-500/20 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs font-black text-sky-300">
+                        <CreditCard className="w-3.5 h-3.5 text-sky-400" />
+                        PrintX Razorpay Checkout
+                      </span>
+                      <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                        Online UPI / Cards
+                      </span>
                     </div>
-                  ) : (!requireOnlinePayment || accountType === 'shop') ? (
-                    <div className="p-3 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 rounded-2xl border border-emerald-500/25 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 text-xs font-black text-emerald-300">
-                          <Store className="w-3.5 h-3.5 text-emerald-400" />
-                          Shop Workflow
-                        </span>
-                        <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                          Pay on Counter
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-300 leading-snug">
-                        Customer pays at the counter. Shopkeeper verifies and releases print job.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="p-3 bg-gradient-to-r from-sky-500/10 via-blue-500/10 to-indigo-500/10 rounded-2xl border border-sky-500/20 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 text-xs font-black text-sky-300">
-                          <CreditCard className="w-3.5 h-3.5 text-sky-400" />
-                          PrintX Razorpay Checkout
-                        </span>
-                        <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                          Online UPI / Cards
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-300 leading-snug">
-                        Instant payment via Razorpay. Print job is automatically spooled once payment succeeds.
-                      </p>
-                    </div>
-                  )}
+                    <p className="text-[11px] text-slate-300 leading-snug">
+                      Instant payment via Razorpay. Print job is automatically spooled once payment succeeds.
+                    </p>
+                  </div>
                 </div>
 
                 {/* Features Highlights like website */}
@@ -1664,29 +1501,15 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                 if (form) form.requestSubmit();
               }}
               disabled={fileQueue.length === 0 || isSubmitting || isBulkUploading}
-              className={`btn ${
-                accountType === 'office'
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-500 shadow-cyan-500/30'
-                  : (!requireOnlinePayment || accountType === 'shop')
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 shadow-emerald-500/30'
-                  : 'bg-gradient-to-r from-pink-500 to-rose-600 shadow-rose-500/30'
-              } text-white font-black py-3 px-5 text-xs rounded-xl shadow-lg flex items-center gap-2 cursor-pointer disabled:opacity-40`}
+              className="btn btn-primary text-white font-black py-3 px-5 text-xs rounded-xl shadow-lg shadow-rose-500/30 flex items-center gap-2 cursor-pointer disabled:opacity-40"
             >
               {isSubmitting ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" /> Submitting...
                 </>
-              ) : accountType === 'office' ? (
-                <>
-                  <Printer className="w-4 h-4" /> Place Order & Print (Free)
-                </>
-              ) : (!requireOnlinePayment || accountType === 'shop') ? (
-                <>
-                  <Store className="w-4 h-4" /> Place Order (Pay on Counter)
-                </>
               ) : (
                 <>
-                  <CreditCard className="w-4 h-4" /> Pay with Razorpay • ₹{total.toFixed(2)}
+                  <CreditCard className="w-4 h-4" /> Pay Online & Auto-Print • ₹{total.toFixed(2)}
                 </>
               )}
             </button>
