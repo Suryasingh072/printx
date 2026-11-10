@@ -145,7 +145,9 @@ function requireAgentAuth(req: Request, res: Response, next: NextFunction) {
 
   agent.status = 'online';
   agent.lastSeenAt = new Date().toISOString();
+  (agent as any).everConnected = true;
   (req as any).agent = agent;
+  db.save();
   next();
 }
 
@@ -1239,8 +1241,8 @@ app.get('/api/orders/:orderNumber', async (req, res) => {
   });
 });
 
-// Customer Complete Online Payment (Instant Print Trigger - No Manual Approval Needed)
-app.post('/api/orders/:orderNumber/pay-online', (req, res) => {
+// Counter Manual Payment Confirmation (Requires Authentication)
+app.post('/api/orders/:orderNumber/pay-online', requireAuth, (req, res) => {
   const { orderNumber } = req.params;
   const { transactionId, paymentMethod = 'online_upi' } = req.body;
   const order = db.getOrderByNumber(orderNumber);
@@ -2047,9 +2049,29 @@ app.get('/api/documents/preview/:orderId', (req, res) => {
   }
 });
 
-// Document Safe Download
+// Document Safe Download (Protected by signed token or authenticated session)
 app.get('/api/documents/download/:orderId', (req, res) => {
   const { orderId } = req.params;
+  const token = (req.query.token as string) || (req.query.auth as string);
+
+  let authorized = false;
+  if (token && storageService.verifySignedToken(token, orderId)) {
+    authorized = true;
+  } else if (token && verifySessionToken(token)) {
+    authorized = true;
+  } else {
+    // Check Authorization header for logged-in shop owners or paired agent
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const session = verifySessionToken(authHeader.substring(7));
+      if (session) authorized = true;
+    }
+  }
+
+  if (!authorized) {
+    return res.status(403).json({ error: 'Invalid or expired document download token.' });
+  }
+
   const order = db.getOrderById(orderId);
   if (!order) return res.status(404).json({ error: 'Order not found' });
 

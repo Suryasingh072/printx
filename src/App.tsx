@@ -178,8 +178,11 @@ export default function App() {
     );
   }
 
+  // Normalize path without trailing slashes
+  const cleanPath = currentPath.split('?')[0].replace(/\/+$/, '') || '/';
+
   // 1. Customer QR Route: /s/:slug or /shop/:slug
-  const shopMatch = currentPath.match(/^\/(?:s|shop)\/([a-zA-Z0-9_\.-]+)/);
+  const shopMatch = cleanPath.match(/^\/(?:s|shop)\/([a-zA-Z0-9_\.-]+)/);
   if (shopMatch) {
     const slug = shopMatch[1];
     return (
@@ -191,7 +194,7 @@ export default function App() {
   }
 
   // 1b. If user opens bare /shop or /shop/ without a slug, safely redirect to landing page
-  if (currentPath === '/shop' || currentPath === '/shop/' || currentPath === '/s' || currentPath === '/s/') {
+  if (cleanPath === '/shop' || cleanPath === '/s') {
     // Never show shop dashboard on /shop URL
     return (
       <div className="min-h-screen bg-[#080b14] text-[#f1f5f9] flex items-center justify-center p-4">
@@ -220,10 +223,10 @@ export default function App() {
 
   // 2. Protected Dashboard Routes (/dashboard, /admin, /counter)
   const isDashboardRoute =
-    currentPath === '/dashboard' ||
-    currentPath === '/admin' ||
-    currentPath === '/counter' ||
-    currentPath === '/shop-dashboard';
+    cleanPath === '/dashboard' ||
+    cleanPath === '/admin' ||
+    cleanPath === '/counter' ||
+    cleanPath === '/shop-dashboard';
 
   if (isDashboardRoute) {
     // If not authenticated, redirect to home page
@@ -254,8 +257,8 @@ export default function App() {
       );
     }
 
-    // Authenticated Shop Owner Dashboard
-    if (currentShop) {
+    // Authenticated Shop Owner Dashboard (strictly verifies ownerId matches current user)
+    if (currentShop && currentShop.ownerId === currentUser.id) {
       return (
         <ShopDashboard
           user={currentUser}

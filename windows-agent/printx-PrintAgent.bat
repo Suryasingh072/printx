@@ -82,8 +82,8 @@ $ServerLabel.Location = New-Object System.Drawing.Point(20, 60)
 $ServerLabel.Size = New-Object System.Drawing.Size(120, 20)
 $Form.Controls.Add($ServerLabel)
 
-$ConfigFile = Join-Path $PSScriptRoot "printx-agent-config.json"
-$SavedServer = "https://ais-dev-j4wzxf4ek3yadrvyzajprv-973482974092.asia-southeast1.run.app"
+$ConfigFile = Join-Path $WorkDir "printx-agent-config.json"
+$SavedServer = "http://localhost:3000"
 $SavedCode = ""
 if (Test-Path $ConfigFile) {
     try {
