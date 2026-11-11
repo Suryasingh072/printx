@@ -114,22 +114,139 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
   const [previewDocumentName, setPreviewDocumentName] = useState<string>('Document');
   const [isPayingOnline, setIsPayingOnline] = useState(false);
   const [onlineUpiSuccess, setOnlineUpiSuccess] = useState(false);
+  const [isCheckingPayment, setIsCheckingPayment] = useState(false);
 
   // Razorpay Standard Web Checkout State
   const [isRazorpayLoading, setIsRazorpayLoading] = useState(false);
   const [razorpayMessage, setRazorpayMessage] = useState<{ type: 'error' | 'info' | 'success'; text: string } | null>(null);
 
+  // Restore active order from localStorage on mount (prevents losing state on mobile browser reload/app switch)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`printx_active_order_${shopSlug}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.orderNumber) {
+          setPlacedOrder(parsed);
+          if (parsed.paymentStatus === 'collected') {
+            setOnlineUpiSuccess(true);
+          }
+          // Immediate live background check with Razorpay
+          api.syncOrderPayment(parsed.orderNumber).then((res) => {
+            if (res?.order) {
+              setPlacedOrder(res.order);
+              if (res.order.paymentStatus === 'collected' || res.verified) {
+                setOnlineUpiSuccess(true);
+                localStorage.setItem(`printx_active_order_${shopSlug}`, JSON.stringify(res.order));
+              }
+            }
+          }).catch(() => {});
+        }
+      }
+    } catch (_) {}
+  }, [shopSlug]);
+
+  // Mobile App Switch Listener: When user pays in PhonePe/GPay/Paytm and returns to browser tab
+  useEffect(() => {
+    const checkPaymentOnReturn = async () => {
+      if (placedOrder && placedOrder.orderNumber && placedOrder.paymentStatus !== 'collected' && !onlineUpiSuccess) {
+        setIsCheckingPayment(true);
+        try {
+          const res = await api.syncOrderPayment(placedOrder.orderNumber);
+          if (res?.order) {
+            setPlacedOrder(res.order);
+            if (res.order.paymentStatus === 'collected' || res.verified) {
+              setOnlineUpiSuccess(true);
+              localStorage.setItem(`printx_active_order_${shopSlug}`, JSON.stringify(res.order));
+              confetti({
+                particleCount: 150,
+                spread: 90,
+                origin: { y: 0.6 },
+              });
+              setRazorpayMessage({
+                type: 'success',
+                text: '✓ Payment verified! Your document has been sent directly to the printer.',
+              });
+            }
+          }
+        } catch (_) {} finally {
+          setIsCheckingPayment(false);
+        }
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkPaymentOnReturn();
+      }
+    };
+
+    window.addEventListener('focus', checkPaymentOnReturn);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('focus', checkPaymentOnReturn);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [placedOrder?.orderNumber, placedOrder?.paymentStatus, onlineUpiSuccess, shopSlug]);
+
   const handleResetForNewPrint = () => {
+    try {
+      localStorage.removeItem(`printx_active_order_${shopSlug}`);
+    } catch (_) {}
     setPlacedOrder(null);
     setFileQueue([]);
     setOnlineUpiSuccess(false);
     setRazorpayMessage(null);
     setIsRazorpayLoading(false);
+    setIsCheckingPayment(false);
     setIsSubmitting(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Manual Instant Verification Trigger (For mobile users who paid in UPI app)
+  const handleManualSyncPayment = async () => {
+    if (!placedOrder?.orderNumber) return;
+    setIsCheckingPayment(true);
+    setRazorpayMessage({
+      type: 'info',
+      text: 'Checking payment status with Razorpay & bank...',
+    });
+
+    try {
+      const res = await api.syncOrderPayment(placedOrder.orderNumber);
+      if (res?.order) {
+        setPlacedOrder(res.order);
+        if (res.order.paymentStatus === 'collected' || res.verified) {
+          setOnlineUpiSuccess(true);
+          localStorage.setItem(`printx_active_order_${shopSlug}`, JSON.stringify(res.order));
+          confetti({
+            particleCount: 150,
+            spread: 90,
+            origin: { y: 0.6 },
+          });
+          setRazorpayMessage({
+            type: 'success',
+            text: '✓ Payment verified via Razorpay! Dispatched to printer spooler.',
+          });
+          return;
+        }
+      }
+
+      setRazorpayMessage({
+        type: 'info',
+        text: 'Bank confirmation pending. If money was debited from your account, please wait 3-5 seconds and click "Verify & Print" again.',
+      });
+    } catch (err: any) {
+      setRazorpayMessage({
+        type: 'error',
+        text: err?.message || 'Could not reach server to verify payment. Please retry in a few moments.',
+      });
+    } finally {
+      setIsCheckingPayment(false);
+    }
   };
 
   const handlePayWithRazorpay = async (orderToPay?: any) => {
@@ -156,11 +273,31 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
         customerName: order.customerName || customerName,
         customerPhone: order.customerPhone || customerPhone,
         description: `Print Order ${order.orderNumber || ''}`,
-        onDismiss: () => {
+        onDismiss: async () => {
           setIsRazorpayLoading(false);
+          // On mobile, user may have completed payment via UPI intent and switched back!
+          // Instantly sync with server to verify if payment completed!
+          try {
+            setIsCheckingPayment(true);
+            const syncRes = await api.syncOrderPayment(order.orderNumber);
+            if (syncRes?.order && (syncRes.order.paymentStatus === 'collected' || syncRes.verified)) {
+              setPlacedOrder(syncRes.order);
+              setOnlineUpiSuccess(true);
+              localStorage.setItem(`printx_active_order_${shopSlug}`, JSON.stringify(syncRes.order));
+              confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+              setRazorpayMessage({
+                type: 'success',
+                text: '✓ Payment verified! Your document has been sent directly to the printer.',
+              });
+              return;
+            }
+          } catch (_) {} finally {
+            setIsCheckingPayment(false);
+          }
+
           setRazorpayMessage({
             type: 'info',
-            text: 'Razorpay checkout modal was closed. You can retry payment anytime.',
+            text: 'Checkout closed. If payment was made in UPI app, click "Verify & Print" below to confirm immediately.',
           });
         },
         onError: (err) => {
@@ -175,6 +312,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
           setOnlineUpiSuccess(true);
           if (result.verificationData?.order) {
             setPlacedOrder(result.verificationData.order);
+            localStorage.setItem(`printx_active_order_${shopSlug}`, JSON.stringify(result.verificationData.order));
           }
           setRazorpayMessage({
             type: 'success',
@@ -711,6 +849,9 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
       });
 
       setPlacedOrder(res.order);
+      try {
+        localStorage.setItem(`printx_active_order_${shopSlug}`, JSON.stringify(res.order));
+      } catch (_) {}
       window.scrollTo({ top: 0, behavior: 'smooth' });
       confetti({
         particleCount: 100,
@@ -726,14 +867,28 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
     }
   };
 
-  // Poll for placed order status
+  const { totalPages, total } = calculateTotal();
+  const isPaid = placedOrder ? placedOrder.paymentStatus === 'collected' || onlineUpiSuccess : false;
+
+  // Poll for placed order status until paid
   useEffect(() => {
-    if (!placedOrder) return;
+    if (!placedOrder?.orderNumber) return;
+    if (isPaid) return; // Stop polling once confirmed
+
     const interval = setInterval(async () => {
       try {
         setIsPollingOrder(true);
         const res = await api.trackOrder(placedOrder.orderNumber);
-        setPlacedOrder(res.order);
+        if (res?.order) {
+          setPlacedOrder(res.order);
+          if (res.order.paymentStatus === 'collected') {
+            setOnlineUpiSuccess(true);
+            try {
+              localStorage.setItem(`printx_active_order_${shopSlug}`, JSON.stringify(res.order));
+            } catch (_) {}
+            confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+          }
+        }
       } catch (err) {
         // silent polling catch
       } finally {
@@ -741,10 +896,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
       }
     }, 2000);
     return () => clearInterval(interval);
-  }, [placedOrder]);
-
-  const { totalPages, total } = calculateTotal();
-  const isPaid = placedOrder ? placedOrder.paymentStatus === 'collected' || onlineUpiSuccess : false;
+  }, [placedOrder?.orderNumber, isPaid, shopSlug]);
 
   if (loading) {
     return (
@@ -913,7 +1065,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                   <button
                     type="button"
                     onClick={() => handlePayWithRazorpay()}
-                    disabled={isRazorpayLoading}
+                    disabled={isRazorpayLoading || isCheckingPayment}
                     className="w-full btn bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-black py-4 px-6 rounded-2xl shadow-[0_8px_25px_rgba(2,132,199,0.35)] flex items-center justify-center gap-3 text-sm font-head cursor-pointer transition transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
                   >
                     {isRazorpayLoading ? (
@@ -926,6 +1078,26 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
                         <Zap className="w-5 h-5 fill-white" />
                         <span>Pay ₹{placedOrder.totalAmount.toFixed(2)} with Razorpay</span>
                         <ArrowRight className="w-5 h-5 ml-auto" />
+                      </>
+                    )}
+                  </button>
+
+                  {/* Mobile Instant UPI Verification Button */}
+                  <button
+                    type="button"
+                    onClick={handleManualSyncPayment}
+                    disabled={isCheckingPayment}
+                    className="w-full py-3.5 px-4 bg-emerald-500/15 hover:bg-emerald-500/25 active:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-2xl font-bold text-xs flex items-center justify-center gap-2.5 cursor-pointer transition shadow-md"
+                  >
+                    {isCheckingPayment ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin text-emerald-400" />
+                        <span>Verifying payment with bank & Razorpay...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <span>Payment Done in UPI App? Click to Verify & Print Now</span>
                       </>
                     )}
                   </button>

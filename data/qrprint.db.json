@@ -477,7 +477,7 @@
       "shopId": "shp-00ff309e",
       "deviceName": "DESKTOP-EOHTQ2R",
       "status": "online",
-      "authTokenHash": "165473400eff3b678994f35517b93aa78522bff37964999eb9565a5afebfd2d1",
+      "authTokenHash": "07f5c272acb54f40b6facfae42a4bfef3fe60f51a5ff28505cdba4d7243017f7",
       "utilityApiKey": "adr_util_live_db74742faaf0ea766249170ef3f11a8c",
       "installedPrinters": [
         {
@@ -532,7 +532,7 @@
       "pairingCode": "293843",
       "pairingCodeExpiresAt": "2026-10-16T05:37:06.202Z",
       "ipAddress": "127.0.0.1",
-      "lastSeenAt": "2026-11-07T17:53:01.991Z",
+      "lastSeenAt": "2026-11-11T15:46:45.650Z",
       "permanentToken": "agt_token_9aabda58c1d1de92086f53acd092c3db9e05d59e32d99617",
       "everConnected": true
     },
@@ -686,7 +686,7 @@
       "appVersion": "2.4.0",
       "deviceName": "DESKTOP-EOHTQ2R",
       "dryRunMode": false,
-      "lastSeenAt": "2026-11-09T01:55:21.762Z",
+      "lastSeenAt": "2026-11-09T02:03:12.883Z",
       "pairingCode": "939800",
       "authTokenHash": "4faf61899b937d32711bd69e1303f524d54d1354026cfa27daf490568fde5a7c",
       "defaultPrinter": "Microsoft Print to PDF",
@@ -738,7 +738,50 @@
       "permanentToken": "agt_token_bd8330508ad090316634b2c035ad6e5a72a55b434aa3be2d"
     }
   ],
-  "orders": [],
+  "orders": [
+    {
+      "id": "ord-9992cebd",
+      "files": [
+        {
+          "id": "785cc43e-59b7-4eb3-9cd4-7b85685f3349",
+          "name": "logo.png",
+          "type": "image/png",
+          "edited": false,
+          "filePath": "785cc43e-59b7-4eb3-9cd4-7b85685f3349.png",
+          "pageCount": 1,
+          "sizeBytes": 397291,
+          "previewUrl": "blob:https://printx-x5a2.vercel.app/97b2d434-2495-4824-9c8d-dd8fe422b5a3"
+        }
+      ],
+      "copies": 1,
+      "shopId": "shp-00ff309e",
+      "status": "queued",
+      "filePath": "785cc43e-59b7-4eb3-9cd4-7b85685f3349.png",
+      "colorMode": "bw",
+      "createdAt": "2026-11-10T16:27:27.789Z",
+      "orderType": "document",
+      "pageCount": 1,
+      "pageRange": "all",
+      "paperSize": "A4",
+      "unitPrice": 2,
+      "updatedAt": "2026-11-10T16:39:11.634Z",
+      "duplexMode": "single",
+      "customNotes": "",
+      "orderNumber": "ORD-131464",
+      "totalAmount": 2,
+      "customerName": "Online Customer",
+      "documentName": "logo.png",
+      "documentType": "image/png",
+      "customerPhone": "",
+      "fileSizeBytes": 397291,
+      "paymentStatus": "collected",
+      "gatewayOrderId": "order_TyXQkImsj1XwW2",
+      "paymentCollectedAt": "2026-11-10T16:39:11.631Z",
+      "paymentCollectorName": "Razorpay Auto-Sync",
+      "paymentMethod": "online_upi",
+      "isRecordedInLedger": true
+    }
+  ],
   "orderHistory": [],
   "payments": [
     {
@@ -857,9 +900,35 @@
       "status": "collected",
       "collectedBy": "bbd",
       "collectedAt": "2026-10-26T10:01:46.176Z"
+    },
+    {
+      "id": "pay-f47e0d7c",
+      "orderId": "ord-9992cebd",
+      "shopId": "shp-00ff309e",
+      "amount": 2,
+      "method": "online_upi",
+      "status": "collected",
+      "collectedBy": "Razorpay Auto-Sync",
+      "notes": "Mobile Payment Detected Paid: order_TyXQkImsj1XwW2",
+      "collectedAt": "2026-11-10T16:39:11.631Z"
     }
   ],
-  "printJobs": [],
+  "printJobs": [
+    {
+      "id": "job-74bade22",
+      "orderId": "ord-9992cebd",
+      "shopId": "shp-00ff309e",
+      "printerName": "Microsoft Print to PDF",
+      "status": "pending",
+      "retryCount": 0,
+      "filePath": "785cc43e-59b7-4eb3-9cd4-7b85685f3349.png",
+      "documentName": "logo.png",
+      "documentType": "image/png",
+      "fileIndex": 1,
+      "totalFiles": 1,
+      "createdAt": "2026-11-10T16:39:11.633Z"
+    }
+  ],
   "activityLogs": [
     {
       "shopId": "shp-00ff309e",
@@ -1544,5 +1613,22 @@
       "id": "log-dd38947b",
       "createdAt": "2026-11-07T16:40:17.084Z"
     }
-  ]
+  ],
+  "salesLedger": {
+    "shp-00ff309e": {
+      "totalRevenue": 2,
+      "totalOrders": 1,
+      "totalPages": 1,
+      "completedJobs": 0,
+      "dailyRevenue": {
+        "2026-11-10": 2
+      },
+      "dailyOrders": {
+        "2026-11-10": 1
+      },
+      "dailyPages": {
+        "2026-11-10": 1
+      }
+    }
+  }
 }

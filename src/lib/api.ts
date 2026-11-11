@@ -237,6 +237,12 @@ export const api = {
     return this.request(`/api/orders/${orderNumber}`);
   },
 
+  async syncOrderPayment(orderNumber: string): Promise<{ success: boolean; verified: boolean; message: string; order: Order }> {
+    return this.request(`/api/orders/${orderNumber}/sync-payment`, {
+      method: 'POST',
+    });
+  },
+
   async purgeStaleOrders(shopId?: string): Promise<{ success: boolean; purgedCount: number; message: string }> {
     return this.request('/api/orders/purge-stale', {
       method: 'POST',

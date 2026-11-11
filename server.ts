@@ -1172,35 +1172,69 @@ app.get('/api/orders/:orderNumber', async (req, res) => {
 
   // Automatic Background Verification for Mobile Payments:
   // If user paid on mobile phone via UPI app and returned to browser, verify directly with Razorpay
-  if (order.paymentStatus !== 'collected' && order.gatewayOrderId) {
+  if (order.paymentStatus !== 'collected') {
     try {
       const { key_id, key_secret } = getRazorpayCredentials();
       if (key_id && key_secret) {
         const razorpay = new Razorpay({ key_id, key_secret });
-        const rzpOrder = await razorpay.orders.fetch(order.gatewayOrderId);
-        if (rzpOrder && (rzpOrder.status === 'paid' || (Number(rzpOrder.amount_paid || 0) >= Number(rzpOrder.amount)))) {
-          db.recordPayment({
-            orderId: order.id,
-            shopId: order.shopId,
-            amount: order.totalAmount,
-            method: 'online_upi',
-            collectorName: 'Razorpay Auto-Sync',
-            notes: `Mobile Payment Detected Paid: ${order.gatewayOrderId}`,
-          });
 
-          const agent = db.getAgentByShopId(order.shopId);
-          const targetPrinter = resolveTargetPrinter(agent, order.colorMode);
-
-          db.createPrintJobsForOrder(order.id, targetPrinter);
-          db.updateOrderStatus(
-            order.id,
-            'queued',
-            'Razorpay Auto-Spooler',
-            undefined,
-            `Mobile Razorpay payment verified (₹${order.totalAmount}). Automatically spooled to "${targetPrinter}".`
+        // Resolve gatewayOrderId if missing
+        let targetGatewayId = order.gatewayOrderId;
+        const currentOrderId = order.id;
+        if (!targetGatewayId) {
+          const matchOrd = (db as any).data.orders.find(
+            (o: any) => o.id === currentOrderId && o.gatewayOrderId
           );
-          db.save();
-          order = db.getOrderById(order.id) || order;
+          if (matchOrd) targetGatewayId = matchOrd.gatewayOrderId;
+        }
+
+        if (targetGatewayId) {
+          const rzpOrder = await razorpay.orders.fetch(targetGatewayId).catch(() => null);
+          let isPaidInRzp = false;
+          let paymentRef = targetGatewayId;
+
+          if (rzpOrder) {
+            if (rzpOrder.status === 'paid' || (Number(rzpOrder.amount_paid || 0) >= Number(rzpOrder.amount))) {
+              isPaidInRzp = true;
+            } else {
+              // Also inspect individual payments in case order status is lagging
+              const payments = await razorpay.orders.fetchPayments(targetGatewayId).catch(() => ({ items: [] }));
+              if (payments && Array.isArray(payments.items)) {
+                const captured = payments.items.find(
+                  (p: any) => p.status === 'captured' || p.status === 'authorized'
+                );
+                if (captured) {
+                  isPaidInRzp = true;
+                  paymentRef = captured.id || targetGatewayId;
+                }
+              }
+            }
+          }
+
+          if (isPaidInRzp) {
+            db.recordPayment({
+              orderId: order.id,
+              shopId: order.shopId,
+              amount: order.totalAmount,
+              method: 'online_upi',
+              collectorName: 'Razorpay Auto-Sync',
+              notes: `Mobile Payment Detected Paid: ${paymentRef}`,
+            });
+
+            const agent = db.getAgentByShopId(order.shopId);
+            const targetPrinter = resolveTargetPrinter(agent, order.colorMode);
+
+            db.createPrintJobsForOrder(order.id, targetPrinter);
+            db.updateOrderStatus(
+              order.id,
+              'queued',
+              'Razorpay Auto-Spooler',
+              undefined,
+              `Mobile Razorpay payment verified (₹${order.totalAmount}). Automatically spooled to "${targetPrinter}".`
+            );
+            db.save();
+            order = db.getOrderById(order.id) || order;
+          }
         }
       }
     } catch (_syncErr) {
@@ -1213,6 +1247,7 @@ app.get('/api/orders/:orderNumber', async (req, res) => {
   res.json({
     order: {
       id: order.id,
+      shopId: order.shopId,
       orderNumber: order.orderNumber,
       customerName: order.customerName,
       customerPhone: order.customerPhone,
@@ -1239,6 +1274,107 @@ app.get('/api/orders/:orderNumber', async (req, res) => {
       city: shop?.city,
     },
   });
+});
+
+// Explicit Mobile Payment Sync & Verification Trigger
+app.post('/api/orders/:orderNumber/sync-payment', async (req, res) => {
+  const { orderNumber } = req.params;
+  let order = db.getOrderByNumber(orderNumber) || db.getOrderById(orderNumber);
+
+  if (!order) {
+    return res.status(404).json({ error: 'Order not found.' });
+  }
+
+  if (order.paymentStatus === 'collected') {
+    return res.json({
+      success: true,
+      verified: true,
+      message: 'Payment already verified and dispatched to printer.',
+      order,
+    });
+  }
+
+  try {
+    const { key_id, key_secret } = getRazorpayCredentials();
+    if (!key_id || !key_secret) {
+      return res.status(500).json({ error: 'Razorpay credentials not configured.' });
+    }
+
+    const razorpay = new Razorpay({ key_id, key_secret });
+    const targetGatewayId = order.gatewayOrderId;
+
+    if (!targetGatewayId) {
+      return res.json({
+        success: false,
+        verified: false,
+        message: 'No Razorpay order was initiated for this order yet.',
+        order,
+      });
+    }
+
+    const rzpOrder = await razorpay.orders.fetch(targetGatewayId).catch(() => null);
+    let isPaidInRzp = false;
+    let paymentRef = targetGatewayId;
+
+    if (rzpOrder) {
+      if (rzpOrder.status === 'paid' || (Number(rzpOrder.amount_paid || 0) >= Number(rzpOrder.amount))) {
+        isPaidInRzp = true;
+      } else {
+        const payments = await razorpay.orders.fetchPayments(targetGatewayId).catch(() => ({ items: [] }));
+        if (payments && Array.isArray(payments.items)) {
+          const captured = payments.items.find(
+            (p: any) => p.status === 'captured' || p.status === 'authorized'
+          );
+          if (captured) {
+            isPaidInRzp = true;
+            paymentRef = captured.id || targetGatewayId;
+          }
+        }
+      }
+    }
+
+    if (isPaidInRzp) {
+      db.recordPayment({
+        orderId: order.id,
+        shopId: order.shopId,
+        amount: order.totalAmount,
+        method: 'online_upi',
+        collectorName: 'Razorpay Mobile Manual Sync',
+        notes: `Mobile Payment Detected Paid: ${paymentRef}`,
+      });
+
+      const agent = db.getAgentByShopId(order.shopId);
+      const targetPrinter = resolveTargetPrinter(agent, order.colorMode);
+
+      db.createPrintJobsForOrder(order.id, targetPrinter);
+      db.updateOrderStatus(
+        order.id,
+        'queued',
+        'Razorpay Auto-Spooler',
+        undefined,
+        `Razorpay payment verified (₹${order.totalAmount}). Automatically spooled to "${targetPrinter}".`
+      );
+      db.save();
+      order = db.getOrderById(order.id) || order;
+
+      return res.json({
+        success: true,
+        verified: true,
+        message: 'Payment verified! Order dispatched to printer.',
+        order,
+      });
+    }
+
+    return res.json({
+      success: true,
+      verified: false,
+      message: 'Payment pending or not yet confirmed by bank.',
+      order,
+    });
+  } catch (err: any) {
+    console.error('[Sync Payment Error]', err);
+    return res.status(500).json({ error: err?.message || 'Failed to check payment status with Razorpay.' });
+  }
 });
 
 // Counter Manual Payment Confirmation (Requires Authentication)
