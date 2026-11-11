@@ -373,7 +373,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
     };
     fetchShop();
 
-    // Background live polling: updates paper tray status in real-time
+    // Periodic background sync for shop status (30s interval to conserve mobile battery and data)
     const interval = setInterval(async () => {
       try {
         const data = await api.getPublicShop(shopSlug);
@@ -383,7 +383,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
       } catch (_) {
         // silent background poll
       }
-    }, 4000);
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [shopSlug]);

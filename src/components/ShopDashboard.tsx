@@ -148,34 +148,22 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
     }
   };
 
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const tickInterval = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(tickInterval);
-  }, []);
-
+  // Background polling for queue orders (optimized, zero redundant re-renders)
   useEffect(() => {
     const pollInterval = setInterval(() => {
       api.getShopOrders(queueFilter).then((data) => {
         setOrders(Array.isArray(data) ? data : []);
       }).catch(() => {});
 
-      // Keep Paper Tray Tracker synced in real-time when prints complete
-      if (shop?.slug) {
-        api.getPublicShop(shop.slug).then((res) => {
-          if (res && res.shop) {
-            setShop((prev) => ({ ...prev, ...res.shop }));
-          }
+      // Keep Sales Reports synced only when reports tab is actively visible
+      if (activeTab === 'reports') {
+        api.getShopStats().then((s) => {
+          if (s) setStats(s);
         }).catch(() => {});
       }
-
-      // Keep Sales Reports synced in real-time
-      api.getShopStats().then((s) => {
-        if (s) setStats(s);
-      }).catch(() => {});
     }, 5000);
     return () => clearInterval(pollInterval);
-  }, [queueFilter, shop?.slug]);
+  }, [queueFilter, activeTab]);
 
   // Immediately refresh stats when shopkeeper clicks Sales Reports tab
   useEffect(() => {

@@ -20,6 +20,25 @@ const AUTH_SECRET = process.env.AUTH_SECRET || 'adrtech-printqr-auth-session-key
 
 // Enable Gzip/Brotli compression for high-speed response delivery
 app.use(compression());
+app.set('trust proxy', 1);
+
+// Helper to determine the authoritative public URL of the server
+function getPublicServerUrl(req: Request): string {
+  if (process.env.APP_URL) {
+    return process.env.APP_URL.replace(/\/+$/, '');
+  }
+  const forwardedProto = req.get('x-forwarded-proto');
+  const forwardedHost = req.get('x-forwarded-host');
+  const host = forwardedHost || req.get('host') || 'localhost:3000';
+  let proto = forwardedProto || req.protocol || 'http';
+  if (!host.includes('localhost') && !host.includes('127.0.0.1')) {
+    proto = 'https';
+  }
+  return `${proto}://${host}`;
+}
+
+// Global in-memory cooldown to prevent excessive external Razorpay calls during fast order polling
+const rzpCheckCooldown = new Map<string, number>();
 
 // Middleware
 app.use((req, res, next) => {
@@ -1172,7 +1191,10 @@ app.get('/api/orders/:orderNumber', async (req, res) => {
 
   // Automatic Background Verification for Mobile Payments:
   // If user paid on mobile phone via UPI app and returned to browser, verify directly with Razorpay
-  if (order.paymentStatus !== 'collected') {
+  const now = Date.now();
+  const lastRzpCheck = rzpCheckCooldown.get(order.id) || 0;
+  if (order.paymentStatus !== 'collected' && now - lastRzpCheck > 4000) {
+    rzpCheckCooldown.set(order.id, now);
     try {
       const { key_id, key_secret } = getRazorpayCredentials();
       if (key_id && key_secret) {
@@ -2288,13 +2310,15 @@ function buildDynamicAgentZip(currentHost: string): Buffer {
   const reqPath = path.resolve(process.cwd(), './windows-agent/requirements.txt');
 
   let batContent = fs.existsSync(batPath) ? fs.readFileSync(batPath, 'utf8') : '';
-  batContent = batContent.replace(/\$ServerBox\.Text = "[^"]*"/g, `$ServerBox.Text = "${currentHost}"`);
+  batContent = batContent.replace(/\$SavedServer\s*=\s*"[^"]*"/g, `$SavedServer = "${currentHost}"`);
+  batContent = batContent.replace(/\$ServerBox\.Text\s*=\s*"[^"]*"/g, `$ServerBox.Text = "${currentHost}"`);
+  batContent = batContent.replace(/\$DefaultServer\s*=\s*"[^"]*"/g, `$DefaultServer = "${currentHost}"`);
 
   let pyContent = fs.existsSync(pyPath) ? fs.readFileSync(pyPath, 'utf8') : '';
-  pyContent = pyContent.replace(/DEFAULT_SERVER = "[^"]*"/g, `DEFAULT_SERVER = "${currentHost}"`);
+  pyContent = pyContent.replace(/DEFAULT_SERVER\s*=\s*"[^"]*"/g, `DEFAULT_SERVER = "${currentHost}"`);
 
   let psContent = fs.existsSync(psPath) ? fs.readFileSync(psPath, 'utf8') : '';
-  psContent = psContent.replace(/\[string\]\$ServerUrl = "[^"]*"/g, `[string]$ServerUrl = "${currentHost}"`);
+  psContent = psContent.replace(/\[string\]\$ServerUrl\s*=\s*"[^"]*"/g, `[string]$ServerUrl = "${currentHost}"`);
 
   const files = [
     { name: 'printx-PrintAgent.bat', content: Buffer.from(batContent, 'utf8') },
@@ -2364,7 +2388,7 @@ function buildDynamicAgentZip(currentHost: string): Buffer {
 
 // Download Windows app package (Valid Windows .zip package with currentHost preconfigured)
 app.get('/api/agent/download-windows-exe', (req, res) => {
-  const currentHost = `${req.protocol}://${req.get('host')}`;
+  const currentHost = getPublicServerUrl(req);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Content-Type', 'application/zip');
@@ -2390,10 +2414,12 @@ app.get('/api/agent/download-bat', (req, res) => {
   res.setHeader('Content-Type', 'application/x-bat');
   res.setHeader('Content-Disposition', 'attachment; filename="printx-PrintAgent.bat"');
 
-  const currentHost = `${req.protocol}://${req.get('host')}`;
+  const currentHost = getPublicServerUrl(req);
   if (fs.existsSync(batPath)) {
     let content = fs.readFileSync(batPath, 'utf8');
-    content = content.replace(/\$ServerBox\.Text = "[^"]*"/g, `$ServerBox.Text = "${currentHost}"`);
+    content = content.replace(/\$SavedServer\s*=\s*"[^"]*"/g, `$SavedServer = "${currentHost}"`);
+    content = content.replace(/\$ServerBox\.Text\s*=\s*"[^"]*"/g, `$ServerBox.Text = "${currentHost}"`);
+    content = content.replace(/\$DefaultServer\s*=\s*"[^"]*"/g, `$DefaultServer = "${currentHost}"`);
     return res.send(content);
   } else {
     const fallbackPath = path.resolve(process.cwd(), './windows-agent/start_agent.bat');
@@ -2408,10 +2434,10 @@ app.get('/api/agent/download-script', (req, res) => {
   res.setHeader('Content-Type', 'text/x-python');
   res.setHeader('Content-Disposition', 'attachment; filename="printx_agent.py"');
 
-  const currentHost = `${req.protocol}://${req.get('host')}`;
+  const currentHost = getPublicServerUrl(req);
   if (fs.existsSync(scriptPath)) {
     let content = fs.readFileSync(scriptPath, 'utf8');
-    content = content.replace(/DEFAULT_SERVER = "[^"]*"/g, `DEFAULT_SERVER = "${currentHost}"`);
+    content = content.replace(/DEFAULT_SERVER\s*=\s*"[^"]*"/g, `DEFAULT_SERVER = "${currentHost}"`);
     return res.send(content);
   } else {
     res.send('# printx Print Agent');
@@ -2425,15 +2451,16 @@ app.get('/api/agent/download-ps1', (req, res) => {
   res.setHeader('Content-Type', 'text/plain');
   res.setHeader('Content-Disposition', 'attachment; filename="Install-And-Run.ps1"');
 
-  const currentHost = `${req.protocol}://${req.get('host')}`;
+  const currentHost = getPublicServerUrl(req);
   if (fs.existsSync(psPath)) {
     let content = fs.readFileSync(psPath, 'utf8');
-    content = content.replace(/\[string\]\$ServerUrl = "[^"]*"/g, `[string]$ServerUrl = "${currentHost}"`);
+    content = content.replace(/\[string\]\$ServerUrl\s*=\s*"[^"]*"/g, `[string]$ServerUrl = "${currentHost}"`);
     return res.send(content);
   } else {
     res.send('Write-Host "printx Print Agent"');
   }
 });
+
 
 // Shop generates pairing code for Windows desktop app (Fixed & Permanent per shop)
 app.post('/api/shop/agent/pairing-code', requireAuth, (req, res) => {

@@ -37,7 +37,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QIcon, QFont, QColor
 
 CONFIG_FILE = Path("config.json")
-DEFAULT_SERVER = "http://localhost:3000"
+DEFAULT_SERVER = "https://printx-x5a2.vercel.app"
 
 def redact_secrets(text: str) -> str:
     """Sanitize tokens and sensitive values from application logs"""
@@ -390,19 +390,24 @@ class MainWindow(QMainWindow):
             self.start_agent()
 
     def load_config(self):
-        if CONFIG_FILE.exists():
-            try:
-                with open(CONFIG_FILE, "r") as f:
-                    return json.load(f)
-            except Exception:
-                pass
-        return {
+        cfg = {
             "server_url": DEFAULT_SERVER,
             "agent_token": "",
             "pairing_code": "",
             "device_name": "Shop-Counter-PC",
             "dry_run": False
         }
+        if CONFIG_FILE.exists():
+            try:
+                with open(CONFIG_FILE, "r") as f:
+                    saved = json.load(f)
+                    cfg.update(saved)
+            except Exception:
+                pass
+        # Auto-migrate away from obsolete localhost to DEFAULT_SERVER
+        if not cfg.get("server_url") or "localhost" in cfg.get("server_url", "") or "127.0.0.1" in cfg.get("server_url", ""):
+            cfg["server_url"] = DEFAULT_SERVER
+        return cfg
 
     def save_config(self):
         try:

@@ -83,14 +83,20 @@ $ServerLabel.Size = New-Object System.Drawing.Size(120, 20)
 $Form.Controls.Add($ServerLabel)
 
 $ConfigFile = Join-Path $WorkDir "printx-agent-config.json"
-$SavedServer = "http://localhost:3000"
+$DefaultServer = "https://printx-x5a2.vercel.app"
+$SavedServer = "https://printx-x5a2.vercel.app"
 $SavedCode = ""
 if (Test-Path $ConfigFile) {
     try {
         $cfg = Get-Content $ConfigFile -Raw | ConvertFrom-Json
-        if ($cfg.server_url) { $SavedServer = $cfg.server_url }
+        if ($cfg.server_url -and $cfg.server_url -notlike "*localhost*" -and $cfg.server_url -notlike "*127.0.0.1*") {
+            $SavedServer = $cfg.server_url
+        }
         if ($cfg.pairing_code) { $SavedCode = $cfg.pairing_code }
     } catch {}
+}
+if (!$SavedServer -or $SavedServer -like "*localhost*") {
+    $SavedServer = $DefaultServer
 }
 
 $ServerBox = New-Object System.Windows.Forms.TextBox
@@ -255,7 +261,7 @@ function ConnectShopAgent($isSilent = $false) {
         $errDetail = $_.Exception.Message
         LogMessage "Connection attempt note: $errDetail"
         if (!$isSilent) {
-            [System.Windows.Forms.MessageBox]::Show("Connection note: $errDetail`n`nPlease verify your server URL and 6-digit code in Shop Dashboard.", "Connection")
+            [System.Windows.Forms.MessageBox]::Show("Could not reach the server: $Server`n`nDetails: $errDetail`n`nImportant Tip: Make sure the Server URL is set to your live website (e.g. https://printx-x5a2.vercel.app), not localhost.`nPlease check your internet and 6-digit code in Shop Dashboard.", "Server Connection Assistance")
         }
     }
 }
