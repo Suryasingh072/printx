@@ -30,7 +30,7 @@ export interface User {
   shopId?: string;
 }
 
-export type ShopAccountType = 'printx' | 'shop' | 'office';
+export type ShopAccountType = 'printx';
 
 export interface Shop {
   id: string;
@@ -41,7 +41,7 @@ export interface Shop {
   address: string;
   city: string;
   status: ShopStatus;
-  accountType?: ShopAccountType;
+  accountType?: 'printx';
   rejectionReason?: string;
   activatedAt?: string;
   qrCodeUrl?: string;

@@ -134,7 +134,8 @@
       "paperPrintedSinceRefill": 0,
       "isOutOfPaper": false,
       "lastPaperRefillAt": "2026-11-07T16:56:58.370Z",
-      "trayCapacity": 500
+      "trayCapacity": 500,
+      "accountType": "printx"
     },
     {
       "slug": "test-cyber-shop",
@@ -149,7 +150,8 @@
       "updatedAt": "2026-10-16T13:57:35.549Z",
       "trayCapacity": 500,
       "paperPrintedSinceRefill": 0,
-      "isOutOfPaper": false
+      "isOutOfPaper": false,
+      "accountType": "printx"
     },
     {
       "slug": "ekma-super-cyber",
@@ -164,7 +166,8 @@
       "updatedAt": "2026-10-16T14:06:36.463Z",
       "trayCapacity": 500,
       "paperPrintedSinceRefill": 0,
-      "isOutOfPaper": false
+      "isOutOfPaper": false,
+      "accountType": "printx"
     },
     {
       "slug": "sharma-digital",
@@ -179,7 +182,8 @@
       "updatedAt": "2026-10-17T16:18:03.418Z",
       "trayCapacity": 500,
       "paperPrintedSinceRefill": 0,
-      "isOutOfPaper": false
+      "isOutOfPaper": false,
+      "accountType": "printx"
     },
     {
       "slug": "gupta-cyber-zone",
@@ -194,7 +198,8 @@
       "updatedAt": "2026-10-17T16:37:32.391Z",
       "trayCapacity": 500,
       "paperPrintedSinceRefill": 0,
-      "isOutOfPaper": false
+      "isOutOfPaper": false,
+      "accountType": "printx"
     },
     {
       "slug": "verma-cyber-cafe",
@@ -209,7 +214,8 @@
       "updatedAt": "2026-10-17T16:43:43.049Z",
       "trayCapacity": 500,
       "paperPrintedSinceRefill": 0,
-      "isOutOfPaper": false
+      "isOutOfPaper": false,
+      "accountType": "printx"
     },
     {
       "slug": "bbd",
@@ -224,7 +230,8 @@
       "updatedAt": "2026-10-17T16:45:48.692Z",
       "trayCapacity": 500,
       "paperPrintedSinceRefill": 0,
-      "isOutOfPaper": false
+      "isOutOfPaper": false,
+      "accountType": "printx"
     },
     {
       "slug": "bbdniit",
@@ -239,7 +246,8 @@
       "updatedAt": "2026-10-23T18:30:30.879Z",
       "trayCapacity": 500,
       "paperPrintedSinceRefill": 0,
-      "isOutOfPaper": false
+      "isOutOfPaper": false,
+      "accountType": "printx"
     },
     {
       "id": "shp-bb74affd",
@@ -255,7 +263,8 @@
       "isOutOfPaper": false,
       "trayCapacity": 500,
       "lastPaperRefillAt": "2026-11-07T17:59:42.197Z",
-      "paperPrintedSinceRefill": 0
+      "paperPrintedSinceRefill": 0,
+      "accountType": "printx"
     }
   ],
   "pricing": [
@@ -392,72 +401,79 @@
     {
       "id": "rul-45d37d9c",
       "shopId": "shp-722742a4",
-      "mode": "smart",
+      "mode": "auto",
       "maxAutoPages": 10,
       "maxAutoAmount": 50,
       "requirePaymentBeforePrint": true,
       "notifyWhatsapp": true,
-      "updatedAt": "2026-10-16T13:57:35.549Z"
+      "updatedAt": "2026-10-16T13:57:35.549Z",
+      "requireOnlinePayment": true
     },
     {
       "id": "rul-e7a0ef0a",
       "shopId": "shp-52d19b75",
-      "mode": "smart",
+      "mode": "auto",
       "maxAutoPages": 10,
       "maxAutoAmount": 50,
       "requirePaymentBeforePrint": true,
       "notifyWhatsapp": true,
-      "updatedAt": "2026-10-16T14:06:36.463Z"
+      "updatedAt": "2026-10-16T14:06:36.463Z",
+      "requireOnlinePayment": true
     },
     {
       "id": "rul-cf2bfce4",
       "shopId": "shp-4a80e000",
-      "mode": "smart",
+      "mode": "auto",
       "maxAutoPages": 10,
       "maxAutoAmount": 50,
       "requirePaymentBeforePrint": true,
       "notifyWhatsapp": true,
-      "updatedAt": "2026-10-17T16:18:03.418Z"
+      "updatedAt": "2026-10-17T16:18:03.418Z",
+      "requireOnlinePayment": true
     },
     {
       "id": "rul-fba66ec5",
       "shopId": "shp-809e746e",
-      "mode": "smart",
+      "mode": "auto",
       "maxAutoPages": 10,
       "maxAutoAmount": 50,
       "requirePaymentBeforePrint": true,
       "notifyWhatsapp": true,
-      "updatedAt": "2026-10-17T16:37:32.391Z"
+      "updatedAt": "2026-10-17T16:37:32.391Z",
+      "requireOnlinePayment": true
     },
     {
       "id": "rul-75fddba2",
       "shopId": "shp-8aee248c",
-      "mode": "smart",
+      "mode": "auto",
       "maxAutoPages": 10,
       "maxAutoAmount": 50,
       "requirePaymentBeforePrint": true,
       "notifyWhatsapp": true,
-      "updatedAt": "2026-10-17T16:43:43.049Z"
+      "updatedAt": "2026-10-17T16:43:43.049Z",
+      "requireOnlinePayment": true
     },
     {
       "id": "rul-bda0c93b",
       "shopId": "shp-4faf170a",
-      "mode": "smart",
+      "mode": "auto",
       "maxAutoPages": 10,
       "maxAutoAmount": 50,
       "requirePaymentBeforePrint": true,
       "notifyWhatsapp": true,
-      "updatedAt": "2026-10-17T16:45:48.692Z"
+      "updatedAt": "2026-10-17T16:45:48.692Z",
+      "requireOnlinePayment": true
     },
     {
       "id": "rul-41d564d2",
       "shopId": "shp-00b3028b",
-      "mode": "smart",
+      "mode": "auto",
       "maxAutoPages": 10,
       "maxAutoAmount": 50,
       "requirePaymentBeforePrint": true,
       "notifyWhatsapp": true,
-      "updatedAt": "2026-10-23T18:30:30.879Z"
+      "updatedAt": "2026-10-23T18:30:30.879Z",
+      "requireOnlinePayment": true
     },
     {
       "id": "rul-611d6f66",

@@ -38,7 +38,7 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, onNavigateHome }) => {
-  const [activeTab, setActiveTab] = useState<'shops' | 'accounts' | 'users' | 'supabase'>('shops');
+  const [activeTab, setActiveTab] = useState<'shops' | 'users' | 'supabase'>('shops');
   const [shops, setShops] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +62,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   const [formAddress, setFormAddress] = useState('');
   const [formCity, setFormCity] = useState('');
   const [formStatus, setFormStatus] = useState<'active' | 'pending_review' | 'suspended'>('active');
-  const [formAccountType, setFormAccountType] = useState<'printx' | 'shop' | 'office'>('printx');
+  const [formAccountType] = useState<'printx'>('printx');
   const [formOwnerName, setFormOwnerName] = useState('');
   const [formOwnerEmail, setFormOwnerEmail] = useState('');
   const [formOwnerPassword, setFormOwnerPassword] = useState('');
@@ -160,7 +160,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
     loadData();
   }, []);
 
-  const handleOpenCreateShopModal = (defaultType: 'printx' | 'shop' | 'office' = 'printx') => {
+  const handleOpenCreateShopModal = () => {
     setEditingShop(null);
     setFormName('');
     setFormSlug('');
@@ -168,7 +168,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
     setFormAddress('');
     setFormCity('');
     setFormStatus('active');
-    setFormAccountType(defaultType);
     setFormOwnerName('');
     setFormOwnerEmail('');
     setFormOwnerPassword('Shop#1234');
@@ -183,21 +182,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
     setFormAddress(shop.address);
     setFormCity(shop.city);
     setFormStatus(shop.status);
-    setFormAccountType((shop.accountType || (shop.requireOnlinePayment ? 'printx' : 'shop')) as any);
     setFormOwnerName(shop.ownerName || '');
     setFormOwnerEmail(shop.ownerEmail || '');
     setFormOwnerPassword('');
     setShowEditModal(true);
-  };
-
-  const handleQuickChangeAccountType = async (shop: any, newType: 'printx' | 'shop' | 'office') => {
-    try {
-      await api.editShop(shop.id, { accountType: newType });
-      showToast(`Updated "${shop.name}" account workflow to ${newType.toUpperCase()}`, 'success');
-      loadData();
-    } catch (e: any) {
-      showToast(e.message || 'Failed to change account type', 'error');
-    }
   };
 
   const handleSaveShop = async (e: React.FormEvent) => {
@@ -461,19 +449,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                   : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Store className="w-3.5 h-3.5 text-pink-400" />
-              Registered Shops ({shops.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('accounts')}
-              className={`px-4 py-3 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-                activeTab === 'accounts'
-                  ? 'border-pink-500 text-white bg-white/[0.05]'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Shield className="w-3.5 h-3.5 text-cyan-400" />
-              Account Roles & Workflow
+              <Printer className="w-3.5 h-3.5 text-pink-400" />
+              PrintX Smart Kiosks ({shops.length})
             </button>
             <button
               onClick={() => setActiveTab('users')}
@@ -484,7 +461,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
               }`}
             >
               <Users className="w-3.5 h-3.5 text-purple-400" />
-              Users & Logins ({users.length})
+              Kiosk Operators & Admins ({users.length})
             </button>
             <button
               onClick={() => setActiveTab('supabase')}
@@ -509,7 +486,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
             <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-3" />
             <input
               type="text"
-              placeholder={activeTab === 'shops' ? 'Filter shops by name, slug, or city...' : 'Filter users by email or role...'}
+              placeholder={activeTab === 'shops' ? 'Filter kiosks by name, slug, or city...' : 'Filter users by email or role...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pink-500"
@@ -519,18 +496,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           <div className="flex items-center gap-2">
             {activeTab === 'shops' && (
               <button
-                onClick={() => handleOpenCreateShopModal('printx')}
+                onClick={() => handleOpenCreateShopModal()}
                 className="px-4 py-2 rounded-xl text-xs font-black btn-grad flex items-center gap-1.5 shadow-lg shadow-rose-500/25 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Register New Shop
-              </button>
-            )}
-            {activeTab === 'accounts' && (
-              <button
-                onClick={() => handleOpenCreateShopModal('office')}
-                className="px-4 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white flex items-center gap-1.5 shadow-lg shadow-cyan-500/25 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Office / Shop
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Register New PrintX Kiosk
               </button>
             )}
             {activeTab === 'users' && (
@@ -578,7 +547,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                     </tr>
                   ) : (
                     filteredShops.map((s) => {
-                      const accType = (s.accountType || (s.requireOnlinePayment ? 'printx' : 'shop')) as 'printx' | 'shop' | 'office';
                       return (
                         <tr key={s.id} className="hover:bg-white/[0.03] transition">
                           <td className="py-3.5 px-4">
@@ -586,35 +554,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                             <div className="text-[11px] font-mono text-pink-400/80 mt-0.5">/shop/{s.slug}</div>
                           </td>
 
-                          {/* Account Workflow Column */}
+                          {/* Kiosk Workflow Column */}
                           <td className="py-3.5 px-4">
-                            <div className="flex items-center gap-2">
-                              {accType === 'office' ? (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
-                                  🏢 Office (Free)
-                                </span>
-                              ) : accType === 'shop' ? (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                                  🏪 Shop (Counter)
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-300 border border-pink-500/30">
-                                  🚀 PrintX (Razorpay)
-                                </span>
-                              )}
-
-                              {/* Quick switcher */}
-                              <select
-                                value={accType}
-                                onChange={(e) => handleQuickChangeAccountType(s, e.target.value as any)}
-                                className="bg-[#12182b] border border-white/10 text-[10.5px] rounded-md px-1.5 py-1 text-slate-300 focus:outline-none focus:border-pink-500 cursor-pointer"
-                                title="Quick change workflow"
-                              >
-                                <option value="printx">PrintX (Razorpay)</option>
-                                <option value="shop">Shop (Counter)</option>
-                                <option value="office">Office (Free)</option>
-                              </select>
-                            </div>
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-300 border border-pink-500/30">
+                              🚀 PrintX Kiosk (Instant Auto-Print)
+                            </span>
                           </td>
 
                           <td className="py-3.5 px-4 text-slate-300">{s.city}</td>
@@ -657,159 +601,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           </div>
         )}
 
-        {/* TAB 2: ACCOUNT ROLES & WORKFLOW MANAGEMENT */}
-        {activeTab === 'accounts' && (
-          <div className="space-y-6">
-            {/* 3 Account Types Overview Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {/* Type 1: PrintX */}
-              <div className="p-5 rounded-2xl bg-[#0c101e]/90 border border-pink-500/30 relative overflow-hidden space-y-3.5 shadow-xl">
-                <div className="absolute top-0 right-0 w-28 h-28 bg-pink-500/10 rounded-full blur-2xl pointer-events-none" />
-                <div className="flex items-center justify-between">
-                  <span className="p-2.5 rounded-xl bg-pink-500/20 text-pink-300">
-                    <CreditCard className="w-5 h-5 stroke-[2.2]" />
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-pink-500/20 text-pink-300 border border-pink-500/30">
-                    Online Mode
-                  </span>
-                </div>
-                <div>
-                  <h4 className="text-base font-extrabold text-white font-head">1. PrintX Account</h4>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                    Full Razorpay integration. Customer pays online via UPI, QR, or Card. Order spools automatically to printer immediately upon payment verification.
-                  </p>
-                </div>
-                <div className="pt-2 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Payment:</span>
-                    <span className="font-bold text-pink-300">Razorpay Gateway (Online)</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Auto-Print:</span>
-                    <span className="font-bold text-emerald-400">Instant on Payment</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleOpenCreateShopModal('printx')}
-                  className="w-full py-2.5 rounded-xl text-xs font-black btn-grad cursor-pointer"
-                >
-                  Create PrintX Shop
-                </button>
-              </div>
-
-              {/* Type 2: Shop */}
-              <div className="p-5 rounded-2xl bg-[#0c101e]/90 border border-emerald-500/30 relative overflow-hidden space-y-3.5 shadow-xl">
-                <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-                <div className="flex items-center justify-between">
-                  <span className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-300">
-                    <Store className="w-5 h-5 stroke-[2.2]" />
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    Counter Mode
-                  </span>
-                </div>
-                <div>
-                  <h4 className="text-base font-extrabold text-white font-head">2. Shop Account</h4>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                    Pay on Counter manual workflow. Customer page shows "Pay on Counter". Shopkeeper accepts cash/UPI at counter and releases the print job.
-                  </p>
-                </div>
-                <div className="pt-2 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Payment:</span>
-                    <span className="font-bold text-emerald-300">Pay on Counter (Cash/UPI)</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Release:</span>
-                    <span className="font-bold text-slate-200">Shopkeeper Dispatches</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleOpenCreateShopModal('shop')}
-                  className="w-full py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white cursor-pointer shadow-lg shadow-emerald-500/20"
-                >
-                  Create Shop Counter
-                </button>
-              </div>
-
-              {/* Type 3: Office */}
-              <div className="p-5 rounded-2xl bg-[#0c101e]/90 border border-cyan-500/30 relative overflow-hidden space-y-3.5 shadow-xl">
-                <div className="absolute top-0 right-0 w-28 h-28 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
-                <div className="flex items-center justify-between">
-                  <span className="p-2.5 rounded-xl bg-cyan-500/20 text-cyan-300">
-                    <Printer className="w-5 h-5 stroke-[2.2]" />
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                    Internal Free
-                  </span>
-                </div>
-                <div>
-                  <h4 className="text-base font-extrabold text-white font-head">3. Office Account</h4>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                    All payment modules removed. Customer page simply has "Place Order & Print" (₹0 / Free). Direct printing for offices, schools, and internal teams.
-                  </p>
-                </div>
-                <div className="pt-2 border-t border-white/10 text-[11px] text-slate-300 space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Payment:</span>
-                    <span className="font-bold text-cyan-300">Disabled (₹0 Free)</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Print Button:</span>
-                    <span className="font-bold text-cyan-400">Place Order & Print</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleOpenCreateShopModal('office')}
-                  className="w-full py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white cursor-pointer shadow-lg shadow-cyan-500/20"
-                >
-                  Create Office Hub
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Assignment Table */}
-            <div className="bg-[#0c101e]/90 border border-white/10 rounded-2xl p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold text-sm text-white font-head">Manage Registered Counters by Role</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">Switch any counter's role between PrintX, Shop, and Office instantly.</p>
-                </div>
-                <span className="text-xs font-mono text-slate-400">{shops.length} total active entities</span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {shops.map((s) => {
-                  const accType = (s.accountType || (s.requireOnlinePayment ? 'printx' : 'shop')) as 'printx' | 'shop' | 'office';
-                  return (
-                    <div key={s.id} className="p-3.5 bg-white/[0.03] border border-white/10 rounded-xl flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-bold text-xs text-white truncate">{s.name}</p>
-                        <p className="text-[10.5px] font-mono text-slate-400">/shop/{s.slug}</p>
-                      </div>
-
-                      <select
-                        value={accType}
-                        onChange={(e) => handleQuickChangeAccountType(s, e.target.value as any)}
-                        className={`text-xs font-bold rounded-lg px-2.5 py-1.5 border cursor-pointer ${
-                          accType === 'office'
-                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
-                            : accType === 'shop'
-                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                            : 'bg-pink-500/20 text-pink-300 border-pink-500/40'
-                        }`}
-                      >
-                        <option value="printx" className="bg-[#0c101e] text-white">1. PrintX (Razorpay)</option>
-                        <option value="shop" className="bg-[#0c101e] text-white">2. Shop (Counter)</option>
-                        <option value="office" className="bg-[#0c101e] text-white">3. Office (Free Print)</option>
-                      </select>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* TAB 3: USERS TABLE */}
         {activeTab === 'users' && (
@@ -947,68 +738,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
             </div>
 
             <form onSubmit={handleSaveShop} className="space-y-4">
-              {/* 3 Account Types Selection */}
-              <div>
-                <label className="text-xs font-bold text-slate-300 block mb-2">Account Type & Workflow *</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormAccountType('printx')}
-                    className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
-                      formAccountType === 'printx'
-                        ? 'border-pink-500 bg-pink-500/15 text-white shadow-[0_0_15px_rgba(255,46,99,0.25)]'
-                        : 'border-white/10 bg-white/5 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center gap-1.5 text-pink-300 text-xs font-black">
-                        <CreditCard className="w-4 h-4" /> 1. PrintX
-                      </div>
-                      <p className="text-[10px] text-slate-300 mt-1">Razorpay Online</p>
-                    </div>
-                    <span className="text-[9px] uppercase font-mono text-pink-400/80 mt-2">Auto-Spool</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setFormAccountType('shop')}
-                    className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
-                      formAccountType === 'shop'
-                        ? 'border-emerald-500 bg-emerald-500/15 text-white shadow-[0_0_15px_rgba(34,197,94,0.25)]'
-                        : 'border-white/10 bg-white/5 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center gap-1.5 text-emerald-300 text-xs font-black">
-                        <Store className="w-4 h-4" /> 2. Shop
-                      </div>
-                      <p className="text-[10px] text-slate-300 mt-1">Pay on Counter</p>
-                    </div>
-                    <span className="text-[9px] uppercase font-mono text-emerald-400/80 mt-2">Manual Cash</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setFormAccountType('office')}
-                    className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
-                      formAccountType === 'office'
-                        ? 'border-cyan-500 bg-cyan-500/15 text-white shadow-[0_0_15px_rgba(6,182,212,0.25)]'
-                        : 'border-white/10 bg-white/5 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center gap-1.5 text-cyan-300 text-xs font-black">
-                        <Printer className="w-4 h-4" /> 3. Office
-                      </div>
-                      <p className="text-[10px] text-slate-300 mt-1">Zero Payment</p>
-                    </div>
-                    <span className="text-[9px] uppercase font-mono text-cyan-400/80 mt-2">Free Print</span>
-                  </button>
+              {/* PrintX Kiosk Mode Banner */}
+              <div className="p-3.5 bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-indigo-500/10 border border-pink-500/25 rounded-xl flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-pink-500/20 text-pink-300 flex items-center justify-center shrink-0 border border-pink-500/30">
+                  <Printer className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-white block">PrintX Autonomous Kiosk Station</span>
+                  <span className="text-[11px] text-slate-300 block">
+                    100% Self-Service: Customer QR scan &rarr; Online UPI Payment &rarr; Instant Auto-Print to Windows Agent.
+                  </span>
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1">Shop Name *</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Kiosk Name *</label>
                 <input
                   type="text"
                   required

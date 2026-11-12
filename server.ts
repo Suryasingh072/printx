@@ -763,17 +763,10 @@ app.post('/api/admin/shops', requireAuth, (req, res) => {
     address: (address || 'Main Road Counter').trim(),
     city: (city || 'City Center').trim(),
     status: 'active',
-    accountType: (accountType === 'office' ? 'office' : accountType === 'shop' ? 'shop' : 'printx'),
+    accountType: 'printx',
   });
 
-  if (accountType === 'office') {
-    db.updateShopApprovalRules(newShop.id, { requireOnlinePayment: false, mode: 'auto', requirePaymentBeforePrint: false });
-    db.updateShopPricing(newShop.id, { bwSinglePrice: 0, bwDuplexPrice: 0, colorSinglePrice: 0, colorDuplexPrice: 0 });
-  } else if (accountType === 'shop') {
-    db.updateShopApprovalRules(newShop.id, { requireOnlinePayment: false, requirePaymentBeforePrint: true });
-  } else {
-    db.updateShopApprovalRules(newShop.id, { requireOnlinePayment: true, requirePaymentBeforePrint: true });
-  }
+  db.updateShopApprovalRules(newShop.id, { requireOnlinePayment: true, requirePaymentBeforePrint: true, mode: 'auto' });
 
   db.updateUser(owner.id, { shopId: newShop.id } as any);
 
@@ -823,20 +816,12 @@ app.put('/api/admin/shops/:id', requireAuth, (req, res) => {
     ...(phone ? { phone: phone.trim() } : {}),
     ...(address ? { address: address.trim() } : {}),
     ...(city ? { city: city.trim() } : {}),
-    ...(status ? { status } : {}),
-    ...(accountType ? { accountType } : {}),
+    status: status || shop.status,
+    accountType: 'printx',
     slug: newSlug,
   });
 
-  if (accountType) {
-    if (accountType === 'office') {
-      db.updateShopApprovalRules(shopId, { requireOnlinePayment: false, mode: 'auto', requirePaymentBeforePrint: false });
-    } else if (accountType === 'shop') {
-      db.updateShopApprovalRules(shopId, { requireOnlinePayment: false, requirePaymentBeforePrint: true });
-    } else if (accountType === 'printx') {
-      db.updateShopApprovalRules(shopId, { requireOnlinePayment: true, requirePaymentBeforePrint: true });
-    }
-  }
+  db.updateShopApprovalRules(shopId, { requireOnlinePayment: true, requirePaymentBeforePrint: true, mode: 'auto' });
 
   // Update owner details if provided
   if (shop.ownerId) {

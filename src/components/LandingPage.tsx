@@ -302,18 +302,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="max-w-6xl mx-auto px-5 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
           {/* Left Hero Content */}
           <div className="lg:col-span-7 space-y-6">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-white/15 bg-white/5 text-xs text-slate-300">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-pink-500/30 bg-pink-500/10 text-xs text-pink-300">
               <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse" />
-              For cyber cafes, copy shops and CSC centres
+              PrintX Smart Kiosk — Autonomous Self-Service Printing
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-[58px] font-extrabold font-['Sora'] leading-[1.12] tracking-tight">
-              Customers scan.{' '}
-              <span className="text-grad block mt-1">Your printer does the rest.</span>
+            <h1 className="text-4xl sm:text-5xl lg:text-[58px] font-extrabold font-['Sora'] leading-[1.12] tracking-tight text-white">
+              Turn any printer into an{' '}
+              <span className="text-grad block mt-1">autonomous PrintX Kiosk.</span>
             </h1>
 
             <p className="text-slate-400 text-base sm:text-lg max-w-xl leading-relaxed">
-              Customers scan your QR code, upload files from their phone and send them straight to your printer. No WhatsApp, no pen drives, no app to install.
+              Zero staff needed. Zero WhatsApp. Zero pen drives. Customers scan your Kiosk QR code, upload files, pay online via UPI, and prints spool straight out of your printer automatically.
             </p>
 
             <div className="flex flex-wrap gap-3.5 pt-2">
@@ -322,7 +322,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 className="px-7 py-4 rounded-xl font-black text-sm btn-grad flex items-center gap-2.5 cursor-pointer shadow-xl shadow-rose-500/30 transition hover:scale-[1.02]"
               >
                 <LogIn className="w-4 h-4" />
-                <span>Shopkeeper Sign in →</span>
+                <span>Kiosk Owner Sign In →</span>
               </button>
 
               <button
@@ -340,10 +340,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {/* Chips */}
             <div className="flex flex-wrap gap-2.5 pt-4">
               {[
+                '100% Autonomous Kiosk',
+                'Instant UPI Auto-Spool',
                 'Any Windows printer',
-                'Wi-Fi printer not required',
-                'B&W and colour',
-                'Files auto-deleted',
+                'Touch Auto-Crop & ID tool',
+                'Files auto-deleted after print',
               ].map((chip) => (
                 <div
                   key={chip}

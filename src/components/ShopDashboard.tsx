@@ -35,6 +35,7 @@ import {
   Store,
   Database,
   Cloud,
+  Zap,
 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { generateShopPosterPdf } from '../lib/posterPdf.js';
@@ -78,7 +79,7 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
     upiId: (initialShop as any).upiId || '',
     razorpayKeyId: (initialShop as any).razorpayKeyId || '',
     razorpayKeySecret: (initialShop as any).razorpayKeySecret || '',
-    requiresCounterPayment: (initialShop as any).requiresCounterPayment ?? true,
+    requiresCounterPayment: false,
   });
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -1060,21 +1061,16 @@ export const ShopDashboard: React.FC<ShopDashboardProps> = ({ user, shop: initia
                 />
               </div>
 
-              <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={profileForm.requiresCounterPayment}
-                    onChange={(e) => setProfileForm({ ...profileForm, requiresCounterPayment: e.target.checked })}
-                    className="rounded text-pink-500 focus:ring-pink-500 w-4 h-4"
-                  />
-                  <div>
-                    <span className="text-xs font-bold text-white block">Require Counter Payment Confirmation</span>
-                    <span className="text-[11px] text-slate-400 block">
-                      Enforce collection of cash/UPI before jobs are spooled to printer.
-                    </span>
-                  </div>
-                </label>
+              <div className="p-4 bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-indigo-500/10 border border-pink-500/25 rounded-2xl flex items-center gap-3.5 shadow-sm">
+                <div className="w-9 h-9 rounded-xl bg-pink-500/20 text-pink-300 flex items-center justify-center shrink-0 border border-pink-500/30">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-white block">PrintX Autonomous Kiosk Workflow Active</span>
+                  <span className="text-[11px] text-slate-300 block">
+                    100% Automatic Print Spooling: Customers pay directly via Online UPI / Razorpay, and the job prints immediately to your connected Windows printer without manual cash delays.
+                  </span>
+                </div>
               </div>
 
               <div className="pt-4 border-t border-white/10 flex items-center justify-between">

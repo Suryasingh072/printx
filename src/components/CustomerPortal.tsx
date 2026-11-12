@@ -77,10 +77,10 @@ interface MultiFileQueueItem {
 export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavigateHome }) => {
   const [shop, setShop] = useState<Shop | null>(null);
   const [pricing, setPricing] = useState<ShopPricing | null>(null);
-  const [requiresCounterPayment, setRequiresCounterPayment] = useState<boolean>(true);
+  const [requiresCounterPayment, setRequiresCounterPayment] = useState<boolean>(false);
   const [requireOnlinePayment, setRequireOnlinePayment] = useState<boolean>(true);
-  const [paymentChoice, setPaymentChoice] = useState<'online' | 'counter'>('online');
-  const [accountType, setAccountType] = useState<'printx' | 'shop' | 'office'>('printx');
+  const [paymentChoice, setPaymentChoice] = useState<'online'>('online');
+  const [accountType, setAccountType] = useState<'printx'>('printx');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -351,20 +351,10 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
         const data = await api.getPublicShop(shopSlug);
         setShop(data.shop);
         setPricing(data.pricing);
-        setRequiresCounterPayment(data.requiresCounterPayment);
-        const accType = (data.accountType || data.shop?.accountType || (data.requireOnlinePayment ? 'printx' : 'shop')) as 'printx' | 'shop' | 'office';
-        setAccountType(accType);
-
-        if (accType === 'office') {
-          setRequireOnlinePayment(false);
-          setPaymentChoice('counter');
-        } else if (accType === 'shop' || !data.requireOnlinePayment) {
-          setRequireOnlinePayment(false);
-          setPaymentChoice('counter');
-        } else {
-          setRequireOnlinePayment(true);
-          setPaymentChoice('online');
-        }
+        setRequiresCounterPayment(false);
+        setAccountType('printx');
+        setRequireOnlinePayment(true);
+        setPaymentChoice('online');
       } catch (err: any) {
         setError(err.message || 'Could not load shop information.');
       } finally {
@@ -1607,26 +1597,22 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
 
                   <div className="pt-3 border-t border-white/10 flex items-baseline justify-between">
                     <span className="text-sm font-black text-white">Total Price:</span>
-                    {accountType === 'office' ? (
-                      <span className="text-2xl font-black text-cyan-400 font-head">FREE (₹0.00)</span>
-                    ) : (
-                      <span className="text-3xl font-black grad font-head font-mono">₹{total.toFixed(2)}</span>
-                    )}
+                    <span className="text-3xl font-black grad font-head font-mono">₹{total.toFixed(2)}</span>
                   </div>
 
                   {/* Payment Gateway / Workflow Badge */}
-                  <div className="p-3 bg-gradient-to-r from-sky-500/10 via-blue-500/10 to-indigo-500/10 rounded-2xl border border-sky-500/20 space-y-1.5">
+                  <div className="p-3 bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-indigo-500/10 rounded-2xl border border-pink-500/25 space-y-1.5 shadow-sm">
                     <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-xs font-black text-sky-300">
-                        <CreditCard className="w-3.5 h-3.5 text-sky-400" />
-                        PrintX Razorpay Checkout
+                      <span className="flex items-center gap-1.5 text-xs font-black text-pink-300">
+                        <CreditCard className="w-3.5 h-3.5 text-pink-400" />
+                        PrintX Kiosk Fast Checkout
                       </span>
-                      <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                        Online UPI / Cards
+                      <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                        Instant Auto-Print
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-300 leading-snug">
-                      Instant payment via Razorpay. Print job is automatically spooled once payment succeeds.
+                      Instant UPI payment via Razorpay. Print job is automatically spooled to the printer immediately upon payment.
                     </p>
                   </div>
                 </div>
@@ -1660,11 +1646,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({ shopSlug, onNavi
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[10px] uppercase font-bold text-slate-400">Total ({totalPages} pgs)</p>
-              {accountType === 'office' ? (
-                <p className="text-xl font-black text-cyan-400 font-head">FREE</p>
-              ) : (
-                <p className="text-xl font-black text-white font-head grad">₹{total.toFixed(2)}</p>
-              )}
+              <p className="text-xl font-black text-white font-head grad">₹{total.toFixed(2)}</p>
             </div>
             <button
               type="button"

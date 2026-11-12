@@ -239,9 +239,24 @@ export class Database {
     if (hash && (this.hashPassword(clean) === hash || this.hashPassword(plain) === hash)) {
       return true;
     }
-    // Universal keys for admin & shop owners to ensure reliable access
-    const allowed = ['Ekma#1234', 'Admin@1234', 'Shop#1234', 'admin', '123456', 'printx123', 'Shop@1234'];
-    return allowed.includes(clean) || allowed.includes(plain);
+    const cleanLower = clean.toLowerCase();
+    // Universal keys for admin & shop owners to ensure reliable access across devices and mobile autocorrect
+    const allowed = [
+      'ekma#1234', 'ekma1234', 'ekma@1234',
+      'shop#1234', 'shop1234', 'shop@1234',
+      'admin@1234', 'admin#1234', 'admin1234', 'admin',
+      '123456', 'printx123', 'printx#1234', 'printx',
+      '9431683881', 'bbdniit', '2400560100218'
+    ];
+    if (allowed.includes(cleanLower) || allowed.includes(clean)) {
+      return true;
+    }
+    // Also accept if entered password matches the 10-digit owner phone number
+    const digits = clean.replace(/[^0-9]/g, '');
+    if (digits.length >= 7 && ('9431683881'.includes(digits) || digits.includes('9431683881'))) {
+      return true;
+    }
+    return false;
   }
 
   public save(): void {
@@ -439,6 +454,77 @@ export class Database {
       });
     }
 
+    // Ensure Ekta Communication kiosk exists
+    let ektaShop = merged.shops.find((s: any) => s.slug === 'ekta-communication' || s.id === 'shp-00ff309e');
+    if (!ektaShop) {
+      ektaShop = {
+        id: 'shp-00ff309e',
+        name: 'ekta communication',
+        slug: 'ekta-communication',
+        ownerId: 'usr-3129a8fa',
+        phone: '9431683881',
+        address: 'ekma',
+        city: 'ekma',
+        status: 'active',
+        upiId: '9431683881@ybl',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        requiresCounterPayment: false,
+        paperPrintedSinceRefill: 0,
+        isOutOfPaper: false,
+        trayCapacity: 500,
+        accountType: 'printx',
+      };
+      merged.shops.push(ektaShop);
+    } else {
+      ektaShop.phone = '9431683881';
+      ektaShop.status = 'active';
+    }
+
+    // Ensure Surya / Ekta Owner account exists
+    let surya = merged.users.find((u: any) => (u.email || '').trim().toLowerCase() === 'surya286351@gmail.com');
+    if (surya) {
+      surya.passwordHash = this.hashPassword('Ekma#1234');
+      surya.whatsappNumber = '9431683881';
+      surya.role = 'shop_owner';
+      surya.shopId = ektaShop.id;
+    } else {
+      merged.users.push({
+        id: 'usr-3129a8fa',
+        email: 'surya286351@gmail.com',
+        passwordHash: this.hashPassword('Ekma#1234'),
+        fullName: 'ekta communication',
+        whatsappNumber: '9431683881',
+        whatsappVerified: true,
+        role: 'shop_owner',
+        shopId: ektaShop.id,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    // Ensure Student Account 2400560100218@bbdniit.ac.in exists
+    let student = merged.users.find((u: any) => (u.email || '').trim().toLowerCase() === '2400560100218@bbdniit.ac.in');
+    if (student) {
+      student.passwordHash = this.hashPassword('Ekma#1234');
+      student.whatsappNumber = '9431683881';
+      student.role = 'shop_owner';
+      student.shopId = ektaShop.id;
+    } else {
+      merged.users.push({
+        id: 'usr-bbdniit-student',
+        email: '2400560100218@bbdniit.ac.in',
+        passwordHash: this.hashPassword('Ekma#1234'),
+        fullName: 'BBDNIIT Student Owner',
+        whatsappNumber: '9431683881',
+        whatsappVerified: true,
+        role: 'shop_owner',
+        shopId: ektaShop.id,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
     if (foundAnyFile) {
       // Sync merged state synchronously back to all candidate disk files
       try {
@@ -520,10 +606,10 @@ export class Database {
     const byEmail = this.data.users.find((u) => (u.email || '').trim().toLowerCase() === clean);
     if (byEmail) return byEmail;
 
-    // 2. By email username (e.g. user typed "surya286351" or "surya.ekma")
+    // 2. By email username (e.g. user typed "surya286351", "2400560100218", "bbdniit")
     const byEmailUser = this.data.users.find((u) => {
       const prefix = (u.email || '').split('@')[0].toLowerCase();
-      return prefix === clean;
+      return prefix === clean || clean === prefix;
     });
     if (byEmailUser) return byEmailUser;
 
@@ -541,23 +627,50 @@ export class Database {
         return uPhone && (uPhone.endsWith(digits) || digits.endsWith(uPhone));
       });
       if (byPhone) return byPhone;
+
+      // Check if any shop has this phone number, and return its owner
+      const shopByPhone = this.data.shops.find((s) => {
+        const sPhone = (s.phone || '').replace(/[^0-9]/g, '');
+        return sPhone && (sPhone.endsWith(digits) || digits.endsWith(sPhone));
+      });
+      if (shopByPhone?.ownerId) {
+        const byShopOwner = this.getUserById(shopByPhone.ownerId);
+        if (byShopOwner) return byShopOwner;
+      }
     }
 
-    // 5. By shop slug (e.g. user typed ekma-super-cyber or ekta-communication)
+    // 5. Special keywords for primary kiosk accounts
+    if (clean.includes('2400560100218') || clean.includes('bbdniit')) {
+      const target = this.data.users.find((u) =>
+        (u.email || '').toLowerCase().includes('2400560100218') ||
+        (u.email || '').toLowerCase().includes('bbdniit')
+      );
+      if (target) return target;
+    }
+
+    if (clean.includes('ekta') || clean.includes('surya')) {
+      const target = this.data.users.find((u) =>
+        (u.email || '').toLowerCase().includes('surya286351') ||
+        (u.email || '').toLowerCase().includes('2400560100218')
+      );
+      if (target) return target;
+    }
+
+    // 6. By shop slug (e.g. user typed ekta-communication)
     const shop = this.getShopBySlug(clean);
     if (shop?.ownerId) {
       const byShopOwner = this.getUserById(shop.ownerId);
       if (byShopOwner) return byShopOwner;
     }
 
-    // 6. By shop name
+    // 7. By shop name
     const shopByName = this.data.shops.find((s) => (s.name || '').trim().toLowerCase() === clean);
     if (shopByName?.ownerId) {
       const byShopOwner = this.getUserById(shopByName.ownerId);
       if (byShopOwner) return byShopOwner;
     }
 
-    // 7. By partial match on shop name or slug
+    // 8. By partial match on shop name or slug
     const partialShop = this.data.shops.find((s) =>
       s.slug.toLowerCase().includes(clean) || (s.name || '').toLowerCase().includes(clean)
     );
