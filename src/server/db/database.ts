@@ -457,7 +457,7 @@ export class Database {
     // Ensure Ekta Communication kiosk exists
     let ektaShop = merged.shops.find((s: any) => s.slug === 'ekta-communication' || s.id === 'shp-00ff309e');
     if (!ektaShop) {
-      ektaShop = {
+      const newEkta: Shop = {
         id: 'shp-00ff309e',
         name: 'ekta communication',
         slug: 'ekta-communication',
@@ -466,7 +466,6 @@ export class Database {
         address: 'ekma',
         city: 'ekma',
         status: 'active',
-        upiId: '9431683881@ybl',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         requiresCounterPayment: false,
@@ -474,12 +473,15 @@ export class Database {
         isOutOfPaper: false,
         trayCapacity: 500,
         accountType: 'printx',
-      };
-      merged.shops.push(ektaShop);
+      } as Shop;
+      merged.shops.push(newEkta);
+      ektaShop = newEkta;
     } else {
       ektaShop.phone = '9431683881';
       ektaShop.status = 'active';
     }
+
+    const targetShopId = ektaShop.id;
 
     // Ensure Surya / Ekta Owner account exists
     let surya = merged.users.find((u: any) => (u.email || '').trim().toLowerCase() === 'surya286351@gmail.com');
@@ -487,7 +489,7 @@ export class Database {
       surya.passwordHash = this.hashPassword('Ekma#1234');
       surya.whatsappNumber = '9431683881';
       surya.role = 'shop_owner';
-      surya.shopId = ektaShop.id;
+      surya.shopId = targetShopId;
     } else {
       merged.users.push({
         id: 'usr-3129a8fa',
@@ -497,7 +499,7 @@ export class Database {
         whatsappNumber: '9431683881',
         whatsappVerified: true,
         role: 'shop_owner',
-        shopId: ektaShop.id,
+        shopId: targetShopId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -509,7 +511,7 @@ export class Database {
       student.passwordHash = this.hashPassword('Ekma#1234');
       student.whatsappNumber = '9431683881';
       student.role = 'shop_owner';
-      student.shopId = ektaShop.id;
+      student.shopId = targetShopId;
     } else {
       merged.users.push({
         id: 'usr-bbdniit-student',
@@ -519,7 +521,7 @@ export class Database {
         whatsappNumber: '9431683881',
         whatsappVerified: true,
         role: 'shop_owner',
-        shopId: ektaShop.id,
+        shopId: targetShopId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });

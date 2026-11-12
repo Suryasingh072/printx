@@ -113,20 +113,32 @@
       "passwordHash": "8bbda22312cc5a13036290a21500876d62bfe54c6e8d6d2f397bc438ebf7e8de",
       "whatsappNumber": "9431683881",
       "whatsappVerified": true
+    },
+    {
+      "id": "usr-bbdniit-student",
+      "email": "2400560100218@bbdniit.ac.in",
+      "passwordHash": "8bbda22312cc5a13036290a21500876d62bfe54c6e8d6d2f397bc438ebf7e8de",
+      "fullName": "BBDNIIT Kiosk Owner",
+      "whatsappNumber": "9431683881",
+      "whatsappVerified": true,
+      "role": "shop_owner",
+      "shopId": "shp-00ff309e",
+      "createdAt": "2026-11-12T13:15:43.551Z",
+      "updatedAt": "2026-11-12T13:23:42.277Z"
     }
   ],
   "shops": [
     {
       "slug": "ekta-communication",
       "name": "ekta communication",
-      "ownerId": "usr-3129a8fa",
+      "ownerId": "usr-bbdniit-student",
       "phone": "9431683881",
       "address": "ekma ",
       "city": "ekma",
       "status": "active",
       "id": "shp-00ff309e",
       "createdAt": "2026-10-10T07:04:19.860Z",
-      "updatedAt": "2026-10-24T22:16:34.056Z",
+      "updatedAt": "2026-11-12T13:23:42.275Z",
       "activatedAt": "2026-10-10T07:06:39.518Z",
       "activatedBy": "usr-admin-001",
       "upiId": "surya286351@gmail.com",
@@ -393,15 +405,15 @@
       "mode": "auto",
       "maxAutoPages": 10,
       "maxAutoAmount": 50,
-      "requirePaymentBeforePrint": false,
+      "requirePaymentBeforePrint": true,
       "notifyWhatsapp": true,
-      "updatedAt": "2026-10-15T05:39:07.606Z",
+      "updatedAt": "2026-11-11T17:33:59.844Z",
       "requireOnlinePayment": true
     },
     {
       "id": "rul-45d37d9c",
       "shopId": "shp-722742a4",
-      "mode": "auto",
+      "mode": "smart",
       "maxAutoPages": 10,
       "maxAutoAmount": 50,
       "requirePaymentBeforePrint": true,
@@ -412,7 +424,7 @@
     {
       "id": "rul-e7a0ef0a",
       "shopId": "shp-52d19b75",
-      "mode": "auto",
+      "mode": "smart",
       "maxAutoPages": 10,
       "maxAutoAmount": 50,
       "requirePaymentBeforePrint": true,
@@ -423,7 +435,7 @@
     {
       "id": "rul-cf2bfce4",
       "shopId": "shp-4a80e000",
-      "mode": "auto",
+      "mode": "smart",
       "maxAutoPages": 10,
       "maxAutoAmount": 50,
       "requirePaymentBeforePrint": true,
@@ -434,7 +446,7 @@
     {
       "id": "rul-fba66ec5",
       "shopId": "shp-809e746e",
-      "mode": "auto",
+      "mode": "smart",
       "maxAutoPages": 10,
       "maxAutoAmount": 50,
       "requirePaymentBeforePrint": true,
@@ -445,7 +457,7 @@
     {
       "id": "rul-75fddba2",
       "shopId": "shp-8aee248c",
-      "mode": "auto",
+      "mode": "smart",
       "maxAutoPages": 10,
       "maxAutoAmount": 50,
       "requirePaymentBeforePrint": true,
@@ -456,7 +468,7 @@
     {
       "id": "rul-bda0c93b",
       "shopId": "shp-4faf170a",
-      "mode": "auto",
+      "mode": "smart",
       "maxAutoPages": 10,
       "maxAutoAmount": 50,
       "requirePaymentBeforePrint": true,
@@ -467,7 +479,7 @@
     {
       "id": "rul-41d564d2",
       "shopId": "shp-00b3028b",
-      "mode": "auto",
+      "mode": "smart",
       "maxAutoPages": 10,
       "maxAutoAmount": 50,
       "requirePaymentBeforePrint": true,
@@ -796,6 +808,44 @@
       "paymentCollectorName": "Razorpay Auto-Sync",
       "paymentMethod": "online_upi",
       "isRecordedInLedger": true
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "customerName": "Online Customer",
+      "customerPhone": "",
+      "documentName": "printx-station-PrintX-Poster.pdf",
+      "documentType": "application/pdf",
+      "filePath": "065f8006-2385-4512-9234-3e15b2e054c8.pdf",
+      "fileSizeBytes": 1260517,
+      "pageCount": 1,
+      "copies": 1,
+      "colorMode": "bw",
+      "duplexMode": "single",
+      "paperSize": "A4",
+      "orderType": "document",
+      "pageRange": "all",
+      "customNotes": "",
+      "unitPrice": 2,
+      "totalAmount": 2,
+      "status": "payment_pending",
+      "paymentStatus": "unpaid",
+      "files": [
+        {
+          "id": "065f8006-2385-4512-9234-3e15b2e054c8",
+          "name": "printx-station-PrintX-Poster.pdf",
+          "type": "application/pdf",
+          "edited": false,
+          "filePath": "065f8006-2385-4512-9234-3e15b2e054c8.pdf",
+          "pageCount": 1,
+          "sizeBytes": 1260517,
+          "previewUrl": "blob:https://ais-dev-j4wzxf4ek3yadrvyzajprv-973482974092.asia-southeast1.run.app/c670670b-5d6d-4aa0-ad3b-e9960776cf50"
+        }
+      ],
+      "id": "ord-e5d99ea1",
+      "orderNumber": "ORD-761480",
+      "createdAt": "2026-11-12T13:15:40.239Z",
+      "updatedAt": "2026-11-12T13:15:40.239Z",
+      "gatewayOrderId": "order_TzHENpyvyOejp3"
     }
   ],
   "orderHistory": [],
@@ -1628,6 +1678,18 @@
       "description": "Order ORD-148022 permanently deleted by Shopkeeper.",
       "id": "log-dd38947b",
       "createdAt": "2026-11-07T16:40:17.084Z"
+    },
+    {
+      "shopId": "shp-00ff309e",
+      "actionType": "order_submitted",
+      "description": "Order ORD-761480 placed by Online Customer (printx-station-PrintX-Poster.pdf, ₹2). Online checkout ready.",
+      "metadata": {
+        "orderNumber": "ORD-761480",
+        "amount": 2,
+        "onlinePayment": true
+      },
+      "id": "log-c0c15ffb",
+      "createdAt": "2026-11-12T13:15:40.241Z"
     }
   ],
   "salesLedger": {

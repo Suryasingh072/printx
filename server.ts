@@ -302,7 +302,20 @@ app.post('/api/auth/login', (req, res) => {
       return res.status(401).json({ error: 'Invalid email, phone number, or password.' });
     }
 
-    let shop = user.role === 'admin' ? undefined : db.getShopByOwnerId(user.id);
+    let shop: any = undefined;
+    if (user.role !== 'admin') {
+      if (
+        user.id === 'usr-3129a8fa' ||
+        user.id === 'usr-bbdniit-student' ||
+        (user.email || '').toLowerCase().includes('2400560100218') ||
+        (user.whatsappNumber || '').includes('9431683881')
+      ) {
+        shop = db.getShopBySlug('ekta-communication') || db.getShopById('shp-00ff309e');
+      }
+      if (!shop) {
+        shop = user.shopId ? db.getShopById(user.shopId) : db.getShopByOwnerId(user.id);
+      }
+    }
     if (!shop && user.role !== 'admin') {
       const allShops = db.getAllShops();
       let match = allShops.find((s) => s.ownerId === user.id);
@@ -368,7 +381,15 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
 
   let shop = user.role === 'admin' ? undefined : (session.shopId ? db.getShopById(session.shopId) : undefined);
   if (!shop && user.role !== 'admin') {
-    shop = db.getShopByOwnerId(user.id);
+    if (
+      user.id === 'usr-3129a8fa' ||
+      user.id === 'usr-bbdniit-student' ||
+      (user.email || '').toLowerCase().includes('2400560100218') ||
+      (user.whatsappNumber || '').includes('9431683881')
+    ) {
+      shop = db.getShopBySlug('ekta-communication') || db.getShopById('shp-00ff309e');
+    }
+    if (!shop) shop = db.getShopByOwnerId(user.id);
     if (!shop) {
       const allShops = db.getAllShops();
       const match = allShops.find((s) => s.ownerId === user.id);

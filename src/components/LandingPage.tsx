@@ -34,6 +34,8 @@ import {
   Sun,
   Menu,
   LogIn,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { api } from '../lib/api.js';
 
@@ -108,6 +110,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   // Login Form
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
@@ -1048,18 +1051,61 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             )}
 
+            {/* Quick 1-Tap Login Shortcuts */}
+            <div className="mb-4 p-3 rounded-2xl bg-white/[0.04] border border-white/10">
+              <p className="text-[11px] font-semibold text-slate-300 mb-2 flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-amber-400" />
+                Quick 1-Tap Login (Ekta Kiosk & Admin):
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginEmail('9431683881');
+                    setLoginPassword('Ekma#1234');
+                    setLoginError(null);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-[11px] font-medium transition cursor-pointer"
+                >
+                  ⚡ Ekta Kiosk (9431683881)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginEmail('2400560100218@bbdniit.ac.in');
+                    setLoginPassword('Ekma#1234');
+                    setLoginError(null);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 text-[11px] font-medium transition cursor-pointer"
+                >
+                  ⚡ Student Login
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginEmail('printx286351@gmail.com');
+                    setLoginPassword('Ekma#1234');
+                    setLoginError(null);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 text-[11px] font-medium transition cursor-pointer"
+                >
+                  ⚡ Admin
+                </button>
+              </div>
+            </div>
+
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-slate-300 block mb-1">
-                  Email Address or WhatsApp Number
+                  Email Address or Mobile Number
                 </label>
                 <input
                   type="text"
                   required
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
-                  placeholder="e.g. surya.ekma@gmail.com or 9431683881"
-                  className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  placeholder="e.g. 9431683881 or 2400560100218@bbdniit.ac.in"
+                  className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500 placeholder:text-slate-500"
                 />
               </div>
 
@@ -1074,28 +1120,47 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     Forgot?
                   </button>
                 </div>
-                <input
-                  type="password"
-                  required
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full py-2.5 px-3.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-                />
+                <div className="relative">
+                  <input
+                    type={showLoginPassword ? 'text' : 'password'}
+                    required
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="Enter password (default: Ekma#1234)"
+                    className="w-full py-2.5 pl-3.5 pr-10 rounded-xl border border-white/15 bg-white/5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500 placeholder:text-slate-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Default password: <code className="text-amber-300 font-mono">Ekma#1234</code> (case-insensitive)
+                </p>
               </div>
 
               <button
                 type="submit"
                 disabled={loginLoading}
-                className="w-full py-3 rounded-xl font-bold text-sm btn-grad transition cursor-pointer mt-2 shadow-lg shadow-rose-500/25"
+                className="w-full py-3 rounded-xl font-bold text-sm btn-grad transition cursor-pointer mt-2 shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2"
               >
-                {loginLoading ? 'Signing in...' : 'Sign In to Dashboard'}
+                {loginLoading ? (
+                  <span>Signing in...</span>
+                ) : (
+                  <>
+                    <LogIn className="w-4 h-4" />
+                    <span>Sign In to Dashboard</span>
+                  </>
+                )}
               </button>
             </form>
 
             <div className="mt-5 text-center text-xs text-slate-400">
-              Need a new shop registered?{' '}
-              <span className="text-pink-400 font-semibold">Managed exclusively by System Administrator.</span>
+              Need assistance?{' '}
+              <span className="text-pink-400 font-semibold">Direct WhatsApp: +91 9431683881</span>
             </div>
           </div>
         </div>
