@@ -140,6 +140,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     }
   };
 
+  const handleQuickLogin = async (identifier: string, pass: string) => {
+    setLoginEmail(identifier);
+    setLoginPassword(pass);
+    setLoginLoading(true);
+    setLoginError(null);
+    try {
+      const res = await api.login(identifier, pass);
+      setShowLoginModal(false);
+      onLoginSuccess(res.user, res.shop);
+    } catch (err: any) {
+      setLoginError(err.message || 'Quick login failed. Please retry.');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
   const handleResetRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     setResetLoading(true);
@@ -283,12 +299,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </button>
             ))}
             <div className="pt-3 border-t border-white/10">
-              <button
-                onClick={() => { setMobileMenuOpen(false); setShowLoginModal(true); }}
-                className="w-full py-2.5 text-center text-xs font-bold btn-grad rounded-xl flex items-center justify-center gap-2"
-              >
-                <LogIn className="w-3.5 h-3.5" /> Sign in
-              </button>
+              {currentUser && onOpenDashboard ? (
+                <button
+                  onClick={() => { setMobileMenuOpen(false); onOpenDashboard(); }}
+                  className="w-full py-2.5 text-center text-xs font-bold btn-grad rounded-xl flex items-center justify-center gap-2"
+                >
+                  🏪 Go to Dashboard →
+                </button>
+              ) : (
+                <button
+                  onClick={() => { setMobileMenuOpen(false); setShowLoginModal(true); }}
+                  className="w-full py-2.5 text-center text-xs font-bold btn-grad rounded-xl flex items-center justify-center gap-2"
+                >
+                  <LogIn className="w-3.5 h-3.5" /> Sign in
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1060,33 +1085,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <div className="flex flex-wrap gap-1.5">
                 <button
                   type="button"
-                  onClick={() => {
-                    setLoginEmail('9431683881');
-                    setLoginPassword('Ekma#1234');
-                    setLoginError(null);
-                  }}
+                  onClick={() => handleQuickLogin('9431683881', 'Ekma#1234')}
+                  disabled={loginLoading}
                   className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-[11px] font-medium transition cursor-pointer"
                 >
                   ⚡ Ekta Kiosk (9431683881)
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setLoginEmail('2400560100218@bbdniit.ac.in');
-                    setLoginPassword('Ekma#1234');
-                    setLoginError(null);
-                  }}
+                  onClick={() => handleQuickLogin('2400560100218@bbdniit.ac.in', 'Ekma#1234')}
+                  disabled={loginLoading}
                   className="px-2.5 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 text-[11px] font-medium transition cursor-pointer"
                 >
                   ⚡ Student Login
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setLoginEmail('printx286351@gmail.com');
-                    setLoginPassword('Ekma#1234');
-                    setLoginError(null);
-                  }}
+                  onClick={() => handleQuickLogin('printx286351@gmail.com', 'Ekma#1234')}
+                  disabled={loginLoading}
                   className="px-2.5 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 text-[11px] font-medium transition cursor-pointer"
                 >
                   ⚡ Admin

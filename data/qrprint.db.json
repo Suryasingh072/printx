@@ -808,44 +808,6 @@
       "paymentCollectorName": "Razorpay Auto-Sync",
       "paymentMethod": "online_upi",
       "isRecordedInLedger": true
-    },
-    {
-      "shopId": "shp-00ff309e",
-      "customerName": "Online Customer",
-      "customerPhone": "",
-      "documentName": "printx-station-PrintX-Poster.pdf",
-      "documentType": "application/pdf",
-      "filePath": "065f8006-2385-4512-9234-3e15b2e054c8.pdf",
-      "fileSizeBytes": 1260517,
-      "pageCount": 1,
-      "copies": 1,
-      "colorMode": "bw",
-      "duplexMode": "single",
-      "paperSize": "A4",
-      "orderType": "document",
-      "pageRange": "all",
-      "customNotes": "",
-      "unitPrice": 2,
-      "totalAmount": 2,
-      "status": "payment_pending",
-      "paymentStatus": "unpaid",
-      "files": [
-        {
-          "id": "065f8006-2385-4512-9234-3e15b2e054c8",
-          "name": "printx-station-PrintX-Poster.pdf",
-          "type": "application/pdf",
-          "edited": false,
-          "filePath": "065f8006-2385-4512-9234-3e15b2e054c8.pdf",
-          "pageCount": 1,
-          "sizeBytes": 1260517,
-          "previewUrl": "blob:https://ais-dev-j4wzxf4ek3yadrvyzajprv-973482974092.asia-southeast1.run.app/c670670b-5d6d-4aa0-ad3b-e9960776cf50"
-        }
-      ],
-      "id": "ord-e5d99ea1",
-      "orderNumber": "ORD-761480",
-      "createdAt": "2026-11-12T13:15:40.239Z",
-      "updatedAt": "2026-11-12T13:15:40.239Z",
-      "gatewayOrderId": "order_TzHENpyvyOejp3"
     }
   ],
   "orderHistory": [],
